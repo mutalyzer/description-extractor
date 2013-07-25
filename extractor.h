@@ -8,8 +8,8 @@
 // FILE INFORMATION:
 //   File:     extractor.h (implemented in extractor.cc)
 //   Author:   Jonathan K. Vis
-//   Revision: 1.02a
-//   Date:     2013/07/24
+//   Revision: 1.03a
+//   Date:     2013/07/25
 // *******************************************************************
 // DESCRIPTION:
 //   This library can be used to generete HGVS variant descriptions as
@@ -247,22 +247,9 @@ std::vector<Substring> LCS(char const* const reference,
 
 // *******************************************************************
 // IUPAC Nucleotide Acid Notation functions
-//   These functions are useful for (inexact) matching of DNA/RNA. All
-//   functions are case insensitive.
-//   Note: gaps are not part of out alphabet.
+//   These functions are useful for calculating the complement of DNA/
+//   RNA strings.
 // *******************************************************************
-
-
-// *******************************************************************
-// IUPAC_base function
-//   This function converts a IUPAC Nucleotide Acid Notation into a
-//   bit array for matching.
-//
-//   @arg base: character from the IUPAC Nucleotide Acid Notation
-//              alphabet
-//   @return: bit array containing all the possible bases
-// *******************************************************************
-static inline unsigned int IUPAC_base(char const base);
 
 
 // *******************************************************************
@@ -274,7 +261,38 @@ static inline unsigned int IUPAC_base(char const base);
 //              alphabet
 //   @return: bit array containing all the possible bases
 // *******************************************************************
-static inline char IUPAC_complement(char const base);
+static inline char IUPAC_complement(char const base)
+{
+  switch (base)
+  {
+    case 'A':
+      return 'T';
+    case 'B':
+      return 'V';
+    case 'C':
+      return 'G';
+    case 'D':
+      return 'H';
+    case 'G':
+      return 'C';
+    case 'H':
+      return 'D';
+    case 'K':
+      return 'M';
+    case 'M':
+      return 'K';
+    case 'R':
+      return 'Y';
+    case 'T':
+    case 'U':
+      return 'A';
+    case 'V':
+      return 'B';
+    case 'Y':
+      return 'R';
+  } // switch
+  return base;
+} // IUPAC_complement
 
 
 // *******************************************************************
@@ -290,163 +308,6 @@ static inline char IUPAC_complement(char const base);
 //   @return: string containing the complement of the input string
 // *******************************************************************
 static inline char const* IUPAC_complement(char const* const string,
-                                           size_t const      n);
-
-
-// *******************************************************************
-// IUPAC_match function
-//   This function matches two strings in the IUPAC Nucleotide Acid
-//   Notation alphabet.
-//   Note: some ``weird'' matching is also possible e.g., Y ({C, T})
-//   matches S ({C, G}), because they both contain C.
-//
-//   @arg string_1: string in the IUPAC Nucleotide Acid Notation
-//                  alphabet
-//   @arg string_2: string in the IUPAC Nucleotide Acid Notation
-//                  alphabet
-//   @arg n: number of characters in the string to match (might be
-//           less than the actual string length)
-//   @return: true or false whether the two strings match or not
-// *******************************************************************
-static inline bool IUPAC_match(char const* const string_1,
-                               char const* const string_2,
-                               size_t const      n = 1);
-
-// *******************************************************************
-// IUPAC_match_reverse function
-//   This function matches two strings in the IUPAC Nucleotide Acid
-//   Notation alphabet. The first string is matched in reverse order.
-//   This function is useful when matching the reverse complement of
-//   DNA/RNA.
-//   Note: some ``weird'' matching is also possible e.g., Y ({C, T})
-//   matches S ({C, G}), because they both contain C.
-//
-//   @arg string_1: string in the IUPAC Nucleotide Acid Notation
-//                  alphabet
-//   @arg string_2: string in the IUPAC Nucleotide Acid Notation
-//                  alphabet
-//   @arg n: number of characters in the string to match (might be
-//           less than the actual string length)
-//   @return: true or false whether the two strings match or not
-// *******************************************************************
-static inline bool IUPAC_match_reverse(char const* const string_1,
-                                       char const* const string_2,
-                                       size_t const      n = 1);
-
-
-// *******************************************************************
-// Implementation Section (not for reference)
-// *******************************************************************
-
-
-static unsigned int const IUPAC_ADENINE  = 1;
-static unsigned int const IUPAC_CYTOSINE = 2;
-static unsigned int const IUPAC_GUANINE  = 4;
-static unsigned int const IUPAC_THYMINE  = 8;
-
-static inline unsigned int IUPAC_base(char const base)
-{
-  switch (base)
-  {
-    case 'A':
-    case 'a':
-      return IUPAC_ADENINE;
-    case 'B':
-    case 'b':
-      return IUPAC_CYTOSINE | IUPAC_GUANINE | IUPAC_THYMINE;
-    case 'C':
-    case 'c':
-      return IUPAC_CYTOSINE;
-    case 'D':
-    case 'd':
-      return IUPAC_ADENINE | IUPAC_GUANINE | IUPAC_THYMINE;
-    case 'G':
-    case 'g':
-      return IUPAC_GUANINE;
-    case 'H':
-    case 'h':
-      return IUPAC_ADENINE | IUPAC_CYTOSINE | IUPAC_THYMINE;
-    case 'K':
-    case 'k':
-      return IUPAC_GUANINE | IUPAC_THYMINE;
-    case 'M':
-    case 'm':
-      return IUPAC_ADENINE | IUPAC_CYTOSINE;
-    case 'N':
-    case 'n':
-      return IUPAC_ADENINE | IUPAC_CYTOSINE |
-             IUPAC_GUANINE | IUPAC_THYMINE;
-    case 'R':
-    case 'r':
-      return IUPAC_ADENINE | IUPAC_GUANINE;
-    case 'S':
-    case 's':
-      return IUPAC_CYTOSINE | IUPAC_GUANINE;
-    case 'T':
-    case 't':
-    case 'U':
-    case 'u':
-      return IUPAC_THYMINE;
-    case 'V':
-    case 'v':
-      return IUPAC_ADENINE | IUPAC_CYTOSINE | IUPAC_GUANINE;
-    case 'W':
-    case 'w':
-      return IUPAC_ADENINE | IUPAC_THYMINE;
-    case 'Y':
-    case 'y':
-      return IUPAC_CYTOSINE | IUPAC_THYMINE;
-  } // switch
-  return 0;
-} // IUPAC_base
-
-static inline char IUPAC_complement(char const base)
-{
-  switch (base)
-  {
-    case 'A':
-    case 'a':
-      return 'T';
-    case 'B':
-    case 'b':
-      return 'V';
-    case 'C':
-    case 'c':
-      return 'G';
-    case 'D':
-    case 'd':
-      return 'H';
-    case 'G':
-    case 'g':
-      return 'C';
-    case 'H':
-    case 'h':
-      return 'D';
-    case 'K':
-    case 'k':
-      return 'M';
-    case 'M':
-    case 'm':
-      return 'K';
-    case 'R':
-    case 'r':
-      return 'Y';
-    case 'T':
-    case 't':
-    case 'U':
-    case 'u':
-      return 'A';
-    case 'V':
-    case 'v':
-      return 'B';
-    case 'Y':
-    case 'y':
-      return 'R';
-  } // switch
-  return base;
-} // IUPAC_complement
-
-static inline char const* IUPAC_complement(char const* const string,
                                            size_t const      n)
 {
   // the caller is responsible for deallocation
@@ -457,34 +318,6 @@ static inline char const* IUPAC_complement(char const* const string,
   } // for
   return result;
 } // IUPAC_complement
-
-static inline bool IUPAC_match(char const* const string_1,
-                               char const* const string_2,
-                               size_t const      n)
-{
-  for (size_t i = 0; i < n; ++i)
-  {
-    if ((IUPAC_base(string_1[i]) & IUPAC_base(string_2[i])) == 0)
-    {
-      return false;
-    } // if
-  } // for
-  return true;
-} // IUPAC_match
-
-static inline bool IUPAC_match_reverse(char const* const string_1,
-                                       char const* const string_2,
-                                       size_t const      n)
-{
-  for (size_t i = 0; i < n; ++i)
-  {
-    if ((IUPAC_base(string_1[-i]) & IUPAC_base(string_2[i])) == 0)
-    {
-      return false;
-    } // if
-  } // for
-  return true;
-} // IUPAC_match_reverse
 
 } // namespace
 
