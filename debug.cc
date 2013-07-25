@@ -8,8 +8,8 @@
 // FILE INFORMATION:
 //   File:     debug.cc (depends on extractor.h)
 //   Author:   Jonathan K. Vis
-//   Revision: 1.03a
-//   Date:     2013/07/25
+//   Revision: 1.02a
+//   Date:     2013/07/24
 // *******************************************************************
 // DESCRIPTION:
 //   This source can be used to debug the Extractor library within
@@ -17,7 +17,6 @@
 // *******************************************************************
 
 #include <cstdio>
-#include <cstdlib>
 #include <vector>
 using namespace std;
 
