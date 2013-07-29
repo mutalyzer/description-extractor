@@ -2,6 +2,12 @@ import sys
 from setuptools import setup
 from distutils.core import Extension
 
+# Patch for swig.
+from distutils.command.build import build
+build.sub_commands = [('build_ext', build.has_ext_modules), ('build_py',
+    build.has_pure_modules), ('build_clib', build.has_c_libraries),
+    ('build_scripts', build.has_scripts)] 
+
 if sys.version_info < (2, 6):
     raise Exception('extractor requires Python 2.6 or higher.')
 
@@ -20,7 +26,6 @@ setup(
     name='extractor',
     ext_modules=[Extension('_extractor', ['extractor/extractor.i',
         'extractor/extractor.cc'], swig_opts=['-c++'])],
-    py_modules=['extractor'],
     version=distmeta.__version__,
     description=distmeta.usage[0],
     long_description=distmeta.__doc__,
