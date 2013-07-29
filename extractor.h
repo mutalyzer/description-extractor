@@ -9,7 +9,7 @@
 //   File:     extractor.h (implemented in extractor.cc)
 //   Author:   Jonathan K. Vis
 //   Revision: 1.03a
-//   Date:     2013/07/25
+//   Date:     2013/07/29
 // *******************************************************************
 // DESCRIPTION:
 //   This library can be used to generete HGVS variant descriptions as
@@ -25,10 +25,13 @@
 namespace mutalyzer
 {
 
+// Can be used as cut-off for k-mer reduction. The expected length of
+// a longest common substring between to strings of length n is
+// log_z(n), were z is the size of the alphabet.
 static int const ALPHABET_SIZE[2] =
 {
    4, // DNA/RNA
-  20  // Protein
+  20  // Protein/other
 }; // ALPHABET
 
 
@@ -224,7 +227,8 @@ std::vector<Substring> LCS_k(char const* const reference,
 //   two (three?) strings by choosing an initial k and calling the
 //   lcs_k function. The k is automatically reduced if necessary until
 //   the LCS of the two strings approaches the theoretical length of 
-//   the LCS of two random strings. FIXME
+//   the LCS of two random strings. FIXME: cut-off based on alphabet
+//   size.
 //
 //   @arg reference: reference string
 //   @arg complement: complement string (can be null for strings other
@@ -310,7 +314,7 @@ static inline char IUPAC_complement(char const base)
 static inline char const* IUPAC_complement(char const* const string,
                                            size_t const      n)
 {
-  // the caller is responsible for deallocation
+  // The caller is responsible for deallocation.
   char* result = new char[n];
   for (size_t i = 0; i < n; ++i)
   {

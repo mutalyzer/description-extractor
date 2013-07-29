@@ -9,7 +9,7 @@
 //   File:     debug.cc (depends on extractor.h)
 //   Author:   Jonathan K. Vis
 //   Revision: 1.03a
-//   Date:     2013/07/25
+//   Date:     2013/07/29
 // *******************************************************************
 // DESCRIPTION:
 //   This source can be used to debug the Extractor library within
@@ -28,8 +28,7 @@ int main(int argc, char* argv[])
 {
   static_cast<void>(argc);
   static_cast<void>(argv);
-                        // 000000000111111111122
-                        // 123456789012345678901
+
   char const* reference =
 "LHGHWGLGQVVTDYVHGDALQKAAKAGLLALSALTFAGLCYFNYHDVGICKAVAMLWK";
   char const* sample    =
