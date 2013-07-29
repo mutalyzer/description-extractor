@@ -41,8 +41,11 @@ $(TARGET): $(OBJECTS) $(WRAPPER)
 debug: $(SOURCES:.cc=.o) $(DEBUG)
 	$(CXX) $(LDFLAGS:-shared=) $(SOURCES:.cc=.o) $(DEBUG) -o $@
 
-%.py: %.i
+%_wrap.cxx: %.i
 	$(SWIG) $(SWIGFLAGS) $(SOURCES:.cc=.i)
+
+%.py: %_wrap.cxx
+	@
 
 %.o: %.cc
 	$(CXX) $(CFLAGS) -o $@ $<
