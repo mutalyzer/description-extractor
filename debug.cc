@@ -30,10 +30,12 @@ int main(int argc, char* argv[])
   static_cast<void>(argv);
                         // 000000000111111111122
                         // 123456789012345678901
-  char const* reference = "ATAGATGATAGATAGATAGAT";
-  char const* sample    = "ATAGATGATTGATAGATAGAT";
+  char const* reference =
+"LHGHWGLGQVVTDYVHGDALQKAAKAGLLALSALTFAGLCYFNYHDVGICKAVAMLWK";
+  char const* sample    =
+"FMVTGALDKLLLTMFMGMPCRKLPRQGFWHFQ";
 
-  vector<Variant> result = extract(reference, 21, sample, 21);
+  vector<Variant> result = extract(reference, 58, sample, 32, 1);
 
   // simple HGVS description (for illustration only)
   for (size_t i = 0; i < result.size(); ++i)

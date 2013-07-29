@@ -9,14 +9,13 @@
 //   File:     extractor.cc (depends on extractor.h)
 //   Author:   Jonathan K. Vis
 //   Revision: 1.03a
-//   Date:     2013/07/25
+//   Date:     2013/07/29
 // *******************************************************************
 // DESCRIPTION:
 //   This library can be used to generete HGVS variant descriptions as
 //   accepted by the Mutalyzer Name Checker.
 // *******************************************************************
 
-#include <cmath>
 #include <cstdlib>
 
 #include "extractor.h"
@@ -58,7 +57,7 @@ static inline size_t prefix_match(char const* const reference,
                                   size_t const      sample_length)
 {
   size_t result = 0;
-  while (reference[result] == sample[result] && result < reference_length && result < sample_length)
+  while (result < reference_length && result < sample_length && reference[result] == sample[result])
   {
     ++result;
   } // while
@@ -244,6 +243,10 @@ std::vector<Substring> LCS_k(char const* const reference,
                              size_t const      k)
 {
   size_t const reference_length = (reference_end - reference_start) / k;
+  if (sample_end - sample_start < k)
+  {
+    return std::vector<Substring>();
+  } // if
   size_t const sample_length = sample_end - sample_start - k + 1;
 
   typedef size_t array[k + 1][reference_length];
@@ -393,6 +396,8 @@ std::vector<Substring> LCS_k(char const* const reference,
       --i;
     } // if
   } // for
+
+
 
   delete[] &LCS_line;
   delete[] &LCS_line_rc;
