@@ -1,5 +1,6 @@
 import sys
 from setuptools import setup
+from distutils.core import Extension
 
 if sys.version_info < (2, 6):
     raise Exception('extractor requires Python 2.6 or higher.')
@@ -17,8 +18,11 @@ import extractor as distmeta
 
 setup(
     name='extractor',
+    ext_modules=[Extension('_extractor', ['extractor/extractor.i',
+        'extractor/extractor.cc'], swig_opts=['-c++'])],
+    py_modules=['extractor'],
     version=distmeta.__version__,
-    description='FASTA/FASTQ analysis and manipulation toolkit.',
+    description=distmeta.usage[0],
     long_description=distmeta.__doc__,
     author=distmeta.__author__,
     author_email=distmeta.__contact__,
