@@ -9,7 +9,7 @@
 //   File:     extractor.cc (depends on extractor.h)
 //   Author:   Jonathan K. Vis
 //   Revision: 1.03a
-//   Date:     2013/07/29
+//   Date:     2013/07/31
 // *******************************************************************
 // DESCRIPTION:
 //   This library can be used to generete HGVS variant descriptions as
@@ -24,7 +24,7 @@ namespace mutalyzer
 {
 
 // This function is more or less equivalent to C's strncmp, but it
-// return true (a non-zero value) iff both strings are the same.
+// returns true (a non-zero value) iff both strings are the same.
 static inline bool string_match(char const* const string_1,
                                 char const* const string_2,
                                 size_t const      n)
@@ -39,11 +39,11 @@ static inline bool string_match(char const* const string_1,
   return true;
 } // string_match
 
-// This function is very similar to C's strncmp, but it will traverse
+// This function is very similar to C's strncmp, but it traverses
 // string_1 from end to start while traversing string_2 from start to
-// end (useful for the reverse complement in DNA/RNA), and it will
-// return true (a non-zero value) iff both strings are the same in
-// their respective directions.
+// end (useful for the reverse complement in DNA/RNA), and it returns
+// true (a non-zero value) iff both strings are the same in their
+// respective directions.
 static inline bool string_match_reverse(char const* const string_1,
                                         char const* const string_2,
                                         size_t const      n)
@@ -135,6 +135,9 @@ std::vector<Variant> extract(char const* const reference,
 // solution. Then apply the same function on the remaining prefixes
 // and suffixes. If there is no LCS it is a variant (region of
 // change), i.e., an insertion/deletion.
+// With regard to the reverse complement: the complement string is, as
+// its name suggests, just the complement (DNA/RNA) of the reference
+// string but it is NOT reversed.
 void extractor(char const* const     reference,
                char const* const     complement,
                size_t const          reference_start,
@@ -169,7 +172,7 @@ void extractor(char const* const     reference,
   // strings.
   std::vector<Substring> LCS_result = LCS(reference, complement, reference_start, reference_end, sample, sample_start, sample_end);
 
-  // No LCS found: this is an insertion/deletion/substitution.
+  // No LCS found: this is an insertion/deletion or a substitution.
   if (LCS_result.size() == 0)
   {
     result.push_back(Variant(reference_start, reference_end, sample_start, sample_end));
@@ -178,6 +181,7 @@ void extractor(char const* const     reference,
 
   // Pick the ``best fitting'' LCS, i.e., the location of the LCS
   // within their respective strings is close.
+  // FIXME: we could extract all non-overlapping LCSs in one go
   size_t difference = (reference_end - reference_start) + (sample_end - sample_start);
   size_t index = 0;
   for (size_t i = 0; i < LCS_result.size(); ++i)
@@ -364,6 +368,9 @@ std::vector<Substring> LCS_k(char const* const reference,
               --e;
             } // if
           } // for
+
+          // The actual indices are calculated afterwards (this is in
+          // k-mer space).
           result.push_back(Substring(j, i, length));
         } // if
         // Found a LCS of the same maximal length or maximal
@@ -429,7 +436,8 @@ std::vector<Substring> LCS_k(char const* const reference,
     // direction.
     if (result[i].reverse_complement)
     {
-      // The correct positions of the LCS within the strings.
+      // The correct positions of the LCS within the strings. Here the
+      // indices are updated to their actual value.
       result[i].reference_index = reference_end - (result[i].reference_index + 1) * k;
       result[i].sample_index = result[i].sample_index - (result[i].length - 1) * k + sample_start;
       result[i].length *= k;
@@ -529,7 +537,7 @@ std::vector<Substring> LCS(char const* const reference,
 
   std::vector<Substring> result;
 
-// FIXME
+// FIXME: stop reducing k if the strings appear to be random
 //  while (k > log(static_cast<double>(reference_end - reference_start)) / log(static_cast<double>(ALPHABET_SIZE[complement != 0 ? 0 : 1])))
   while (k > 1)
   {
@@ -546,7 +554,7 @@ std::vector<Substring> LCS(char const* const reference,
   // Do NOT do this for large strings: instead return an empty set.
   return LCS_1(reference, complement, reference_start, reference_end, sample, sample_start, sample_end);
 
-// FIXME
+// FIXME: return an empty set: do NOT call LCS_1 for large strings
 //  return std::vector<Substring>();
 } // LCS
 
