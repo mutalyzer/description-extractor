@@ -8,8 +8,8 @@
 // FILE INFORMATION:
 //   File:     extractor.i (SWIG interface file)
 //   Author:   Jonathan K. Vis
-//   Revision: 1.03a
-//   Date:     2013/07/25
+//   Revision: 1.04a
+//   Date:     2013/09/17
 // *******************************************************************
 // DESCRIPTION:
 //   Defines the SWIG interface for the Extractor library for use in
@@ -39,6 +39,7 @@ struct Variant
   size_t sample_start;
   size_t sample_end;
   bool   reverse_complement;
+  bool   transposition;
 }; // Variant
 
 std::vector<Variant> extract(char const* const reference,

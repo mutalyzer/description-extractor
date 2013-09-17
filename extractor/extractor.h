@@ -8,8 +8,8 @@
 // FILE INFORMATION:
 //   File:     extractor.h (implemented in extractor.cc)
 //   Author:   Jonathan K. Vis
-//   Revision: 1.03a
-//   Date:     2013/07/29
+//   Revision: 1.04a
+//   Date:     2013/09/17
 // *******************************************************************
 // DESCRIPTION:
 //   This library can be used to generete HGVS variant descriptions as
@@ -56,6 +56,8 @@ static int const ALPHABET_SIZE[2] =
 //                       sample string
 //   @member reverse_complement: indicates a reverse complement
 //                               variant
+//   @member transposition: indicates an inserted substring from the
+//                          reference string
 // *******************************************************************
 struct Variant
 {
@@ -64,17 +66,20 @@ struct Variant
   size_t sample_start;
   size_t sample_end;
   bool   reverse_complement;
+  bool   transposition;
 
   inline Variant(size_t const reference_start,
                  size_t const reference_end,
                  size_t const sample_start,
                  size_t const sample_end,
-                 bool   const reverse_complement = false):
+                 bool const   reverse_complement = false,
+                 bool const   transposition      = false):
          reference_start(reference_start),
          reference_end(reference_end),
          sample_start(sample_start),
          sample_end(sample_end),
-         reverse_complement(reverse_complement) { }
+         reverse_complement(reverse_complement)
+         transposition(transposition) { }
 
   inline Variant(void) { }
 }; // Variant

@@ -8,8 +8,8 @@
 // FILE INFORMATION:
 //   File:     debug.cc (depends on extractor.h)
 //   Author:   Jonathan K. Vis
-//   Revision: 1.03a
-//   Date:     2013/07/29
+//   Revision: 1.04a
+//   Date:     2013/09/17
 // *******************************************************************
 // DESCRIPTION:
 //   This source can be used to debug the Extractor library within
@@ -29,41 +29,14 @@ int main(int argc, char* argv[])
   static_cast<void>(argc);
   static_cast<void>(argv);
 
-  vector<int> vec;
-  vec.push_back(0);
-  vec.push_back(1);
-  vec.push_back(2);
-  vec.push_back(3);
-  vec.push_back(4);
-  vec.push_back(5);
-  vec.push_back(6);
-  vec.push_back(7);
-  vec.push_back(8);
-  vec.push_back(9);
 
-  for (size_t i = 0; i < vec.size(); ++i)
-  {
-    if (vec[i] == 0)
-    {
-      vec.erase(vec.begin() + i);
-      --i;
-    } // if
-  } // for
-
-
-  for (size_t i = 0; i < vec.size(); ++i)
-  {
-    printf("%ld = %d\n", i, vec[i]);
-  } // for
-
-  return 1;
 
   char const* reference =
-"LHGHWGLGQVVTDYVHGDALQKAAKAGLLALSALTFAGLCYFNYHDVGICKAVAMLWK";
+"ATCGCGCATTTATTTA";
   char const* sample    =
-"FMVTGALDKLLLTMFMGMPCRKLPRQGFWHFQ";
+"ATATTTATTCGCGCTA";
 
-  vector<Variant> result = extract(reference, 58, sample, 32, 1);
+  vector<Variant> result = extract(reference, 16, sample, 16, 1);
 
   // simple HGVS description (for illustration only)
   for (size_t i = 0; i < result.size(); ++i)

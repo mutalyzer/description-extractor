@@ -8,8 +8,8 @@
 // FILE INFORMATION:
 //   File:     extractor.cc (depends on extractor.h)
 //   Author:   Jonathan K. Vis
-//   Revision: 1.03a
-//   Date:     2013/07/31
+//   Revision: 1.04a
+//   Date:     2013/09/17
 // *******************************************************************
 // DESCRIPTION:
 //   This library can be used to generete HGVS variant descriptions as
@@ -24,7 +24,7 @@ namespace mutalyzer
 {
 
 // This function is more or less equivalent to C's strncmp, but it
-// returns true (a non-zero value) iff both strings are the same.
+// returns true iff both strings are the same.
 static inline bool string_match(char const* const string_1,
                                 char const* const string_2,
                                 size_t const      n)
@@ -42,8 +42,7 @@ static inline bool string_match(char const* const string_1,
 // This function is very similar to C's strncmp, but it traverses
 // string_1 from end to start while traversing string_2 from start to
 // end (useful for the reverse complement in DNA/RNA), and it returns
-// true (a non-zero value) iff both strings are the same in their
-// respective directions.
+// true iff both strings are the same in their respective directions.
 static inline bool string_match_reverse(char const* const string_1,
                                         char const* const string_2,
                                         size_t const      n)
