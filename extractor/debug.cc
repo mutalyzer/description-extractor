@@ -51,6 +51,10 @@ int main(int argc, char* argv[])
     {
       printf("%ld_%ldinv\n", result[i].reference_start + 1, result[i].reference_end);
     } // if
+    else if (result[i].type == VARIANT_TRANSPOSITION || result[i].type == VARIANT_REVERSE_COMPLEMENT_TRANSPOSITION)
+    {
+      printf("%ld_%ldins%ld_%ld\n", result[i].reference_start + 1, result[i].reference_end, result[i].sample_start, result[i].sample_end);
+    } // if
     else
     {
       size_t const reference_length = result[i].reference_end - result[i].reference_start;

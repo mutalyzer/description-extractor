@@ -16,12 +16,6 @@
 //   accepted by the Mutalyzer Name Checker.
 // *******************************************************************
 
-
-// DEBUG
-#include <cstdio>
-// END DEBUG
-
-
 #include <cstdlib>
 
 #include "extractor.h"
@@ -171,15 +165,38 @@ void extractor(char const* const     reference,
       // First, we check if we can match the inserted substring
       // somewhere in the reference string. This will indicate a
       // possible transposition.
-      std::vector<Variant> trans;
-      extractor(reference, complement, 0, global_reference_length, sample, sample_start, sample_end, trans);
-      printf("%ld -- %ld\n", sample_start, sample_end);
-      for (size_t i = 0; i < trans.size(); ++i)
-      {
-        printf("%ld -- %ld:  %ld -- %ld\n", trans[i].reference_start, trans[i].reference_end, trans[i].sample_start, trans[i].sample_end);
-      } // for
+      std::vector<Variant> transposition;
+      extractor(reference, complement, 0, global_reference_length, sample, sample_start, sample_end, transposition);
 
-      result.push_back(Variant(reference_start, reference_end, sample_start, sample_end));
+      // Just a regular insertion.
+      if (transposition.size() == 0)
+      {
+        result.push_back(Variant(reference_start, reference_end, sample_start, sample_end));
+      } // if
+
+      // This variant can be described as a transposition
+      for (size_t i = 0; i < transposition.size(); ++i)
+      {
+        // Ignore the leading and trailing deletions (starting from
+        // the first character of the reference string or ending at
+        // the last character of the reference string).
+        if (!(transposition[i].sample_end - transposition[i].sample_start == 0 &&
+              (transposition[i].reference_start == 0 || transposition[i].reference_end == global_reference_length)))
+        {
+          if (transposition[i].type == VARIANT_IDENTITY)
+          {
+            result.push_back(Variant(transposition[i].reference_start, transposition[i].reference_end, transposition[i].sample_start, transposition[i].sample_start + 1, VARIANT_TRANSPOSITION));
+          } // if
+          else if (transposition[i].type == VARIANT_REVERSE_COMPLEMENT)
+          {
+            result.push_back(Variant(transposition[i].reference_start, transposition[i].reference_end, transposition[i].sample_start, transposition[i].sample_start + 1, VARIANT_REVERSE_COMPLEMENT_TRANSPOSITION));
+          } // if
+          else
+          {
+            result.push_back(transposition[i]);
+          } // else
+        } // if
+      } // for
     } // if
     return;
   } // if
