@@ -8,13 +8,19 @@
 // FILE INFORMATION:
 //   File:     extractor.cc (depends on extractor.h)
 //   Author:   Jonathan K. Vis
-//   Revision: 1.04a
-//   Date:     2013/09/17
+//   Revision: 1.04b
+//   Date:     2013/09/19
 // *******************************************************************
 // DESCRIPTION:
 //   This library can be used to generete HGVS variant descriptions as
 //   accepted by the Mutalyzer Name Checker.
 // *******************************************************************
+
+
+// DEBUG
+#include <cstdio>
+// END DEBUG
+
 
 #include <cstdlib>
 
@@ -22,6 +28,11 @@
 
 namespace mutalyzer
 {
+
+// This global variable is a dirty trick used to always have access to
+// the complete reference strings even when deep into the recursion.
+// This seems necessary to compute transpositions.
+size_t global_reference_length = 0;
 
 // This function is more or less equivalent to C's strncmp, but it
 // returns true iff both strings are the same.
@@ -108,6 +119,9 @@ std::vector<Variant> extract(char const* const reference,
   size_t const prefix = prefix_match(reference, reference_length, sample, sample_length);
   size_t const suffix = suffix_match(reference, reference_length, sample, sample_length, prefix);
 
+  // Used to always have access to the complete reference string(s).
+  global_reference_length = reference_length;
+
   // Protein (strings other than DNA/RNA) do NOT construct a
   // complement string.
   if (type == 1)
@@ -154,6 +168,17 @@ void extractor(char const* const     reference,
     // insertion.
     if (sample_end - sample_start > 0)
     {
+      // First, we check if we can match the inserted substring
+      // somewhere in the reference string. This will indicate a
+      // possible transposition.
+      std::vector<Variant> trans;
+      extractor(reference, complement, 0, global_reference_length, sample, sample_start, sample_end, trans);
+      printf("%ld -- %ld\n", sample_start, sample_end);
+      for (size_t i = 0; i < trans.size(); ++i)
+      {
+        printf("%ld -- %ld:  %ld -- %ld\n", trans[i].reference_start, trans[i].reference_end, trans[i].sample_start, trans[i].sample_end);
+      } // for
+
       result.push_back(Variant(reference_start, reference_end, sample_start, sample_end));
     } // if
     return;
@@ -195,12 +220,16 @@ void extractor(char const* const     reference,
   // Apply this function to the prefixes of the strings.
   extractor(reference, complement, reference_start, LCS_result[index].reference_index, sample, sample_start, LCS_result[index].sample_index, result);
 
-  // If the LCS used was a reverse complement matc, it itself is a
-  // variant so add it to the solution.
-  if (LCS_result[index].reverse_complement)
+  // We always add a full description including the region that did
+  // not change.
+  if (!LCS_result[index].reverse_complement)
   {
-    result.push_back(Variant(LCS_result[index].reference_index, LCS_result[index].reference_index + LCS_result[index].length, LCS_result[index].sample_index, LCS_result[index].sample_index + LCS_result[index].length, true));
+    result.push_back(Variant(LCS_result[index].reference_index, LCS_result[index].reference_index + LCS_result[index].length, LCS_result[index].sample_index, LCS_result[index].sample_index + LCS_result[index].length, VARIANT_IDENTITY));
   } // if
+  else
+  {
+    result.push_back(Variant(LCS_result[index].reference_index, LCS_result[index].reference_index + LCS_result[index].length, LCS_result[index].sample_index, LCS_result[index].sample_index + LCS_result[index].length, VARIANT_REVERSE_COMPLEMENT));
+  } // else
   
   // Apply this function to the suffixes of the strings.
   extractor(reference, complement, LCS_result[index].reference_index + LCS_result[index].length, reference_end, sample, LCS_result[index].sample_index + LCS_result[index].length, sample_end, result);

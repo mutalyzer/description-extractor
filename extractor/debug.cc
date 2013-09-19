@@ -8,8 +8,8 @@
 // FILE INFORMATION:
 //   File:     debug.cc (depends on extractor.h)
 //   Author:   Jonathan K. Vis
-//   Revision: 1.04a
-//   Date:     2013/09/17
+//   Revision: 1.04b
+//   Date:     2013/09/19
 // *******************************************************************
 // DESCRIPTION:
 //   This source can be used to debug the Extractor library within
@@ -29,19 +29,25 @@ int main(int argc, char* argv[])
   static_cast<void>(argc);
   static_cast<void>(argv);
 
-
-
   char const* reference =
-"ATCGCGCATTTATTTA";
+/*
+ 00000000011111111
+ 12345678901234567
+*/
+"GGGGGGATTTATTTATT";
   char const* sample    =
-"ATATTTATTCGCGCTA";
+"ATTTATTTATTGGGGGG";
 
-  vector<Variant> result = extract(reference, 16, sample, 16, 1);
+  vector<Variant> result = extract(reference, 17, sample, 17, 1);
 
   // simple HGVS description (for illustration only)
   for (size_t i = 0; i < result.size(); ++i)
   {
-    if (result[i].reverse_complement)
+    if (result[i].type == VARIANT_IDENTITY)
+    {
+      printf("%ld_%ldidem%ld_%ld\n", result[i].reference_start + 1, result[i].reference_end, result[i].sample_start + 1, result[i].sample_end);
+    } // if
+    else if (result[i].type == VARIANT_REVERSE_COMPLEMENT)
     {
       printf("%ld_%ldinv\n", result[i].reference_start + 1, result[i].reference_end);
     } // if

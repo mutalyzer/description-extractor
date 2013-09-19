@@ -8,8 +8,8 @@
 // FILE INFORMATION:
 //   File:     extractor.h (implemented in extractor.cc)
 //   Author:   Jonathan K. Vis
-//   Revision: 1.04a
-//   Date:     2013/09/17
+//   Revision: 1.04b
+//   Date:     2013/09/19
 // *******************************************************************
 // DESCRIPTION:
 //   This library can be used to generete HGVS variant descriptions as
@@ -42,6 +42,16 @@ static int const ALPHABET_SIZE[2] =
 // *******************************************************************
 
 
+// These constants can be used to deterimine the type of variant.
+// Substitution covers most: deletions, insertions, substitutions, and
+// insertion/deletions. Indentity is used to describe the unchanged
+// (matched) regions.
+static int const VARIANT_SUBSTITUTION                     = 0;
+static int const VARIANT_IDENTITY                         = 1;
+static int const VARIANT_REVERSE_COMPLEMENT               = 2;
+static int const VARIANT_TRANSPOSITION                    = 5;
+static int const VARIANT_REVERSE_COMPLEMENT_TRANSPOSITION = 6;
+
 // *******************************************************************
 // Variant structure
 //   This structure describes a variant (region of change).
@@ -65,21 +75,18 @@ struct Variant
   size_t reference_end;
   size_t sample_start;
   size_t sample_end;
-  bool   reverse_complement;
-  bool   transposition;
+  int    type;
 
   inline Variant(size_t const reference_start,
                  size_t const reference_end,
                  size_t const sample_start,
                  size_t const sample_end,
-                 bool const   reverse_complement = false,
-                 bool const   transposition      = false):
+                 int const    type            = VARIANT_SUBSTITUTION):
          reference_start(reference_start),
          reference_end(reference_end),
          sample_start(sample_start),
          sample_end(sample_end),
-         reverse_complement(reverse_complement)
-         transposition(transposition) { }
+         type(type) { }
 
   inline Variant(void) { }
 }; // Variant

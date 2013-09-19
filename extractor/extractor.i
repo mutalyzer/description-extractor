@@ -8,8 +8,8 @@
 // FILE INFORMATION:
 //   File:     extractor.i (SWIG interface file)
 //   Author:   Jonathan K. Vis
-//   Revision: 1.04a
-//   Date:     2013/09/17
+//   Revision: 1.04b
+//   Date:     2013/09/19
 // *******************************************************************
 // DESCRIPTION:
 //   Defines the SWIG interface for the Extractor library for use in
@@ -32,14 +32,19 @@ namespace std
 namespace mutalyzer
 {
 
+static int const VARIANT_SUBSTITUTION                     = 0;
+static int const VARIANT_IDENTITY                         = 1;
+static int const VARIANT_REVERSE_COMPLEMENT               = 2;
+static int const VARIANT_TRANSPOSITION                    = 5;
+static int const VARIANT_REVERSE_COMPLEMENT_TRANSPOSITION = 6;
+
 struct Variant
 {
   size_t reference_start;
   size_t reference_end;
   size_t sample_start;
   size_t sample_end;
-  bool   reverse_complement;
-  bool   transposition;
+  int    type;
 }; // Variant
 
 std::vector<Variant> extract(char const* const reference,
