@@ -25,6 +25,9 @@
 namespace mutalyzer
 {
 
+static int const TYPE_DNA     = 0;
+static int const TYPE_PROTEIN = 1;
+
 // Can be used as cut-off for k-mer reduction. The expected length of
 // a longest common substring between to strings of length n is
 // log_z(n), were z is the size of the alphabet.
@@ -111,14 +114,16 @@ std::vector<Variant> extract(char const* const reference,
                              size_t const      reference_length,
                              char const* const sample,
                              size_t const      sample_length,
-                             int const         type = 0);
+                             int const         type = TYPE_DNA);
 
 
 // *******************************************************************
 // extractor function
 //   This function extracts the variants (regions of change) between
 //   the reference and the sample string by recursively calling itself
-//   on prefixes and suffixes of a longest common substring.
+//   on prefixes and suffixes of a longest common substring. It is
+//   strongly suggested NOT to use this function directly when dealing
+//   with transpositions, but use the extract function instead.
 //
 //   @arg reference: reference string
 //   @arg complement: complement string (can be null for

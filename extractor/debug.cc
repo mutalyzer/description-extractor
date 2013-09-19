@@ -24,23 +24,34 @@ using namespace std;
 #include "extractor.h"
 using namespace mutalyzer;
 
+static size_t const LENGTH = 16;
+
+static char const* const REFERENCE = "AAAAAAAAAAAAAAAA";
+
+static char const* const SAMPLE[] =
+{
+  "AAAAAAAAAAAAAAAA",
+  "CAAAAAAAAAAAAAAA",
+  "AAAAAAAAAAAAAAAC",
+  "CAAAAAAAAAAAAAAC",
+  "TTTTTTTTTTTTTTTT",
+  "CTTTTTTTTTTTTTTT",
+  "TTTTTTTTTTTTTTTC",
+  "CTTTTTTTTTTTTTTC",
+  "AAAAAAACCAAAAAAA",
+  
+
+}; // SAMPLE
+
+
 int main(int argc, char* argv[])
 {
-  static_cast<void>(argc);
-  static_cast<void>(argv);
+  char const* const reference = REFERENCE;
+  char const* const sample = argc < 2 ? SAMPLE[0] : SAMPLE[atoi(argv[1])];
 
-  char const* reference =
-/*
- 00000000011111111
- 12345678901234567
-*/
-"GGGGGGATTTATTTATT";
-  char const* sample    =
-"ATTTATTTATTGGGGGG";
+  vector<Variant> result = extract(reference, LENGTH, sample, LENGTH);
 
-  vector<Variant> result = extract(reference, 17, sample, 17, 1);
-
-  // simple HGVS description (for illustration only)
+  // simple HGVS description (for illustration/debug only)
   for (size_t i = 0; i < result.size(); ++i)
   {
     if (result[i].type == VARIANT_IDENTITY)

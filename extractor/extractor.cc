@@ -116,23 +116,26 @@ std::vector<Variant> extract(char const* const reference,
   // Used to always have access to the complete reference string(s).
   global_reference_length = reference_length;
 
-  // Protein (strings other than DNA/RNA) do NOT construct a
-  // complement string.
-  if (type == 1)
+  // Do NOT construct a complement string for protein strings. All
+  // other string types default to DNA/RNA.
+  char const* const complement = type != TYPE_PROTEIN ? IUPAC_complement(reference, reference_length) : 0;
+
+  std::vector<Variant> result;
+  if (prefix > 0)
   {
-    std::vector<Variant> result;
-    extractor(reference, 0, prefix, reference_length - suffix, sample, prefix, sample_length - suffix, result);
-    return result;
+    result.push_back(Variant(0, prefix, 0, prefix, VARIANT_IDENTITY));
+  } // if
+  extractor(reference, complement, prefix, reference_length - suffix, sample, prefix, sample_length - suffix, result);
+  if (suffix > 0)
+  {
+    result.push_back(Variant(reference_length - suffix, reference_length, sample_length - suffix, sample_length, VARIANT_IDENTITY));
   } // if
 
-  // Assuming DNA/RNA: first construct its complement (for reverse
-  // complement matching).
-  char const* complement = IUPAC_complement(reference, reference_length);
-  std::vector<Variant> result;
-  extractor(reference, complement, prefix, reference_length - suffix, sample, prefix, sample_length - suffix, result);
-
   // do NOT forget to clean up the complement string.
-  delete[] complement;
+  if (complement != 0)
+  {
+    delete[] complement;
+  } // if
   return result;
 } // extract
 
@@ -163,8 +166,8 @@ void extractor(char const* const     reference,
     if (sample_end - sample_start > 0)
     {
       // First, we check if we can match the inserted substring
-      // somewhere in the reference string. This will indicate a
-      // possible transposition.
+      // somewhere in the complete reference string. This will
+      // indicate a possible transposition.
       std::vector<Variant> transposition;
       extractor(reference, complement, 0, global_reference_length, sample, sample_start, sample_end, transposition);
 
@@ -180,8 +183,7 @@ void extractor(char const* const     reference,
         // Ignore the leading and trailing deletions (starting from
         // the first character of the reference string or ending at
         // the last character of the reference string).
-        if (!(transposition[i].sample_end - transposition[i].sample_start == 0 &&
-              (transposition[i].reference_start == 0 || transposition[i].reference_end == global_reference_length)))
+        if (!(transposition[i].sample_end - transposition[i].sample_start == 0 && (transposition[i].reference_start == 0 || transposition[i].reference_end == global_reference_length)))
         {
           if (transposition[i].type == VARIANT_IDENTITY)
           {
@@ -193,6 +195,7 @@ void extractor(char const* const     reference,
           } // if
           else
           {
+            // These are supposed to be well-described variants.
             result.push_back(transposition[i]);
           } // else
         } // if

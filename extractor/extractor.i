@@ -32,6 +32,9 @@ namespace std
 namespace mutalyzer
 {
 
+static int const TYPE_DNA     = 0;
+static int const TYPE_PROTEIN = 1;
+
 static int const VARIANT_SUBSTITUTION                     = 0;
 static int const VARIANT_IDENTITY                         = 1;
 static int const VARIANT_REVERSE_COMPLEMENT               = 2;
