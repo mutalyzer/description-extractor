@@ -9,10 +9,10 @@
 //   File:     extractor.h (implemented in extractor.cc)
 //   Author:   Jonathan K. Vis
 //   Revision: 1.04b
-//   Date:     2013/09/19
+//   Date:     2013/09/20
 // *******************************************************************
 // DESCRIPTION:
-//   This library can be used to generete HGVS variant descriptions as
+//   This library can be used to generate HGVS variant descriptions as
 //   accepted by the Mutalyzer Name Checker.
 // *******************************************************************
 

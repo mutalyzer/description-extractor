@@ -9,7 +9,7 @@
 //   File:     debug.cc (depends on extractor.h)
 //   Author:   Jonathan K. Vis
 //   Revision: 1.04b
-//   Date:     2013/09/19
+//   Date:     2013/09/20
 // *******************************************************************
 // DESCRIPTION:
 //   This source can be used to debug the Extractor library within
@@ -31,6 +31,7 @@ static char const* const REFERENCE = "AAAAAAAAAAAAAAAA";
 static char const* const SAMPLE[] =
 {
   "AAAAAAAAAAAAAAAA",
+  "GGGGGGGGGGGGGGGG",
   "CAAAAAAAAAAAAAAA",
   "AAAAAAAAAAAAAAAC",
   "CAAAAAAAAAAAAAAC",
@@ -39,6 +40,9 @@ static char const* const SAMPLE[] =
   "TTTTTTTTTTTTTTTC",
   "CTTTTTTTTTTTTTTC",
   "AAAAAAACCAAAAAAA",
+  "AAACCAAAAAACCAAA",
+  "AAAAAAATTAAAAAAA",
+  "TTAAAAAAAAAAAATT",
   
 
 }; // SAMPLE
