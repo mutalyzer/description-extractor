@@ -1,5 +1,5 @@
 // *******************************************************************
-//   (C) Copyright 2013 Leiden Institute of Advanced Computer Science
+//   (C) Copyright 2014 Leiden Institute of Advanced Computer Science
 //   Universiteit Leiden
 //   All Rights Reserved
 // *******************************************************************
@@ -8,8 +8,8 @@
 // FILE INFORMATION:
 //   File:     extractor.h (implemented in extractor.cc)
 //   Author:   Jonathan K. Vis
-//   Revision: 1.04b
-//   Date:     2013/09/20
+//   Revision: 1.05a
+//   Date:     2014/02/03
 // *******************************************************************
 // DESCRIPTION:
 //   This library can be used to generate HGVS variant descriptions as
@@ -107,7 +107,7 @@ struct Variant
 //   @arg sample: sample string
 //   @arg sample_length: length of the sample string
 //   @arg type: type of strings  0 --- DNA/RNA (default)
-//                               1 --- Protein
+//                               1 --- Protein/other
 //   @return: list of variants
 // *******************************************************************
 std::vector<Variant> extract(char const* const reference,
@@ -244,8 +244,7 @@ std::vector<Substring> LCS_k(char const* const reference,
 //   two (three?) strings by choosing an initial k and calling the
 //   lcs_k function. The k is automatically reduced if necessary until
 //   the LCS of the two strings approaches the theoretical length of 
-//   the LCS of two random strings. FIXME: cut-off based on alphabet
-//   size.
+//   the LCS of two random strings.
 //
 //   @arg reference: reference string
 //   @arg complement: complement string (can be null for strings other

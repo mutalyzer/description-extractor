@@ -1,5 +1,5 @@
 // *******************************************************************
-//   (C) Copyright 2013 Leiden Institute of Advanced Computer Science
+//   (C) Copyright 2014 Leiden Institute of Advanced Computer Science
 //   Universiteit Leiden
 //   All Rights Reserved
 // *******************************************************************
@@ -8,17 +8,21 @@
 // FILE INFORMATION:
 //   File:     extractor.cc (depends on extractor.h)
 //   Author:   Jonathan K. Vis
-//   Revision: 1.04b
-//   Date:     2013/09/19
+//   Revision: 1.05a
+//   Date:     2014/02/02
 // *******************************************************************
 // DESCRIPTION:
 //   This library can be used to generete HGVS variant descriptions as
 //   accepted by the Mutalyzer Name Checker.
 // *******************************************************************
 
+#include "extractor.h"
+
 #include <cstdlib>
 
-#include "extractor.h"
+#if defined(__debug__)
+#include <cstdio>
+#endif
 
 namespace mutalyzer
 {
@@ -168,38 +172,40 @@ void extractor(char const* const     reference,
       // First, we check if we can match the inserted substring
       // somewhere in the complete reference string. This will
       // indicate a possible transposition.
-      std::vector<Variant> transposition;
-      extractor(reference, complement, 0, global_reference_length, sample, sample_start, sample_end, transposition);
-
-      // Just a regular insertion.
-      if (transposition.size() == 0)
+      if (sample_end - sample_start > 4)
       {
-        result.push_back(Variant(reference_start, reference_end, sample_start, sample_end));
-      } // if
-
-      // This variant can be described as a transposition
-      for (size_t i = 0; i < transposition.size(); ++i)
-      {
-        // Ignore the leading and trailing deletions (starting from
-        // the first character of the reference string or ending at
-        // the last character of the reference string).
-        if (!(transposition[i].sample_end - transposition[i].sample_start == 0 && (transposition[i].reference_start == 0 || transposition[i].reference_end == global_reference_length)))
+        std::vector<Variant> transposition;
+        extractor(reference, complement, 0, global_reference_length, sample, sample_start, sample_end, transposition);
+        // Just a regular insertion.
+        if (transposition.size() == 0)
         {
-          if (transposition[i].type == VARIANT_IDENTITY)
-          {
-            result.push_back(Variant(transposition[i].reference_start, transposition[i].reference_end, transposition[i].sample_start, transposition[i].sample_start + 1, VARIANT_TRANSPOSITION));
-          } // if
-          else if (transposition[i].type == VARIANT_REVERSE_COMPLEMENT)
-          {
-            result.push_back(Variant(transposition[i].reference_start, transposition[i].reference_end, transposition[i].sample_start, transposition[i].sample_start + 1, VARIANT_REVERSE_COMPLEMENT_TRANSPOSITION));
-          } // if
-          else
-          {
-            // These are supposed to be well-described variants.
-            result.push_back(transposition[i]);
-          } // else
+          result.push_back(Variant(reference_start, reference_end, sample_start, sample_end));
         } // if
-      } // for
+
+        // This variant can be described as a transposition
+        for (size_t i = 0; i < transposition.size(); ++i)
+        {
+          // Ignore the leading and trailing deletions (starting from
+          // the first character of the reference string or ending at
+          // the last character of the reference string).
+          if (!(transposition[i].sample_end - transposition[i].sample_start == 0 && (transposition[i].reference_start == 0 || transposition[i].reference_end == global_reference_length)))
+          {
+            if (transposition[i].type == VARIANT_IDENTITY)
+            {
+              result.push_back(Variant(transposition[i].reference_start, transposition[i].reference_end, transposition[i].sample_start, transposition[i].sample_start + 1, VARIANT_TRANSPOSITION));
+            } // if
+            else if (transposition[i].type == VARIANT_REVERSE_COMPLEMENT)
+            {
+              result.push_back(Variant(transposition[i].reference_start, transposition[i].reference_end, transposition[i].sample_start, transposition[i].sample_start + 1, VARIANT_REVERSE_COMPLEMENT_TRANSPOSITION));
+            } // if
+            else
+            {
+              // These are supposed to be well-described variants.
+              result.push_back(transposition[i]);
+            } // else
+          } // if
+        } // for
+      } // if
     } // if
     return;
   } // if
@@ -581,13 +587,18 @@ std::vector<Substring> LCS(char const* const reference,
                            size_t const      sample_start,
                            size_t const      sample_end)
 {
-  size_t k = (reference_end - reference_start) / 3;
+  size_t const reference_length = reference_end - reference_start;
+  size_t const sample_length = sample_end - sample_start;
+
+  size_t k = reference_length > sample_length ? sample_length / 3 : reference_length / 3;
+  //size_t k = (reference_end - reference_start) / 3;
+  //size_t k = (sample_end - sample_start) / 3;
 
   std::vector<Substring> result;
 
 // FIXME: stop reducing k if the strings appear to be random
 //  while (k > log(static_cast<double>(reference_end - reference_start)) / log(static_cast<double>(ALPHABET_SIZE[complement != 0 ? 0 : 1])))
-  while (k > 1)
+  while (k > 4)
   {
     result = LCS_k(reference, complement, reference_start, reference_end, sample, sample_start, sample_end, k);
 
@@ -600,10 +611,10 @@ std::vector<Substring> LCS(char const* const reference,
   } // while
 
   // Do NOT do this for large strings: instead return an empty set.
-  return LCS_1(reference, complement, reference_start, reference_end, sample, sample_start, sample_end);
+ // return LCS_1(reference, complement, reference_start, reference_end, sample, sample_start, sample_end);
 
 // FIXME: return an empty set: do NOT call LCS_1 for large strings
-//  return std::vector<Substring>();
+  return std::vector<Substring>();
 } // LCS
 
 } // namespace
