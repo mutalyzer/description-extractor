@@ -113,13 +113,29 @@ std::vector<Variant> extract(char const* const reference,
                              size_t const      sample_length,
                              int const         type)
 {
+#if defined(__debug__)
+  fprintf(stderr, "extractor.cc --- prefix removal\n");
+#endif
   // First remove the common prefix and suffix (in that order!).
   size_t const prefix = prefix_match(reference, reference_length, sample, sample_length);
+#if defined(__debug__)
+  fprintf(stderr, "  prefix: %ld\n", prefix);
+#endif
+
+#if defined(__debug__)
+  fprintf(stderr, "extractor.cc --- suffix removal\n");
+#endif
   size_t const suffix = suffix_match(reference, reference_length, sample, sample_length, prefix);
+#if defined(__debug__)
+  fprintf(stderr, "  suffix: %ld\n", suffix);
+#endif
 
   // Used to always have access to the complete reference string(s).
   global_reference_length = reference_length;
 
+#if defined(__debug__)
+  fprintf(stderr, "extractor.cc --- constructing IUPAC complement\n");
+#endif
   // Do NOT construct a complement string for protein strings. All
   // other string types default to DNA/RNA.
   char const* const complement = type != TYPE_PROTEIN ? IUPAC_complement(reference, reference_length) : 0;
@@ -129,12 +145,19 @@ std::vector<Variant> extract(char const* const reference,
   {
     result.push_back(Variant(0, prefix, 0, prefix, VARIANT_IDENTITY));
   } // if
+
+#if defined(__debug__)
+  fprintf(stderr, "extractor.cc --- starting variant extraction\n");
+#endif
   extractor(reference, complement, prefix, reference_length - suffix, sample, prefix, sample_length - suffix, result);
   if (suffix > 0)
   {
     result.push_back(Variant(reference_length - suffix, reference_length, sample_length - suffix, sample_length, VARIANT_IDENTITY));
   } // if
 
+#if defined(__debug__)
+  fprintf(stderr, "extractor.cc --- variant extraction done, cleaning up\n");
+#endif
   // do NOT forget to clean up the complement string.
   if (complement != 0)
   {
@@ -161,6 +184,10 @@ void extractor(char const* const     reference,
                size_t const          sample_end,
                std::vector<Variant> &result)
 {
+#if defined(__debug__)
+  fprintf(stderr, "extractor.cc --- extractor\n  reference: %ld--%ld (%ld)\n  sample:    %ld--%ld (%ld)\n", reference_start, reference_end, reference_end - reference_start, sample_start, sample_end, sample_end - sample_start);
+#endif
+
   // First some base cases to end the recursion.
   // No more reference string.
   if (reference_end - reference_start <= 0)
@@ -175,11 +202,18 @@ void extractor(char const* const     reference,
       if (sample_end - sample_start > 4)
       {
         std::vector<Variant> transposition;
+#if defined(__debug__)
+  fprintf(stderr, "extractor.cc --- starting transposition extraction\n");
+#endif
         extractor(reference, complement, 0, global_reference_length, sample, sample_start, sample_end, transposition);
+#if defined(__debug__)
+  fprintf(stderr, "  transpositions: %ld\n", transposition.size());
+#endif
         // Just a regular insertion.
-        if (transposition.size() == 0)
+        if (transposition.size() == 1)
         {
           result.push_back(Variant(reference_start, reference_end, sample_start, sample_end));
+          return;
         } // if
 
         // This variant can be described as a transposition
@@ -205,7 +239,9 @@ void extractor(char const* const     reference,
             } // else
           } // if
         } // for
+        return;
       } // if
+      result.push_back(Variant(reference_start, reference_end, sample_start, sample_end));
     } // if
     return;
   } // if
@@ -218,6 +254,9 @@ void extractor(char const* const     reference,
     return;
   } // if
 
+#if defined(__debug__)
+  fprintf(stderr, "extractor.cc --- calculating LCS\n");
+#endif
   // Calculate the LCS (possibly in reverse complement) of the two
   // strings.
   std::vector<Substring> LCS_result = LCS(reference, complement, reference_start, reference_end, sample, sample_start, sample_end);
@@ -228,6 +267,10 @@ void extractor(char const* const     reference,
     result.push_back(Variant(reference_start, reference_end, sample_start, sample_end));
     return;
   } // if
+
+#if defined(__debug__)
+  fprintf(stderr, "  LCS length: %ld\n", LCS_result[0].length);
+#endif
 
   // Pick the ``best fitting'' LCS, i.e., the location of the LCS
   // within their respective strings is close.
@@ -590,16 +633,20 @@ std::vector<Substring> LCS(char const* const reference,
   size_t const reference_length = reference_end - reference_start;
   size_t const sample_length = sample_end - sample_start;
 
-  size_t k = reference_length > sample_length ? sample_length / 3 : reference_length / 3;
-  //size_t k = (reference_end - reference_start) / 3;
-  //size_t k = (sample_end - sample_start) / 3;
+  size_t k = reference_length > sample_length ? sample_length / 4 : reference_length / 4;
+  size_t const k_initial = k;
 
   std::vector<Substring> result;
 
-// FIXME: stop reducing k if the strings appear to be random
-//  while (k > log(static_cast<double>(reference_end - reference_start)) / log(static_cast<double>(ALPHABET_SIZE[complement != 0 ? 0 : 1])))
-  while (k > 4)
+  // FIXME: stop reducing k if the strings appear to be random
+  // while (k > log(static_cast<double>(reference_end - reference_start)) / log(static_cast<double>(ALPHABET_SIZE[complement != 0 ? 0 : 1])))
+  while (k > 4 && k_initial / k < 16)
   {
+
+#if defined(__debug__)
+  fprintf(stderr, "  k = %ld\n", k);
+#endif
+
     result = LCS_k(reference, complement, reference_start, reference_end, sample, sample_start, sample_end, k);
 
     // A LCS of sufficient length has been found.
@@ -607,14 +654,13 @@ std::vector<Substring> LCS(char const* const reference,
     {
       return result;
     } // if
-    k /= 2;
+    k /= 3;
   } // while
 
-  // Do NOT do this for large strings: instead return an empty set.
- // return LCS_1(reference, complement, reference_start, reference_end, sample, sample_start, sample_end);
-
-// FIXME: return an empty set: do NOT call LCS_1 for large strings
   return std::vector<Substring>();
+  // Alternatively, find any LCS using the standard LCS algorithm.
+  // Do NOT do this for large strings: instead return an empty set.
+  // return LCS_1(reference, complement, reference_start, reference_end, sample, sample_start, sample_end);
 } // LCS
 
 } // namespace

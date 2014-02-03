@@ -1,5 +1,5 @@
 ## *******************************************************************
-##   (C) Copyright 2013 Leiden Institute of Advanced Computer Science
+##   (C) Copyright 2014 Leiden Institute of Advanced Computer Science
 ##   Universiteit Leiden
 ##   All Rights Reserved
 ## *******************************************************************
@@ -8,8 +8,8 @@
 ## FILE INFORMATION:
 ##   File:     Makefile
 ##   Author:   Jonathan K. Vis
-##   Revision: 1.02a
-##   Date:     2013/07/24
+##   Revision: 1.05a
+##   Date:     2014/02/02
 ## *******************************************************************
 ## DESCRIPTION:
 ##  Build the Extractor library for python.
@@ -20,7 +20,7 @@ TARGET=_extractor.so
 DEBUG=debug.cc
 
 CXX=g++
-CFLAGS=-c -fpic -Wall -Wextra -O3
+CFLAGS=-c -fpic -Wall -Wextra -O3 -D__debug__
 LDFLAGS=-shared -Wall -O3
 
 SWIG=swig
