@@ -9,7 +9,7 @@
 //   File:     extractor.cc (depends on extractor.h)
 //   Author:   Jonathan K. Vis
 //   Revision: 1.05a
-//   Date:     2014/02/02
+//   Date:     2014/02/03
 // *******************************************************************
 // DESCRIPTION:
 //   This library can be used to generete HGVS variant descriptions as
@@ -199,7 +199,7 @@ void extractor(char const* const     reference,
       // First, we check if we can match the inserted substring
       // somewhere in the complete reference string. This will
       // indicate a possible transposition.
-      if (sample_end - sample_start > 4)
+      if (sample_end - sample_start > 64)
       {
         std::vector<Variant> transposition;
 #if defined(__debug__)

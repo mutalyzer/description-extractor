@@ -9,7 +9,7 @@
 //   File:     debug.cc (depends on extractor.h)
 //   Author:   Jonathan K. Vis
 //   Revision: 1.05a
-//   Date:     2014/02/02
+//   Date:     2014/02/03
 // *******************************************************************
 // DESCRIPTION:
 //   This source can be used to debug the Extractor library within
