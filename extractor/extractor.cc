@@ -9,7 +9,7 @@
 //   File:     extractor.cc (depends on extractor.h)
 //   Author:   Jonathan K. Vis
 //   Revision: 1.05a
-//   Date:     2014/02/03
+//   Date:     2014/02/05
 // *******************************************************************
 // DESCRIPTION:
 //   This library can be used to generete HGVS variant descriptions as
@@ -26,6 +26,73 @@
 
 namespace mutalyzer
 {
+
+#if defined(__debug__)
+void print(char const* const          reference,
+           char const* const          sample,
+           std::vector<Variant> const result)
+{
+  for (size_t i = 0; i < result.size(); ++i)
+  {
+    if (result[i].type == VARIANT_IDENTITY)
+    {
+      printf("%ld_%ldidem%ld_%ld\n", result[i].reference_start + 1, result[i].reference_end, result[i].sample_start + 1, result[i].sample_end);
+    } // if
+    else if (result[i].type == VARIANT_REVERSE_COMPLEMENT)
+    {
+      printf("%ld_%ldinv\n", result[i].reference_start + 1, result[i].reference_end);
+    } // if
+    else if (result[i].type == VARIANT_TRANSPOSITION)
+    {
+      printf("%ld_%ldins%ld_%ld\n", result[i].reference_start + 1, result[i].reference_end, result[i].sample_start, result[i].sample_end);
+    } // if
+    else if (result[i].type == VARIANT_REVERSE_COMPLEMENT_TRANSPOSITION)
+    {
+      printf("%ld_%ldinso%ld_%ld\n", result[i].reference_start + 1, result[i].reference_end, result[i].sample_start, result[i].sample_end);
+    } // if
+    else
+    {
+      size_t const reference_length = result[i].reference_end - result[i].reference_start;
+      size_t const sample_length = result[i].sample_end - result[i].sample_start;
+      if (reference_length == 0)
+      {
+        fprintf(stderr, "%ld_%ldins", result[i].reference_start, result[i].reference_start + 1);
+        fwrite(sample + result[i].sample_start, sizeof(char), sample_length, stderr);
+        fputc('\n', stderr);
+      } // if
+      else if (sample_length == 0)
+      {
+        if (reference_length == 1)
+        {
+          fprintf(stderr, "%lddel\n", result[i].reference_start + 1);
+        } // if
+        else
+        {
+          fprintf(stderr, "%ld_%lddel\n", result[i].reference_start + 1, result[i].reference_end);
+        } // else
+      } // if
+      else if (reference_length == 1 && sample_length == 1)
+      {
+        fprintf(stderr, "%ld%c>%c\n", result[i].reference_start + 1, reference[result[i].reference_start], sample[result[i].sample_start]);
+      } // if
+      else
+      {
+        if (reference_length == 1)
+        {
+          fprintf(stderr, "%lddelins", result[i].reference_start + 1);
+        } // if
+        else
+        {
+          fprintf(stderr, "%ld_%lddelins", result[i].reference_start + 1, result[i].reference_end);
+        } // else
+        fwrite(sample + result[i].sample_start, sizeof(char), sample_length, stderr);
+        fprintf(stderr, "  (%ld--%ld)\n", result[i].sample_start, result[i].sample_end);
+      } // else
+    } // else
+  } // for
+  return;
+} // print
+#endif
 
 // This global variable is a dirty trick used to always have access to
 // the complete reference strings even when deep into the recursion.
@@ -208,39 +275,42 @@ void extractor(char const* const     reference,
         extractor(reference, complement, 0, global_reference_length, sample, sample_start, sample_end, transposition);
 #if defined(__debug__)
   fprintf(stderr, "  transpositions: %ld\n", transposition.size());
+  //print(reference, sample, std::vector<Variant>(1, Variant(reference_start, reference_end, sample_start, sample_end)));
+  print(reference, sample, transposition);
+  fprintf(stderr, "  %ld--%ld\n", reference_start, reference_end);
 #endif
-        // Just a regular insertion.
-        if (transposition.size() == 1)
-        {
-          result.push_back(Variant(reference_start, reference_end, sample_start, sample_end));
-          return;
-        } // if
 
+        size_t start = reference_start;
         // This variant can be described as a transposition
         for (size_t i = 0; i < transposition.size(); ++i)
         {
-          // Ignore the leading and trailing deletions (starting from
-          // the first character of the reference string or ending at
-          // the last character of the reference string).
-          if (!(transposition[i].sample_end - transposition[i].sample_start == 0 && (transposition[i].reference_start == 0 || transposition[i].reference_end == global_reference_length)))
+          if (transposition[i].type == VARIANT_IDENTITY)
           {
-            if (transposition[i].type == VARIANT_IDENTITY)
+            result.push_back(Variant(start - 1, start + 1, transposition[i].reference_start, transposition[i].reference_end, VARIANT_TRANSPOSITION));
+          } // if
+          else if (transposition[i].type == VARIANT_REVERSE_COMPLEMENT)
+          {
+            result.push_back(Variant(start - 1, start + 1, transposition[i].reference_start, transposition[i].reference_end, VARIANT_REVERSE_COMPLEMENT_TRANSPOSITION));
+          } // if
+          else
+          {
+            size_t const reference_length = transposition[i].reference_end - transposition[i].reference_start;
+            size_t const sample_length = transposition[i].sample_end - transposition[i].sample_start;
+            if (reference_length > 0 && sample_length > 0)
             {
-              result.push_back(Variant(transposition[i].reference_start, transposition[i].reference_end, transposition[i].sample_start, transposition[i].sample_start + 1, VARIANT_TRANSPOSITION));
+              result.push_back(Variant(start, start, transposition[i].sample_start, transposition[i].sample_end, transposition[i].type));
             } // if
-            else if (transposition[i].type == VARIANT_REVERSE_COMPLEMENT)
+            else if (sample_length > 0)
             {
-              result.push_back(Variant(transposition[i].reference_start, transposition[i].reference_end, transposition[i].sample_start, transposition[i].sample_start + 1, VARIANT_REVERSE_COMPLEMENT_TRANSPOSITION));
-            } // if
-            else
-            {
-              // These are supposed to be well-described variants.
               result.push_back(transposition[i]);
             } // else
-          } // if
+          } // else
+          ++start;
         } // for
         return;
       } // if
+
+      // Insertion considered to be too short for transposition extraction
       result.push_back(Variant(reference_start, reference_end, sample_start, sample_end));
     } // if
     return;

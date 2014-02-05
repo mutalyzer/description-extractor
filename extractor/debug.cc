@@ -9,7 +9,7 @@
 //   File:     debug.cc (depends on extractor.h)
 //   Author:   Jonathan K. Vis
 //   Revision: 1.05a
-//   Date:     2014/02/03
+//   Date:     2014/02/05
 // *******************************************************************
 // DESCRIPTION:
 //   This source can be used to debug the Extractor library within
@@ -74,17 +74,22 @@ int main(int argc, char* argv[])
     if (result[i].type == VARIANT_IDENTITY)
     {
       ++count_idem;
-      printf("%ld_%ldidem%ld_%ld\n", result[i].reference_start + 1, result[i].reference_end, result[i].sample_start + 1, result[i].sample_end);
+      //printf("%ld_%ldidem%ld_%ld\n", result[i].reference_start + 1, result[i].reference_end, result[i].sample_start + 1, result[i].sample_end);
     } // if
     else if (result[i].type == VARIANT_REVERSE_COMPLEMENT)
     {
       ++count_inv;
       printf("%ld_%ldinv\n", result[i].reference_start + 1, result[i].reference_end);
     } // if
-    else if (result[i].type == VARIANT_TRANSPOSITION || result[i].type == VARIANT_REVERSE_COMPLEMENT_TRANSPOSITION)
+    else if (result[i].type == VARIANT_TRANSPOSITION)
     {
-      result[i].type == VARIANT_TRANSPOSITION ? ++count_trans : ++count_trans_inv;
+      ++count_trans;
       printf("%ld_%ldins%ld_%ld\n", result[i].reference_start + 1, result[i].reference_end, result[i].sample_start, result[i].sample_end);
+    } // if
+    else if (result[i].type == VARIANT_REVERSE_COMPLEMENT_TRANSPOSITION)
+    {
+      ++count_trans_inv;
+      printf("%ld_%ldinso%ld_%ld\n", result[i].reference_start + 1, result[i].reference_end, result[i].sample_start, result[i].sample_end);
     } // if
     else
     {

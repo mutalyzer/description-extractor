@@ -9,7 +9,7 @@
 ##   File:     Makefile
 ##   Author:   Jonathan K. Vis
 ##   Revision: 1.05a
-##   Date:     2014/02/03
+##   Date:     2014/02/05
 ## *******************************************************************
 ## DESCRIPTION:
 ##  Build the Extractor library for python.
@@ -21,7 +21,7 @@ DEBUG=debug.cc
 
 CXX=g++
 CFLAGS=-c -fpic -Wall -Wextra -O3 -D__debug__
-LDFLAGS=-shared -Wall -O3
+LDFLAGS=-Wall -O3 -shared
 
 SWIG=swig
 SWIGFLAGS=-c++ -python
