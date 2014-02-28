@@ -178,7 +178,7 @@ static void transposition_extractor(char const* const     reference,
 {
   // Only consider large enough inserted regions (>> 1) and we are not
   // currently extracting a transposition already.
-  if (sample_end - sample_start > 64 &&
+  if (sample_end - sample_start > 1 &&
       !(reference_start == 0 && reference_end == global_reference_length))
   {
 
@@ -213,7 +213,7 @@ static void transposition_extractor(char const* const     reference,
         // Ignore all deletions (or deleted parts).
         if (transposition[i].sample_end - transposition[i].sample_start > 0)
         {
-          result.push_back(Variant(reference_start - 1, reference_start + 1, transposition[i].sample_start, transposition[i].sample_end, transposition[i].type));
+          result.push_back(Variant(reference_start, reference_start + 1, transposition[i].reference_start, transposition[i].reference_end, transposition[i].type));
         } // if
       } // for
       result[open].type |= TRANSPOSITION_OPEN;
@@ -666,7 +666,7 @@ std::vector<Substring> LCS(char const* const reference,
 
   // FIXME: stop reducing k if the strings appear to be random
   // while (k > log(static_cast<double>(reference_end - reference_start)) / log(static_cast<double>(ALPHABET_SIZE[complement != 0 ? 0 : 1])))
-  while (k > 4 && k_initial / k < 64)
+  while (k > 2 && k_initial / k < 64)
   {
 
 #if defined(__debug__)
@@ -683,10 +683,10 @@ std::vector<Substring> LCS(char const* const reference,
     k /= 3;
   } // while
 
-  return std::vector<Substring>();
+  //return std::vector<Substring>();
   // Alternatively, find any LCS using the standard LCS algorithm.
   // Do NOT do this for large strings: instead return an empty set.
-  // return LCS_1(reference, complement, reference_start, reference_end, sample, sample_start, sample_end);
+  return LCS_1(reference, complement, reference_start, reference_end, sample, sample_start, sample_end);
 } // LCS
 
 } // namespace
