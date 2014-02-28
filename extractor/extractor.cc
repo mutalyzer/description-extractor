@@ -179,7 +179,7 @@ static void transposition_extractor(char const* const     reference,
   // Only consider large enough inserted regions (>> 1) and we are not
   // currently extracting a transposition already.
   // FIXME: reconsider cutoff (1 --> 64)
-  if (sample_end - sample_start > 1 &&
+  if (sample_end - sample_start > 10 &&
       !(reference_start == 0 && reference_end == global_reference_length))
   {
 
@@ -666,7 +666,7 @@ std::vector<Substring> LCS(char const* const reference,
   std::vector<Substring> result;
 
   // FIXME: reconsider cutoff (2 --> 4)
-  while (k > 2 && k_initial / k < 64)
+  while (k > 4 && k_initial / k < 64)
   {
 
 #if defined(__debug__)
@@ -684,7 +684,7 @@ std::vector<Substring> LCS(char const* const reference,
   } // while
 
   // FIXME: return empty set
-  //return std::vector<Substring>();
+  return std::vector<Substring>();
   // Alternatively, find any LCS using the standard LCS algorithm.
   // Do NOT do this for large strings: instead return an empty set.
   return LCS_1(reference, complement, reference_start, reference_end, sample, sample_start, sample_end);
