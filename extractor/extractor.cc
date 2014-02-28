@@ -207,9 +207,14 @@ static void transposition_extractor(char const* const     reference,
       for (size_t i = 0; i < transposition.size(); ++i)
       {
         // Ignore all deletions (or deleted parts).
-        if (transposition[i].sample_end - transposition[i].sample_start > 0)
+        if (transposition[i].type == IDENTITY ||
+            transposition[i].type == REVERSE_COMPLEMENT)
         {
           result.push_back(Variant(reference_start, reference_end, transposition[i].reference_start, transposition[i].reference_end, transposition[i].type));
+        } // if
+        else if (transposition[i].sample_end - transposition[i].sample_start > 0)
+        {
+          result.push_back(Variant(reference_start, reference_end, transposition[i].sample_start, transposition[i].sample_end, transposition[i].type));
         } // if
       } // for
       result[open].type |= TRANSPOSITION_OPEN;
