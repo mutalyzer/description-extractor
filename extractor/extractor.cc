@@ -178,6 +178,7 @@ static void transposition_extractor(char const* const     reference,
 {
   // Only consider large enough inserted regions (>> 1) and we are not
   // currently extracting a transposition already.
+  // FIXME: reconsider cutoff (1 --> 64)
   if (sample_end - sample_start > 1 &&
       !(reference_start == 0 && reference_end == global_reference_length))
   {
@@ -201,11 +202,6 @@ static void transposition_extractor(char const* const     reference,
     // deletion/insertion.
     if (transposition.size() > 1)
     {
-      // There was a deletion first, e.g, x_ydelins[...].
-      if (reference_end - reference_start > 0)
-      {
-        result.push_back(Variant(reference_start, reference_end, 0, 0));
-      } // if
       size_t const open = result.size();
       // This variant can be described as a transposition.
       for (size_t i = 0; i < transposition.size(); ++i)
@@ -213,7 +209,7 @@ static void transposition_extractor(char const* const     reference,
         // Ignore all deletions (or deleted parts).
         if (transposition[i].sample_end - transposition[i].sample_start > 0)
         {
-          result.push_back(Variant(reference_start, reference_start + 1, transposition[i].reference_start, transposition[i].reference_end, transposition[i].type));
+          result.push_back(Variant(reference_start, reference_end, transposition[i].reference_start, transposition[i].reference_end, transposition[i].type));
         } // if
       } // for
       result[open].type |= TRANSPOSITION_OPEN;
@@ -300,12 +296,12 @@ void extractor(char const* const     reference,
 
   // Pick the ``best fitting'' LCS, i.e., the location of the LCS
   // within their respective strings is close.
-  // FIXME: we could extract all non-overlapping LCSs in one go
+  // TODO: we could extract all non-overlapping LCSs in one go
   size_t difference = (reference_end - reference_start) + (sample_end - sample_start);
   size_t index = 0;
   for (size_t i = 0; i < LCS_result.size(); ++i)
   {
-    if (abs(LCS_result[i].reference_index - LCS_result[i].sample_index) < difference)
+    if (static_cast<size_t>(abs(LCS_result[i].reference_index - LCS_result[i].sample_index)) < difference)
     {
       difference = abs(LCS_result[i].reference_index - LCS_result[i].sample_index);
       index = i;
@@ -664,8 +660,7 @@ std::vector<Substring> LCS(char const* const reference,
 
   std::vector<Substring> result;
 
-  // FIXME: stop reducing k if the strings appear to be random
-  // while (k > log(static_cast<double>(reference_end - reference_start)) / log(static_cast<double>(ALPHABET_SIZE[complement != 0 ? 0 : 1])))
+  // FIXME: reconsider cutoff (2 --> 4)
   while (k > 2 && k_initial / k < 64)
   {
 
@@ -683,6 +678,7 @@ std::vector<Substring> LCS(char const* const reference,
     k /= 3;
   } // while
 
+  // FIXME: return empty set
   //return std::vector<Substring>();
   // Alternatively, find any LCS using the standard LCS algorithm.
   // Do NOT do this for large strings: instead return an empty set.
