@@ -9,7 +9,7 @@
 //   File:     extractor.cc (depends on extractor.h)
 //   Author:   Jonathan K. Vis
 //   Revision: 1.05a
-//   Date:     2014/02/05
+//   Date:     2014/02/28
 // *******************************************************************
 // DESCRIPTION:
 //   This library can be used to generete HGVS variant descriptions as
@@ -26,73 +26,6 @@
 
 namespace mutalyzer
 {
-
-#if defined(__debug__)
-void print(char const* const          reference,
-           char const* const          sample,
-           std::vector<Variant> const result)
-{
-  for (size_t i = 0; i < result.size(); ++i)
-  {
-    if (result[i].type == VARIANT_IDENTITY)
-    {
-      printf("%ld_%ldidem%ld_%ld\n", result[i].reference_start + 1, result[i].reference_end, result[i].sample_start + 1, result[i].sample_end);
-    } // if
-    else if (result[i].type == VARIANT_REVERSE_COMPLEMENT)
-    {
-      printf("%ld_%ldinv\n", result[i].reference_start + 1, result[i].reference_end);
-    } // if
-    else if (result[i].type == VARIANT_TRANSPOSITION)
-    {
-      printf("%ld_%ldins%ld_%ld\n", result[i].reference_start + 1, result[i].reference_end, result[i].sample_start, result[i].sample_end);
-    } // if
-    else if (result[i].type == VARIANT_REVERSE_COMPLEMENT_TRANSPOSITION)
-    {
-      printf("%ld_%ldinso%ld_%ld\n", result[i].reference_start + 1, result[i].reference_end, result[i].sample_start, result[i].sample_end);
-    } // if
-    else
-    {
-      size_t const reference_length = result[i].reference_end - result[i].reference_start;
-      size_t const sample_length = result[i].sample_end - result[i].sample_start;
-      if (reference_length == 0)
-      {
-        fprintf(stderr, "%ld_%ldins", result[i].reference_start, result[i].reference_start + 1);
-        fwrite(sample + result[i].sample_start, sizeof(char), sample_length, stderr);
-        fputc('\n', stderr);
-      } // if
-      else if (sample_length == 0)
-      {
-        if (reference_length == 1)
-        {
-          fprintf(stderr, "%lddel\n", result[i].reference_start + 1);
-        } // if
-        else
-        {
-          fprintf(stderr, "%ld_%lddel\n", result[i].reference_start + 1, result[i].reference_end);
-        } // else
-      } // if
-      else if (reference_length == 1 && sample_length == 1)
-      {
-        fprintf(stderr, "%ld%c>%c\n", result[i].reference_start + 1, reference[result[i].reference_start], sample[result[i].sample_start]);
-      } // if
-      else
-      {
-        if (reference_length == 1)
-        {
-          fprintf(stderr, "%lddelins", result[i].reference_start + 1);
-        } // if
-        else
-        {
-          fprintf(stderr, "%ld_%lddelins", result[i].reference_start + 1, result[i].reference_end);
-        } // else
-        fwrite(sample + result[i].sample_start, sizeof(char), sample_length, stderr);
-        fprintf(stderr, "  (%ld--%ld)\n", result[i].sample_start, result[i].sample_end);
-      } // else
-    } // else
-  } // for
-  return;
-} // print
-#endif
 
 // This global variable is a dirty trick used to always have access to
 // the complete reference strings even when deep into the recursion.
@@ -197,7 +130,7 @@ std::vector<Variant> extract(char const* const reference,
   fprintf(stderr, "  suffix: %ld\n", suffix);
 #endif
 
-  // Used to always have access to the complete reference string(s).
+  // Always have access to the complete reference string(s).
   global_reference_length = reference_length;
 
 #if defined(__debug__)
@@ -210,7 +143,7 @@ std::vector<Variant> extract(char const* const reference,
   std::vector<Variant> result;
   if (prefix > 0)
   {
-    result.push_back(Variant(0, prefix, 0, prefix, VARIANT_IDENTITY));
+    result.push_back(Variant(0, prefix, 0, prefix, IDENTITY));
   } // if
 
 #if defined(__debug__)
@@ -219,7 +152,7 @@ std::vector<Variant> extract(char const* const reference,
   extractor(reference, complement, prefix, reference_length - suffix, sample, prefix, sample_length - suffix, result);
   if (suffix > 0)
   {
-    result.push_back(Variant(reference_length - suffix, reference_length, sample_length - suffix, sample_length, VARIANT_IDENTITY));
+    result.push_back(Variant(reference_length - suffix, reference_length, sample_length - suffix, sample_length, IDENTITY));
   } // if
 
 #if defined(__debug__)
@@ -233,12 +166,79 @@ std::vector<Variant> extract(char const* const reference,
   return result;
 } // extract
 
+
+static void transposition_extractor(char const* const     reference,
+                                    char const* const     complement,
+                                    size_t const          reference_start,
+                                    size_t const          reference_end,
+                                    char const* const     sample,
+                                    size_t const          sample_start,
+                                    size_t const          sample_end,
+                                    std::vector<Variant> &result)
+{
+  // Only consider large enough inserted regions (>> 1) and we are not
+  // currently extracting a transposition already.
+  if (sample_end - sample_start > 64 &&
+      !(reference_start == 0 && reference_end == global_reference_length))
+  {
+
+#if defined(__debug__)
+  fprintf(stderr, "extractor.cc --- starting transposition extraction\n");
+#endif
+    std::vector<Variant> transposition;
+
+    extractor(reference, complement, 0, global_reference_length, sample, sample_start, sample_end, transposition);
+
+#if defined(__debug__)
+  fprintf(stderr, "  transpositions: %ld\n", transposition.size());
+  //print(reference, sample, std::vector<Variant>(1, Variant(reference_start, reference_end, sample_start, sample_end)));
+  //print(reference, sample, transposition);
+  fprintf(stderr, "  %ld--%ld\n", reference_start, reference_end);
+#endif
+
+    // When there are more then one transposition variants it is a
+    // true transposition rewrite: we always get at least one
+    // deletion/insertion.
+    if (transposition.size() > 1)
+    {
+      // There was a deletion first, e.g, x_ydelins[...].
+      if (reference_end - reference_start > 0)
+      {
+        result.push_back(Variant(reference_start, reference_end, 0, 0));
+      } // if
+      size_t const open = result.size();
+      // This variant can be described as a transposition.
+      for (size_t i = 0; i < transposition.size(); ++i)
+      {
+        // Ignore all deletions (or deleted parts).
+        if (transposition[i].sample_end - transposition[i].sample_start > 0)
+        {
+          result.push_back(Variant(reference_start - 1, reference_start + 1, transposition[i].sample_start, transposition[i].sample_end, transposition[i].type));
+        } // if
+      } // for
+      result[open].type |= TRANSPOSITION_OPEN;
+      result[result.size() - 1].type |= TRANSPOSITION_CLOSE;
+      return;
+    } // if
+  } // if
+
+#if defined(__debug__)
+  fprintf(stderr, "  just a regular insertion\n");
+#endif
+  // Insertion considered to be too short for transposition extraction
+  // or no transposition was found, so just insert the regular
+  // insertion, deletion/insertion or substitution.
+  result.push_back(Variant(reference_start, reference_end, sample_start, sample_end));
+  return;
+} // transposition_extractor
+
+
 // This is the recursive extractor function. It works as follows:
 // First, determine the ``best fitting'' longest common substring
 // (LCS) (possibly as a reverse complement) and discard it from the
 // solution. Then apply the same function on the remaining prefixes
 // and suffixes. If there is no LCS it is a variant (region of
-// change), i.e., an insertion/deletion.
+// change), i.e., a deletion/insertion.
 // With regard to the reverse complement: the complement string is, as
 // its name suggests, just the complement (DNA/RNA) of the reference
 // string but it is NOT reversed.
@@ -265,53 +265,9 @@ void extractor(char const* const     reference,
     {
       // First, we check if we can match the inserted substring
       // somewhere in the complete reference string. This will
-      // indicate a possible transposition.
-      if (sample_end - sample_start > 64)
-      {
-        std::vector<Variant> transposition;
-#if defined(__debug__)
-  fprintf(stderr, "extractor.cc --- starting transposition extraction\n");
-#endif
-        extractor(reference, complement, 0, global_reference_length, sample, sample_start, sample_end, transposition);
-#if defined(__debug__)
-  fprintf(stderr, "  transpositions: %ld\n", transposition.size());
-  //print(reference, sample, std::vector<Variant>(1, Variant(reference_start, reference_end, sample_start, sample_end)));
-  print(reference, sample, transposition);
-  fprintf(stderr, "  %ld--%ld\n", reference_start, reference_end);
-#endif
-
-        size_t start = reference_start;
-        // This variant can be described as a transposition
-        for (size_t i = 0; i < transposition.size(); ++i)
-        {
-          if (transposition[i].type == VARIANT_IDENTITY)
-          {
-            result.push_back(Variant(start - 1, start + 1, transposition[i].reference_start, transposition[i].reference_end, VARIANT_TRANSPOSITION));
-          } // if
-          else if (transposition[i].type == VARIANT_REVERSE_COMPLEMENT)
-          {
-            result.push_back(Variant(start - 1, start + 1, transposition[i].reference_start, transposition[i].reference_end, VARIANT_REVERSE_COMPLEMENT_TRANSPOSITION));
-          } // if
-          else
-          {
-            size_t const reference_length = transposition[i].reference_end - transposition[i].reference_start;
-            size_t const sample_length = transposition[i].sample_end - transposition[i].sample_start;
-            if (reference_length > 0 && sample_length > 0)
-            {
-              result.push_back(Variant(start, start, transposition[i].sample_start, transposition[i].sample_end, transposition[i].type));
-            } // if
-            else if (sample_length > 0)
-            {
-              result.push_back(transposition[i]);
-            } // else
-          } // else
-          ++start;
-        } // for
-        return;
-      } // if
-
-      // Insertion considered to be too short for transposition extraction
-      result.push_back(Variant(reference_start, reference_end, sample_start, sample_end));
+      // indicate a possible transposition. Otherwise it is a regular
+      // insertion.
+      transposition_extractor(reference, complement, reference_start, reference_end, sample, sample_start, sample_end, result);
     } // if
     return;
   } // if
@@ -331,10 +287,10 @@ void extractor(char const* const     reference,
   // strings.
   std::vector<Substring> LCS_result = LCS(reference, complement, reference_start, reference_end, sample, sample_start, sample_end);
 
-  // No LCS found: this is an insertion/deletion or a substitution.
+  // No LCS found: this is an deletion/insertion or a substitution.
   if (LCS_result.size() == 0)
   {
-    result.push_back(Variant(reference_start, reference_end, sample_start, sample_end));
+    transposition_extractor(reference, complement, reference_start, reference_end, sample, sample_start, sample_end, result);
     return;
   } // if
 
@@ -363,11 +319,11 @@ void extractor(char const* const     reference,
   // not change.
   if (!LCS_result[index].reverse_complement)
   {
-    result.push_back(Variant(LCS_result[index].reference_index, LCS_result[index].reference_index + LCS_result[index].length, LCS_result[index].sample_index, LCS_result[index].sample_index + LCS_result[index].length, VARIANT_IDENTITY));
+    result.push_back(Variant(LCS_result[index].reference_index, LCS_result[index].reference_index + LCS_result[index].length, LCS_result[index].sample_index, LCS_result[index].sample_index + LCS_result[index].length, IDENTITY));
   } // if
   else
   {
-    result.push_back(Variant(LCS_result[index].reference_index, LCS_result[index].reference_index + LCS_result[index].length, LCS_result[index].sample_index, LCS_result[index].sample_index + LCS_result[index].length, VARIANT_REVERSE_COMPLEMENT));
+    result.push_back(Variant(LCS_result[index].reference_index, LCS_result[index].reference_index + LCS_result[index].length, LCS_result[index].sample_index, LCS_result[index].sample_index + LCS_result[index].length, REVERSE_COMPLEMENT));
   } // else
   
   // Apply this function to the suffixes of the strings.
@@ -710,7 +666,7 @@ std::vector<Substring> LCS(char const* const reference,
 
   // FIXME: stop reducing k if the strings appear to be random
   // while (k > log(static_cast<double>(reference_end - reference_start)) / log(static_cast<double>(ALPHABET_SIZE[complement != 0 ? 0 : 1])))
-  while (k > 4 && k_initial / k < 16)
+  while (k > 4 && k_initial / k < 64)
   {
 
 #if defined(__debug__)

@@ -9,7 +9,7 @@
 //   File:     extractor.h (implemented in extractor.cc)
 //   Author:   Jonathan K. Vis
 //   Revision: 1.05a
-//   Date:     2014/02/03
+//   Date:     2014/02/28
 // *******************************************************************
 // DESCRIPTION:
 //   This library can be used to generate HGVS variant descriptions as
@@ -28,7 +28,7 @@ namespace mutalyzer
 static int const TYPE_DNA     = 0;
 static int const TYPE_PROTEIN = 1;
 
-// Can be used as cut-off for k-mer reduction. The expected length of
+// Can be used as cutoff for k-mer reduction. The expected length of
 // a longest common substring between to strings of length n is
 // log_z(n), were z is the size of the alphabet.
 static int const ALPHABET_SIZE[2] =
@@ -48,12 +48,17 @@ static int const ALPHABET_SIZE[2] =
 // These constants can be used to deterimine the type of variant.
 // Substitution covers most: deletions, insertions, substitutions, and
 // insertion/deletions. Indentity is used to describe the unchanged
-// (matched) regions.
-static int const VARIANT_SUBSTITUTION                     = 0;
-static int const VARIANT_IDENTITY                         = 1;
-static int const VARIANT_REVERSE_COMPLEMENT               = 2;
-static int const VARIANT_TRANSPOSITION                    = 5;
-static int const VARIANT_REVERSE_COMPLEMENT_TRANSPOSITION = 6;
+// (matched) regions. These constants are coded as bitfields and
+// should be appropriately combined, e.g.,
+// IDENTITY | TRANSPOSITION_OPEN for describing a real transposition.
+// Note that some combinations do NOT make sense, e.g.,
+// IDENTITY | REVERSE_COMPLEMENT.
+static int const SUBSTITUTION        = 0;
+static int const IDENTITY            = 1;
+static int const REVERSE_COMPLEMENT  = 2;
+static int const TRANSPOSITION_OPEN  = 4;
+static int const TRANSPOSITION_CLOSE = 8;
+
 
 // *******************************************************************
 // Variant structure
@@ -84,7 +89,7 @@ struct Variant
                  size_t const reference_end,
                  size_t const sample_start,
                  size_t const sample_end,
-                 int const    type            = VARIANT_SUBSTITUTION):
+                 int const    type            = SUBSTITUTION):
          reference_start(reference_start),
          reference_end(reference_end),
          sample_start(sample_start),
@@ -243,8 +248,7 @@ std::vector<Substring> LCS_k(char const* const reference,
 //   This function calculates the longest common substrings between
 //   two (three?) strings by choosing an initial k and calling the
 //   lcs_k function. The k is automatically reduced if necessary until
-//   the LCS of the two strings approaches the theoretical length of 
-//   the LCS of two random strings.
+//   the LCS of the two strings approaches some cutoff threshold.
 //
 //   @arg reference: reference string
 //   @arg complement: complement string (can be null for strings other

@@ -1,5 +1,5 @@
 // *******************************************************************
-//   (C) Copyright 2013 Leiden Institute of Advanced Computer Science
+//   (C) Copyright 2014 Leiden Institute of Advanced Computer Science
 //   Universiteit Leiden
 //   All Rights Reserved
 // *******************************************************************
@@ -9,7 +9,7 @@
 //   File:     extractor.i (SWIG interface file)
 //   Author:   Jonathan K. Vis
 //   Revision: 1.04b
-//   Date:     2013/09/19
+//   Date:     2014/02/28
 // *******************************************************************
 // DESCRIPTION:
 //   Defines the SWIG interface for the Extractor library for use in
@@ -35,11 +35,11 @@ namespace mutalyzer
 static int const TYPE_DNA     = 0;
 static int const TYPE_PROTEIN = 1;
 
-static int const VARIANT_SUBSTITUTION                     = 0;
-static int const VARIANT_IDENTITY                         = 1;
-static int const VARIANT_REVERSE_COMPLEMENT               = 2;
-static int const VARIANT_TRANSPOSITION                    = 5;
-static int const VARIANT_REVERSE_COMPLEMENT_TRANSPOSITION = 6;
+static int const SUBSTITUTION        = 0;
+static int const IDENTITY            = 1;
+static int const REVERSE_COMPLEMENT  = 2;
+static int const TRANSPOSITION_OPEN  = 4;
+static int const TRANSPOSITION_CLOSE = 8;
 
 struct Variant
 {
@@ -54,7 +54,7 @@ std::vector<Variant> extract(char const* const reference,
                              size_t const      reference_length,
                              char const* const sample,
                              size_t const      sample_length,
-                             size_t const      type = 0);
+                             size_t const      type = TYPE_DNA);
 
 void extractor(char const* const     reference,
                char const* const     complement,
