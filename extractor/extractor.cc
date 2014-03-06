@@ -9,7 +9,7 @@
 //   File:     extractor.cc (depends on extractor.h)
 //   Author:   Jonathan K. Vis
 //   Revision: 1.05a
-//   Date:     2014/02/28
+//   Date:     2014/03/06
 // *******************************************************************
 // DESCRIPTION:
 //   This library can be used to generete HGVS variant descriptions as
@@ -166,7 +166,10 @@ std::vector<Variant> extract(char const* const reference,
   return result;
 } // extract
 
-
+// This function tries to extract transpositions from inserted
+// sequences (insertions or deletion/insertions). Be careful that
+// SNPs (substitutions) also fall in this category and they should
+// never be rewritten as a transposition.
 static void transposition_extractor(char const* const     reference,
                                     char const* const     complement,
                                     size_t const          reference_start,
@@ -440,9 +443,8 @@ std::vector<Substring> LCS_k(char const* const reference,
 {
   size_t const reference_length = (reference_end - reference_start) / k;
 
-  // Stop if we cannot partition the sample string into overlapping
-  // k-mers.
-  if (sample_end - sample_start < k)
+  // Stop if we cannot partition the strings into k-mers.
+  if (reference_end - reference_start < k || sample_end - sample_start < k)
   {
     return std::vector<Substring>();
   } // if
