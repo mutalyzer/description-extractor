@@ -19,6 +19,7 @@
 #include "extractor.h"
 
 #include <cstdlib>
+#include <cmath>
 
 #if defined(__debug__)
 #include <cstdio>
@@ -31,6 +32,12 @@ namespace mutalyzer
 // the complete reference strings even when deep into the recursion.
 // This seems necessary to compute transpositions.
 size_t global_reference_length = 0;
+
+
+// The (average) description length of a position. Depends on the
+// reference string length: ceil(10log(|R|)).
+size_t position_length = 1;
+
 
 // This function is more or less equivalent to C's strncmp, but it
 // returns true iff both strings are the same.
@@ -132,6 +139,7 @@ std::vector<Variant> extract(char const* const reference,
 
   // Always have access to the complete reference string(s).
   global_reference_length = reference_length;
+  position_length = log10(global_reference_length);
 
 #if defined(__debug__)
   fprintf(stderr, "extractor.cc --- constructing IUPAC complement\n");
@@ -179,10 +187,10 @@ static void transposition_extractor(char const* const     reference,
                                     size_t const          sample_end,
                                     std::vector<Variant> &result)
 {
-  // Only consider large enough inserted regions (>> 1) and we are not
+  // Only consider large enough inserted regions (>> 1), now based on
+  // (average) description length of a position. Also, we are not
   // currently extracting a transposition already.
-  // FIXME: reconsider cutoff (1 --> 64)
-  if (sample_end - sample_start > 10 &&
+  if (sample_end - sample_start > 2 * position_length + 1 &&
       !(reference_start == 0 && reference_end == global_reference_length))
   {
 
@@ -663,12 +671,16 @@ std::vector<Substring> LCS(char const* const reference,
   size_t const sample_length = sample_end - sample_start;
 
   size_t k = reference_length > sample_length ? sample_length / 4 : reference_length / 4;
-  size_t const k_initial = k;
+
+  // Dynamic cut-off
+  double const a = reference_length >= sample_length ? reference_length : sample_length;
+  double const b = reference_length >= sample_length ? sample_length : reference_length;
+  size_t const c = ceil((1.0 - b / (a + 0.1 * b)) * b);
 
   std::vector<Substring> result;
 
-  // FIXME: reconsider cutoff (2 --> 4)
-  while (k > 4 && k_initial / k < 64)
+  // FIXME: preformance test
+  while (k > 1 && 4 * k >= c)
   {
 
 #if defined(__debug__)
@@ -685,10 +697,11 @@ std::vector<Substring> LCS(char const* const reference,
     k /= 3;
   } // while
 
-  // FIXME: return empty set
-  return std::vector<Substring>();
-  // Alternatively, find any LCS using the standard LCS algorithm.
-  // Do NOT do this for large strings: instead return an empty set.
+  // FIXME: performance test
+  if (c > 1)
+  {
+    return std::vector<Substring>();
+  } // if
   return LCS_1(reference, complement, reference_start, reference_end, sample, sample_start, sample_end);
 } // LCS
 
