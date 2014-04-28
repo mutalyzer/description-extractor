@@ -9,7 +9,7 @@
 //   File:     extractor.cc (depends on extractor.h)
 //   Author:   Jonathan K. Vis
 //   Revision: 1.05a
-//   Date:     2014/04/17
+//   Date:     2014/04/28
 // *******************************************************************
 // DESCRIPTION:
 //   This library can be used to generete HGVS variant descriptions as
@@ -187,7 +187,7 @@ static void transposition_extractor(char const* const     reference,
                                     size_t const          sample_end,
                                     std::vector<Variant> &result)
 {
-  // Only consider large enough inserted regions (>> 1), now based on
+  // Only consider large enough inserted regions (>> 1), based on
   // (average) description length of a position. Also, we are not
   // currently extracting a transposition already.
   if (sample_end - sample_start > 2 * position_length + 1 &&
@@ -267,6 +267,14 @@ void extractor(char const* const     reference,
 #if defined(__debug__)
   fprintf(stderr, "extractor.cc --- extractor\n  reference: %ld--%ld (%ld)\n  sample:    %ld--%ld (%ld)\n", reference_start, reference_end, reference_end - reference_start, sample_start, sample_end, sample_end - sample_start);
 #endif
+
+  // When we are processing a transposition, stop when the length of
+  // the string to be described (sample) falls below the transposition
+  // threshold.
+  if (transposition && sample_end - sample_start > 2 * position_length + 1)
+  {
+    return;
+  } // if
 
   // First some base cases to end the recursion.
   // No more reference string.
