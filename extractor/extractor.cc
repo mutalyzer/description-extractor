@@ -9,7 +9,7 @@
 //   File:     extractor.cc (depends on extractor.h)
 //   Author:   Jonathan K. Vis
 //   Revision: 1.05a
-//   Date:     2014/03/06
+//   Date:     2014/04/17
 // *******************************************************************
 // DESCRIPTION:
 //   This library can be used to generete HGVS variant descriptions as
@@ -35,7 +35,7 @@ size_t global_reference_length = 0;
 
 
 // The (average) description length of a position. Depends on the
-// reference string length: ceil(10log(|R|)).
+// reference string length: ceil(10log(|reference|)).
 size_t position_length = 1;
 
 
@@ -199,7 +199,7 @@ static void transposition_extractor(char const* const     reference,
 #endif
     std::vector<Variant> transposition;
 
-    extractor(reference, complement, 0, global_reference_length, sample, sample_start, sample_end, transposition);
+    extractor(reference, complement, 0, global_reference_length, sample, sample_start, sample_end, transposition, true);
 
 #if defined(__debug__)
   fprintf(stderr, "  transpositions: %ld\n", transposition.size());
@@ -261,7 +261,8 @@ void extractor(char const* const     reference,
                char const* const     sample,
                size_t const          sample_start,
                size_t const          sample_end,
-               std::vector<Variant> &result)
+               std::vector<Variant> &result,
+               bool const            transposition)
 {
 #if defined(__debug__)
   fprintf(stderr, "extractor.cc --- extractor\n  reference: %ld--%ld (%ld)\n  sample:    %ld--%ld (%ld)\n", reference_start, reference_end, reference_end - reference_start, sample_start, sample_end, sample_end - sample_start);
@@ -325,7 +326,7 @@ void extractor(char const* const     reference,
   } // for
 
   // Apply this function to the prefixes of the strings.
-  extractor(reference, complement, reference_start, LCS_result[index].reference_index, sample, sample_start, LCS_result[index].sample_index, result);
+  extractor(reference, complement, reference_start, LCS_result[index].reference_index, sample, sample_start, LCS_result[index].sample_index, result, transposition);
 
   // We always add a full description including the region that did
   // not change.
@@ -339,7 +340,7 @@ void extractor(char const* const     reference,
   } // else
   
   // Apply this function to the suffixes of the strings.
-  extractor(reference, complement, LCS_result[index].reference_index + LCS_result[index].length, reference_end, sample, LCS_result[index].sample_index + LCS_result[index].length, sample_end, result);
+  extractor(reference, complement, LCS_result[index].reference_index + LCS_result[index].length, reference_end, sample, LCS_result[index].sample_index + LCS_result[index].length, sample_end, result, transposition);
   return;
 } // extractor
 
@@ -684,7 +685,7 @@ std::vector<Substring> LCS(char const* const reference,
   {
 
 #if defined(__debug__)
-  fprintf(stderr, "  k = %ld\n", k);
+  fprintf(stderr, "  k = %ld (c = %ld)\n", k, c);
 #endif
 
     result = LCS_k(reference, complement, reference_start, reference_end, sample, sample_start, sample_end, k);
@@ -702,6 +703,10 @@ std::vector<Substring> LCS(char const* const reference,
   {
     return std::vector<Substring>();
   } // if
+
+#if defined(__debug__)
+  fprintf(stderr, "  k = 1\n");
+#endif
   return LCS_1(reference, complement, reference_start, reference_end, sample, sample_start, sample_end);
 } // LCS
 

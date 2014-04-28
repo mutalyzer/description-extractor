@@ -9,7 +9,7 @@
 //   File:     extractor.h (implemented in extractor.cc)
 //   Author:   Jonathan K. Vis
 //   Revision: 1.05a
-//   Date:     2014/02/28
+//   Date:     2014/04/17
 // *******************************************************************
 // DESCRIPTION:
 //   This library can be used to generate HGVS variant descriptions as
@@ -139,6 +139,7 @@ std::vector<Variant> extract(char const* const reference,
 //   @arg sample_start: starting position in the sample string
 //   @arg sample_end: ending position in the sample string
 //   @arg result: list of variants
+//   @arg transposition: flag indicating transposition extraction
 // *******************************************************************
 void extractor(char const* const     reference,
                char const* const     complement,
@@ -147,7 +148,8 @@ void extractor(char const* const     reference,
                char const* const     sample,
                size_t const          sample_start,
                size_t const          sample_end,
-               std::vector<Variant> &result);
+               std::vector<Variant> &result,
+               bool const            transposition = false);
 
 
 // *******************************************************************
