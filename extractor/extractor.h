@@ -8,8 +8,8 @@
 // FILE INFORMATION:
 //   File:     extractor.h (implemented in extractor.cc)
 //   Author:   Jonathan K. Vis
-//   Revision: 1.05a
-//   Date:     2014/04/17
+//   Revision: 1.05b
+//   Date:     2014/05/01
 // *******************************************************************
 // DESCRIPTION:
 //   This library can be used to generate HGVS variant descriptions as
@@ -72,6 +72,10 @@ static int const TRANSPOSITION_CLOSE = 8;
 //                         sample string
 //   @member sample_end: ending position of the variant within the
 //                       sample string
+//   @member transposition_start: starting position of a transposition
+//                                withing the reference string
+//   @member transposition_ned: ending position of a transposition
+//                              withing the reference string
 //   @member reverse_complement: indicates a reverse complement
 //                               variant
 //   @member transposition: indicates an inserted substring from the
@@ -83,6 +87,8 @@ struct Variant
   size_t reference_end;
   size_t sample_start;
   size_t sample_end;
+  size_t transposition_start;
+  size_t transposition_end;
   int    type;
 
   inline Variant(size_t const reference_start,
@@ -94,6 +100,23 @@ struct Variant
          reference_end(reference_end),
          sample_start(sample_start),
          sample_end(sample_end),
+         transposition_start(0),
+         transposition_end(0),
+         type(type) { }
+
+  inline Variant(size_t const reference_start,
+                 size_t const reference_end,
+                 size_t const sample_start,
+                 size_t const sample_end,
+                 size_t const transposition_start,
+                 size_t const transposition_end,
+                 int const    type                = SUBSTITUTION):
+         reference_start(reference_start),
+         reference_end(reference_end),
+         sample_start(sample_start),
+         sample_end(sample_end),
+         transposition_start(transposition_start),
+         transposition_end(transposition_end),
          type(type) { }
 
   inline Variant(void) { }

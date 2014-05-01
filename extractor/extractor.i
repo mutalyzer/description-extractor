@@ -8,8 +8,8 @@
 // FILE INFORMATION:
 //   File:     extractor.i (SWIG interface file)
 //   Author:   Jonathan K. Vis
-//   Revision: 1.04b
-//   Date:     2014/02/28
+//   Revision: 1.05b
+//   Date:     2014/05/01
 // *******************************************************************
 // DESCRIPTION:
 //   Defines the SWIG interface for the Extractor library for use in
@@ -47,6 +47,8 @@ struct Variant
   size_t reference_end;
   size_t sample_start;
   size_t sample_end;
+  size_t transposition_start;
+  size_t transposition_end;
   int    type;
 }; // Variant
 
@@ -55,15 +57,6 @@ std::vector<Variant> extract(char const* const reference,
                              char const* const sample,
                              size_t const      sample_length,
                              size_t const      type = TYPE_DNA);
-
-void extractor(char const* const     reference,
-               char const* const     complement,
-               size_t const          reference_start,
-               size_t const          reference_end,
-               char const* const     sample,
-               size_t const          sample_start,
-               size_t const          sample_end,
-               std::vector<Variant> &result);
 
 struct Substring
 {

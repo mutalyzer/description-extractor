@@ -8,8 +8,8 @@
 // FILE INFORMATION:
 //   File:     extractor.cc (depends on extractor.h)
 //   Author:   Jonathan K. Vis
-//   Revision: 1.05a
-//   Date:     2014/04/28
+//   Revision: 1.05b
+//   Date:     2014/05/01
 // *******************************************************************
 // DESCRIPTION:
 //   This library can be used to generete HGVS variant descriptions as
@@ -139,7 +139,7 @@ std::vector<Variant> extract(char const* const reference,
 
   // Always have access to the complete reference string(s).
   global_reference_length = reference_length;
-  position_length = log10(global_reference_length);
+  //position_length = log10(global_reference_length);
 
 #if defined(__debug__)
   fprintf(stderr, "extractor.cc --- constructing IUPAC complement\n");
@@ -221,7 +221,7 @@ static void transposition_extractor(char const* const     reference,
         if (transposition[i].type == IDENTITY ||
             transposition[i].type == REVERSE_COMPLEMENT)
         {
-          result.push_back(Variant(reference_start, reference_end, transposition[i].reference_start, transposition[i].reference_end, transposition[i].type));
+          result.push_back(Variant(reference_start, reference_end, transposition[i].sample_start, transposition[i].sample_end, transposition[i].reference_start, transposition[i].reference_end, transposition[i].type));
         } // if
         else if (transposition[i].sample_end - transposition[i].sample_start > 0)
         {
@@ -271,7 +271,7 @@ void extractor(char const* const     reference,
   // When we are processing a transposition, stop when the length of
   // the string to be described (sample) falls below the transposition
   // threshold.
-  if (transposition && sample_end - sample_start > 2 * position_length + 1)
+  if (transposition && sample_end - sample_start <= 2 * position_length + 1)
   {
     return;
   } // if
@@ -709,7 +709,7 @@ std::vector<Substring> LCS(char const* const reference,
   // FIXME: performance test
   if (c > 1)
   {
-    return std::vector<Substring>();
+    //return std::vector<Substring>();
   } // if
 
 #if defined(__debug__)
