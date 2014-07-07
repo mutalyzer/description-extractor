@@ -9,7 +9,7 @@
 //   File:     extractor.i (SWIG interface file)
 //   Author:   Jonathan K. Vis
 //   Revision: 1.05b
-//   Date:     2014/05/01
+//   Date:     2014/07/07
 // *******************************************************************
 // DESCRIPTION:
 //   Defines the SWIG interface for the Extractor library for use in

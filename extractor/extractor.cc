@@ -9,7 +9,7 @@
 //   File:     extractor.cc (depends on extractor.h)
 //   Author:   Jonathan K. Vis
 //   Revision: 1.05b
-//   Date:     2014/05/01
+//   Date:     2014/07/07
 // *******************************************************************
 // DESCRIPTION:
 //   This library can be used to generete HGVS variant descriptions as
@@ -139,7 +139,7 @@ std::vector<Variant> extract(char const* const reference,
 
   // Always have access to the complete reference string(s).
   global_reference_length = reference_length;
-  //position_length = log10(global_reference_length);
+  position_length = log10(global_reference_length) + 1;
 
 #if defined(__debug__)
   fprintf(stderr, "extractor.cc --- constructing IUPAC complement\n");

@@ -9,7 +9,7 @@
 //   File:     extractor.h (implemented in extractor.cc)
 //   Author:   Jonathan K. Vis
 //   Revision: 1.05b
-//   Date:     2014/05/01
+//   Date:     2014/07/07
 // *******************************************************************
 // DESCRIPTION:
 //   This library can be used to generate HGVS variant descriptions as
