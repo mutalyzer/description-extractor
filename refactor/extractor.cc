@@ -138,9 +138,22 @@ size_t extractor(std::vector<Variant> &variant,
   std::vector<Substring> substring;
   size_t const length = LCS(substring, reference, complement, reference_start, reference_end, sample, sample_start, sample_end);
 
-  // deletion/insertion TODO: transpositions
+  // deletion/insertion
   if (length <= 0 || substring.size() <= 0)
   {
+    std::vector<Variant> transposition;
+    size_t const weight_transposition = extractor_transposition(transposition, reference, complement, reference_start, reference_end, sample, sample_start, sample_end);
+
+#if defined(__debug__)
+  fprintf(stderr, "weight: %ld (%ld)\n", weight_transposition, weight);
+#endif
+
+    if (weight > weight_transposition)
+    {
+      variant.insert(variant.end(), transposition.begin(), transposition.end());
+      return weight_transposition;
+    } // if
+
     variant.push_back(Variant(reference_start, reference_end, sample_start, sample_end, SUBSTITUTION, weight_trivial));
     return weight_trivial;
   } // if
@@ -249,16 +262,6 @@ size_t extractor_transposition(std::vector<Variant> &variant,
     std::vector<Variant> transposition;
     extractor(transposition, reference, complement, 0, global_reference_length, sample, sample_start, sample_end, true);
 
-#if defined(__debug__)
-    fprintf(stderr, "Transpositions:\n");
-    for (std::vector<Variant>::iterator it = transposition.begin(); it != transposition.end(); ++it)
-    {
-      if (it->type == IDENTITY || it->type == REVERSE_COMPLEMENT || it->sample_end - it->sample_start > 0)
-      {
-        fprintf(stderr, "  %ld--%ld, %ld--%ld, %d, %ld, %ld--%ld\n", it->reference_start, it->reference_end, it->sample_start, it->sample_end, it->type, it->weight, it->transposition_start, it->transposition_end);
-      } // if
-    } // for
-#endif
 
     weight = 2 * weight_position + 3 * WEIGHT_SEPARATOR;
     for (std::vector<Variant>::iterator it = transposition.begin(); it != transposition.end(); ++it)
@@ -276,6 +279,20 @@ size_t extractor_transposition(std::vector<Variant> &variant,
         variant.push_back(Variant(reference_start, reference_end, it->sample_start, it->sample_end, it->type, it->weight));
       } // if
     } // for
+
+    if (variant.size() > 0)
+    {
+      variant.begin()->type |= TRANSPOSITION_OPEN;
+      variant.end()->type |= TRANSPOSITION_CLOSE;
+    } // if
+
+#if defined(__debug__)
+    fprintf(stderr, "Transpositions:\n");
+    for (std::vector<Variant>::iterator it = variant.begin(); it != variant.end(); ++it)
+    {
+      fprintf(stderr, "  %ld--%ld, %ld--%ld, %d, %ld, %ld--%ld\n", it->reference_start, it->reference_end, it->sample_start, it->sample_end, it->type, it->weight, it->transposition_start, it->transposition_end);
+    } // for
+#endif
 
   } // if
 
