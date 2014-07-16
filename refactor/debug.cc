@@ -48,7 +48,7 @@ int main(int argc, char* argv[])
   fprintf(stderr, "\nVariants (%ld / %ld):\n", variant.size(), weight);
   for (std::vector<Variant>::iterator it = variant.begin() ; it != variant.end(); ++it)
   {
-    if (it->type != IDENTITY)
+    //if (it->type != IDENTITY)
     {
       fprintf(stderr, "%ld--%ld, %ld--%ld, %d, %ld, %ld--%ld\n", it->reference_start, it->reference_end, it->sample_start, it->sample_end, it->type, it->weight, it->transposition_start, it->transposition_end);
     } // if

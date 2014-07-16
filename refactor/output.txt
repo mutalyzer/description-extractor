@@ -1,0 +1,347 @@
+extractor/refactor> ./debug ref.txt alt.txt
+HGVS description extractor
+reference: AGTCTCCAGCATCCTCCAC...AAAAAAAAAAAAAAAAAAA (1191)
+sample:    AGTTTCCAGCATCCTCCAC...AAAAAAAAAAAAAAAAAAA (1333)
+prefix: AGT (3)
+suffix: TGAGCCCCTCAACATTACT...AAAAAAAAAAAAAAAAAAA (532)
+Construction IUPAC complement
+complement: TCAGAGGTCGTAGGAGGTG...TTTTTTTTTTTTTTTTTTT (1191)
+position weight: 4
+Extraction
+  reference 3--659:  CTCCAGCATCCTCCACCTG...GGCAGCTGGACTATGAGTC (656)
+  complement 3--659: GAGGTCGTAGGAGGTGGAC...CCGTCGACCTGATACTCAG (656)
+  sample 3--801:     TTCCAGCATCCTCCACCTG...GCCATGGAATCCGGTTTTT (798)
+  trivial weight: 813
+  LCS (x1)
+    4--108: TCCAGCATCCTCCACCTGT...CATGAAGAAGATGGCTCCT (104)
+    4--108: TCCAGCATCCTCCACCTGT...CATGAAGAAGATGGCTCCT (104) selected
+Extraction
+  reference 3--4:  C (1)
+  complement 3--4: G (1)
+  sample 3--4:     T (1)
+  trivial weight: 11
+Extraction
+  reference 108--659:  GCCATGGAATCCCCTACTC...GGCAGCTGGACTATGAGTC (551)
+  complement 108--659: CGGTACCTTAGGGGATGAG...CCGTCGACCTGATACTCAG (551)
+  sample 108--801:     CCATGGAATCCCCTACTCT...GCCATGGAATCCGGTTTTT (693)
+  trivial weight: 708
+  LCS (x1)
+    159--251: GATGGCGTGTTAGCAGTCC...AGAATGTGACTCTTACATG (92)
+    157--249: GATGGCGTGTTAGCAGTCC...AGAATGTGACTCTTACATG (92) selected
+Extraction
+  reference 108--159:  GCCATGGAATCCCCTACTC...CTTACTGTTCTTCGCTCCA (51)
+  complement 108--159: CGGTACCTTAGGGGATGAG...GAATGACAAGAAGCGAGGT (51)
+  sample 108--157:     CCATGGAATCCCCTACTCT...CCTTACTGTTCTTCGCTCC (49)
+  trivial weight: 64
+  LCS (x1)
+    109--158: CCATGGAATCCCCTACTCT...CCTTACTGTTCTTCGCTCC (49)
+    108--157: CCATGGAATCCCCTACTCT...CCTTACTGTTCTTCGCTCC (49) selected
+Extraction
+  reference 108--109:  G (1)
+  complement 108--109: C (1)
+  sample 108--108:      (0)
+  trivial weight: 10
+Extraction
+  reference 158--159:  A (1)
+  complement 158--159: T (1)
+  sample 157--157:      (0)
+  trivial weight: 10
+Extraction
+  reference 251--659:  TAATGGGAACAATTTCTTT...GGCAGCTGGACTATGAGTC (408)
+  complement 251--659: ATTACCCTTGTTAAAGAAA...CCGTCGACCTGATACTCAG (408)
+  sample 249--801:     ACTCTTACATGTAATGGGA...GCCATGGAATCCGGTTTTT (552)
+  trivial weight: 567
+  LCS (x1)
+    319--399: CAAATTCAAGTTTGAATAT...GCACCAACAAGTTAATGAG (80)
+    328--408: CAAATTCAAGTTTGAATAT...GCACCAACAAGTTAATGAG (80) selected
+Extraction
+  reference 251--319:  TAATGGGAACAATTTCTTT...GGCAGCCTTTCAGAAGAGA (68)
+  complement 251--319: ATTACCCTTGTTAAAGAAA...CCGTCGGAAAGTCTTCTCT (68)
+  sample 249--328:     ACTCTTACATGTAATGGGA...TCTTCTGAAAGGCTGCCAT (79)
+  trivial weight: 94
+  LCS (x1)
+    251--298: TAATGGGAACAATTTCTTT...TCCACCAAATGGTTCCACA (47)
+    260--307: TAATGGGAACAATTTCTTT...TCCACCAAATGGTTCCACA (47) selected
+Extraction
+  reference 251--251:   (0)
+  complement 251--251:  (0)
+  sample 249--260:     ACTCTTACATG (11)
+  trivial weight: 21
+Extraction
+  reference 298--319:  ATGGCAGCCTTTCAGAAGAGA (21)
+  complement 298--319: TACCGTCGGAAAGTCTTCTCT (21)
+  sample 307--328:     TCTCTTCTGAAAGGCTGCCAT (21)
+  trivial weight: 36
+  LCS (x1)
+    311--317: TCTTCT (6), (reverse complement)
+    309--315: TCTTCT (6) selected
+Extraction
+  reference 298--311:  ATGGCAGCCTTTC (13)
+  complement 298--311: TACCGTCGGAAAG (13)
+  sample 307--309:     TC (2)
+  trivial weight: 17
+  LCS (x2)
+    303--305: TC (2), (reverse complement)
+    307--309: TC (2)
+    309--311: TC (2)
+    307--309: TC (2) selected
+Extraction
+  reference 298--309:  ATGGCAGCCTT (11)
+  complement 298--309: TACCGTCGGAA (11)
+  sample 307--307:      (0)
+  trivial weight: 15
+Extraction
+  reference 311--311:   (0)
+  complement 311--311:  (0)
+  sample 309--309:      (0)
+  trivial weight: 10
+Extraction
+  reference 317--319:  GA (2)
+  complement 317--319: CT (2)
+  sample 315--328:     GAAAGGCTGCCAT (13)
+  trivial weight: 28
+  LCS (x2)
+    317--319: GA (2)
+    315--317: GA (2) selected
+    317--319: CT (2), (reverse complement)
+    321--323: CT (2)
+Extraction
+  reference 317--317:   (0)
+  complement 317--317:  (0)
+  sample 315--315:      (0)
+  trivial weight: 10
+Extraction
+  reference 319--319:   (0)
+  complement 319--319:  (0)
+  sample 317--328:     AAGGCTGCCAT (11)
+  trivial weight: 21
+Extraction
+  reference 399--659:  AGTGAACCTGTGTACCTGG...GGCAGCTGGACTATGAGTC (260)
+  complement 399--659: TCACTTGGACACATGGACC...CCGTCGACCTGATACTCAG (260)
+  sample 408--801:     TGTATTATGGAGTGAACCT...GCCATGGAATCCGGTTTTT (393)
+  trivial weight: 408
+  LCS (x2)
+    449--500: CTCTGCTGAGGTGGTGATG...TCTTCCTCAGGTGCCATGG (51)
+    491--542: CTCTGCTGAGGTGGTGATG...TCTTCCTCAGGTGCCATGG (51) selected
+    500--551: TTGGAGGAACTGGGATGTG...ATTATAAGGATGGTGAAGC (51)
+    563--614: TTGGAGGAACTGGGATGTG...ATTATAAGGATGGTGAAGC (51)
+Extraction
+  reference 399--449:  AGTGAACCTGTGTACCTGG...ACTGGCTGCTCCTTCAGGC (50)
+  complement 399--449: TCACTTGGACACATGGACC...TGACCGACGAGGAAGTCCG (50)
+  sample 408--491:     TGTATTATGGAGTGAACCT...TCCACCTGTCTACCACCGA (83)
+  trivial weight: 98
+  LCS (x1)
+    399--449: AGTGAACCTGTGTACCTGG...ACTGGCTGCTCCTTCAGGC (50)
+    418--468: AGTGAACCTGTGTACCTGG...ACTGGCTGCTCCTTCAGGC (50) selected
+Extraction
+  reference 399--399:   (0)
+  complement 399--399:  (0)
+  sample 408--418:     TGTATTATGG (10)
+  trivial weight: 20
+Extraction
+  reference 449--449:   (0)
+  complement 449--449:  (0)
+  sample 468--491:     ATCCTCCACCTGTCTACCACCGA (23)
+  trivial weight: 33
+Extraction
+  reference 500--659:  TTGGAGGAACTGGGATGTG...GGCAGCTGGACTATGAGTC (159)
+  complement 500--659: AACCTCCTTGACCCTACAC...CCGTCGACCTGATACTCAG (159)
+  sample 542--801:     GCTGGAGAGATCTAAGGCT...GCCATGGAATCCGGTTTTT (259)
+  trivial weight: 274
+  LCS (x1)
+    500--551: TTGGAGGAACTGGGATGTG...ATTATAAGGATGGTGAAGC (51)
+    563--614: TTGGAGGAACTGGGATGTG...ATTATAAGGATGGTGAAGC (51) selected
+Extraction
+  reference 500--500:   (0)
+  complement 500--500:  (0)
+  sample 542--563:     GCTGGAGAGATCTAAGGCTTC (21)
+  trivial weight: 31
+Extraction
+  reference 551--659:  TCTCAAGTACTGGTATGAG...GGCAGCTGGACTATGAGTC (108)
+  complement 551--659: AGAGTTCATGACCATACTC...CCGTCGACCTGATACTCAG (108)
+  sample 614--801:     ATCCTCCACCTGTCTACCA...GCCATGGAATCCGGTTTTT (187)
+  trivial weight: 202
+  LCS (x1)
+    551--599: TCTCAAGTACTGGTATGAG...TCTCCATTACAAATGCCAC (48)
+    663--711: TCTCAAGTACTGGTATGAG...TCTCCATTACAAATGCCAC (48) selected
+Extraction
+  reference 551--551:   (0)
+  complement 551--551:  (0)
+  sample 614--663:     ATCCTCCACCTGTCTACCA...AGATCTAAGGCTTCCCCCC (49)
+  trivial weight: 59
+Extraction
+  reference 599--659:  AGTTGAAGACAGTGGAACC...GGCAGCTGGACTATGAGTC (60)
+  complement 599--659: TCAACTTCTGTCACCTTGG...CCGTCGACCTGATACTCAG (60)
+  sample 711--801:     GTAGATGATAGATAGAGAG...GCCATGGAATCCGGTTTTT (90)
+  trivial weight: 105
+  LCS (x1)
+    610--650: GTGGAACCTACTACTGTAC...GCAAAGTGTGGCAGCTGGA (40)
+    734--774: GTGGAACCTACTACTGTAC...GCAAAGTGTGGCAGCTGGA (40) selected
+Extraction
+  reference 599--610:  AGTTGAAGACA (11)
+  complement 599--610: TCAACTTCTGT (11)
+  sample 711--734:     GTAGATGATAGATAGAGAGATTT (23)
+  trivial weight: 38
+  LCS (x6)
+    605--608: AGA (3)
+    713--716: AGA (3) selected
+    602--605: TGA (3)
+    716--719: TGA (3)
+    605--608: AGA (3)
+    720--723: AGA (3)
+    605--608: AGA (3)
+    724--727: AGA (3)
+    605--608: AGA (3)
+    726--729: AGA (3)
+    605--608: AGA (3)
+    728--731: AGA (3)
+Extraction
+  reference 599--605:  AGTTGA (6)
+  complement 599--605: TCAACT (6)
+  sample 711--713:     GT (2)
+  trivial weight: 17
+  LCS (x1)
+    600--602: GT (2)
+    711--713: GT (2) selected
+Extraction
+  reference 599--600:  A (1)
+  complement 599--600: T (1)
+  sample 711--711:      (0)
+  trivial weight: 10
+Extraction
+  reference 602--605:  TGA (3)
+  complement 602--605: ACT (3)
+  sample 713--713:      (0)
+  trivial weight: 15
+Extraction
+  reference 608--610:  CA (2)
+  complement 608--610: GT (2)
+  sample 716--734:     TGATAGATAGAGAGATTT (18)
+  trivial weight: 33
+  LCS (x18)
+    609--610: T (1), (reverse complement)
+    716--717: T (1) selected
+    608--609: G (1), (reverse complement)
+    717--718: G (1)
+    609--610: A (1)
+    718--719: A (1)
+    609--610: T (1), (reverse complement)
+    719--720: T (1)
+    609--610: A (1)
+    720--721: A (1)
+    608--609: G (1), (reverse complement)
+    721--722: G (1)
+    609--610: A (1)
+    722--723: A (1)
+    609--610: T (1), (reverse complement)
+    723--724: T (1)
+    609--610: A (1)
+    724--725: A (1)
+    608--609: G (1), (reverse complement)
+    725--726: G (1)
+    609--610: A (1)
+    726--727: A (1)
+    608--609: G (1), (reverse complement)
+    727--728: G (1)
+    609--610: A (1)
+    728--729: A (1)
+    608--609: G (1), (reverse complement)
+    729--730: G (1)
+    609--610: A (1)
+    730--731: A (1)
+    609--610: T (1), (reverse complement)
+    731--732: T (1)
+    609--610: T (1), (reverse complement)
+    732--733: T (1)
+    609--610: T (1), (reverse complement)
+    733--734: T (1)
+Extraction
+  reference 608--609:  C (1)
+  complement 608--609: G (1)
+  sample 716--716:      (0)
+  trivial weight: 10
+Extraction
+  reference 610--610:   (0)
+  complement 610--610:  (0)
+  sample 717--734:     GATAGATAGAGAGATTT (17)
+  trivial weight: 27
+Extraction
+  reference 650--659:  CTATGAGTC (9)
+  complement 650--659: GATACTCAG (9)
+  sample 774--801:     TGGCTCCTGCCATGGAATCCGGTTTTT (27)
+  trivial weight: 42
+  LCS (x2)
+    654--657: CTC (3), (reverse complement)
+    777--780: CTC (3) selected
+    652--655: ATG (3)
+    785--788: ATG (3)
+Extraction
+  reference 650--654:  CTAT (4)
+  complement 650--654: GATA (4)
+  sample 774--777:     TGG (3)
+  trivial weight: 18
+  LCS (x5)
+    651--652: T (1)
+    774--775: T (1) selected
+    652--653: T (1), (reverse complement)
+    774--775: T (1)
+    653--654: T (1)
+    774--775: T (1)
+    650--651: G (1), (reverse complement)
+    775--776: G (1)
+    650--651: G (1), (reverse complement)
+    776--777: G (1)
+Extraction
+  reference 650--651:  C (1)
+  complement 650--651: G (1)
+  sample 774--774:      (0)
+  trivial weight: 10
+Extraction
+  reference 652--654:  AT (2)
+  complement 652--654: TA (2)
+  sample 775--777:     GG (2)
+  trivial weight: 17
+Extraction
+  reference 657--659:  TC (2)
+  complement 657--659: AG (2)
+  sample 780--801:     CTGCCATGGAATCCGGTTTTT (21)
+  trivial weight: 36
+  LCS (x1)
+    657--659: TC (2)
+    791--793: TC (2) selected
+Extraction
+  reference 657--657:   (0)
+  complement 657--657:  (0)
+  sample 780--791:     CTGCCATGGAA (11)
+  trivial weight: 21
+Extraction
+  reference 659--659:   (0)
+  complement 659--659:  (0)
+  sample 793--801:     CGGTTTTT (8)
+  trivial weight: 18
+
+Variants (23 / 311):
+0--3, 0--3, 1, 0, 0--0
+3--4, 3--4, 0, 7, 0--0
+4--108, 4--108, 1, 0, 0--0
+108--109, 108--108, 0, 7, 0--0
+109--158, 108--157, 1, 0, 0--0
+158--159, 157--157, 0, 7, 0--0
+159--251, 157--249, 1, 0, 0--0
+251--251, 249--260, 0, 23, 0--0
+251--298, 260--307, 1, 0, 0--0
+298--319, 307--328, 0, 36, 0--0
+319--399, 328--408, 1, 0, 0--0
+399--399, 408--418, 0, 22, 0--0
+399--449, 418--468, 1, 0, 0--0
+449--449, 468--491, 0, 35, 0--0
+449--500, 491--542, 1, 0, 0--0
+500--500, 542--563, 0, 33, 0--0
+500--551, 563--614, 1, 0, 0--0
+551--551, 614--663, 0, 61, 0--0
+551--599, 663--711, 1, 0, 0--0
+599--610, 711--734, 0, 38, 0--0
+610--650, 734--774, 1, 0, 0--0
+650--659, 774--801, 0, 42, 0--0
+659--1191, 801--1333, 1, 0, 0--0
+

@@ -22,9 +22,9 @@ static int const TYPE_DNA     = 0;
 static int const TYPE_PROTEIN = 1;
 
 
-static int const SUBSTITUTION        = 0;
-static int const IDENTITY            = 1;
-static int const REVERSE_COMPLEMENT  = 2;
+static int const IDENTITY            = 0;
+static int const REVERSE_COMPLEMENT  = 1;
+static int const SUBSTITUTION        = 2;
 static int const TRANSPOSITION_OPEN  = 4;
 static int const TRANSPOSITION_CLOSE = 8;
 
@@ -90,6 +90,15 @@ size_t extractor(std::vector<Variant> &variant,
                  size_t const          sample_start,
                  size_t const          sample_end,
                  bool const            transposition = false);
+
+size_t extractor_transposition(std::vector<Variant> &variant,
+                               char_t const* const   reference,
+                               char_t const* const   complement,
+                               size_t const          reference_start,
+                               size_t const          reference_end,
+                               char_t const* const   sample,
+                               size_t const          sample_start,
+                               size_t const          sample_end);
 
 
 struct Substring
