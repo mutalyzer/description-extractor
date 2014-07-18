@@ -106,7 +106,7 @@ size_t extractor(std::vector<Variant> &variant,
   fprintf(stderr, "weight: %ld (%ld)\n", weight_transposition, weight);
 #endif
 
-      if (weight > weight_transposition)
+      if (weight > weight_transposition && transposition.size() > 0)
       {
         variant.insert(variant.end(), transposition.begin(), transposition.end());
         return weight_transposition;
@@ -141,6 +141,8 @@ size_t extractor(std::vector<Variant> &variant,
   // deletion/insertion
   if (length <= 0 || substring.size() <= 0)
   {
+    weight = weight_trivial;
+
     std::vector<Variant> transposition;
     size_t const weight_transposition = extractor_transposition(transposition, reference, complement, reference_start, reference_end, sample, sample_start, sample_end);
 
@@ -148,7 +150,7 @@ size_t extractor(std::vector<Variant> &variant,
   fprintf(stderr, "weight: %ld (%ld)\n", weight_transposition, weight);
 #endif
 
-    if (weight > weight_transposition)
+    if (weight > weight_transposition && transposition.size() > 0)
     {
       variant.insert(variant.end(), transposition.begin(), transposition.end());
       return weight_transposition;
@@ -360,7 +362,7 @@ size_t LCS_1(std::vector<Substring> &substring,
       // If applicable check for a LCS in reverse complement space.
       // The same code is used as before but the complement string is
       // travesed backwards (towards the start).
-      if (complement != 0 && complement[reference_start + j] == sample[sample_start + i])
+      if (complement != 0 && complement[reference_end - j - 1] == sample[sample_start + i])
       {
         if (i == 0 || j == 0)
         {
@@ -374,7 +376,7 @@ size_t LCS_1(std::vector<Substring> &substring,
         if (LCS_line_rc[i % 2][j] > 1 && LCS_line_rc[i % 2][j] > length)
         {
           length = LCS_line_rc[i % 2][j];
-          substring = std::vector<Substring>(1, Substring(j - length + reference_start + 1, i - length + sample_start + 1, length, true));
+          substring = std::vector<Substring>(1, Substring(reference_end - j - 1, i - length + sample_start + 1, length, true));
           reverse_complement = true;
         } // if
       } // if

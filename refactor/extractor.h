@@ -35,7 +35,7 @@ static size_t const WEIGHT_DELETION           = 3; // del
 static size_t const WEIGHT_DELETION_INSERTION = 6; // delins
 static size_t const WEIGHT_INSERTION          = 3; // ins
 static size_t const WEIGHT_INVERSE            = 3; // inv
-static size_t const WEIGHT_SEPARATOR          = 1; // _
+static size_t const WEIGHT_SEPARATOR          = 1; // _[]
 static size_t const WEIGHT_SUBSTITUTION       = 1; // >
 
 
