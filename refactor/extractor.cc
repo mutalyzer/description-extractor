@@ -78,6 +78,12 @@ size_t extractor(std::vector<Variant> &variant,
   size_t const weight_trivial = weight_position + WEIGHT_DELETION_INSERTION + WEIGHT_BASE * sample_length + (reference_length > 1 ? weight_position + WEIGHT_SEPARATOR : 0);
   size_t weight = 0;
 
+  if (transposition && sample_length < 2 * weight_position + WEIGHT_SEPARATOR)
+  {
+    variant.push_back(Variant(reference_start, reference_end, sample_start, sample_end, SUBSTITUTION, weight_trivial));
+    return weight_trivial;
+  } // if
+
 #if defined(__debug__)
   fputs("Extraction\n", stderr);
   fprintf(stderr, "  reference %ld--%ld:  ", reference_start, reference_end);
@@ -112,7 +118,7 @@ size_t extractor(std::vector<Variant> &variant,
         return weight_transposition;
       } // if
 
-      // only simple insertions TODO: transpositions
+      // simple insertion
       variant.push_back(Variant(reference_start, reference_end, sample_start, sample_end, SUBSTITUTION, weight));
     } // if
     return weight;
@@ -164,7 +170,7 @@ size_t extractor(std::vector<Variant> &variant,
   std::vector<Substring>::iterator const lcs = substring.begin();
   if (lcs->reverse_complement)
   {
-    weight = 2 * weight_position + WEIGHT_SEPARATOR + WEIGHT_INVERSE;
+    weight = 2 * weight_position + WEIGHT_SEPARATOR + WEIGHT_INVERSION;
   } // if
 
 #if defined(__debug__)
@@ -194,7 +200,7 @@ size_t extractor(std::vector<Variant> &variant,
   std::vector<Variant> prefix;
   weight += extractor(prefix, reference, complement, reference_start, lcs->reference_index, sample, sample_start, lcs->sample_index, transposition);
 
-  if (weight > weight_trivial)
+  if (!transposition && weight > weight_trivial)
   {
     variant.push_back(Variant(reference_start, reference_end, sample_start, sample_end, SUBSTITUTION, weight_trivial));
     return weight_trivial;
@@ -203,7 +209,7 @@ size_t extractor(std::vector<Variant> &variant,
   std::vector<Variant> suffix;
   weight += extractor(suffix, reference, complement, lcs->reference_index + length, reference_end, sample, lcs->sample_index + length, sample_end, transposition);
 
-  if (weight > weight_trivial)
+  if (!transposition && weight > weight_trivial)
   {
     variant.push_back(Variant(reference_start, reference_end, sample_start, sample_end, SUBSTITUTION, weight_trivial));
     return weight_trivial;
@@ -218,7 +224,7 @@ size_t extractor(std::vector<Variant> &variant,
   } // if
   else
   {
-    variant.push_back(Variant(lcs->reference_index, lcs->reference_index + length, lcs->sample_index, lcs->sample_index + length, REVERSE_COMPLEMENT, 2 * weight_position + WEIGHT_SEPARATOR + WEIGHT_INVERSE));
+    variant.push_back(Variant(lcs->reference_index, lcs->reference_index + length, lcs->sample_index, lcs->sample_index + length, REVERSE_COMPLEMENT, 2 * weight_position + WEIGHT_SEPARATOR + WEIGHT_INVERSION));
   } // else
 
   variant.insert(variant.end(), suffix.begin(), suffix.end());
@@ -235,11 +241,9 @@ size_t extractor_transposition(std::vector<Variant> &variant,
                                size_t const          sample_start,
                                size_t const          sample_end)
 {
-  size_t const reference_length = reference_end - reference_start;
   size_t const sample_length = sample_end - sample_start;
-  size_t const weight_trivial = sample_length * WEIGHT_BASE + (reference_length == 0 ? 2 * weight_position + WEIGHT_SEPARATOR + WEIGHT_INSERTION : WEIGHT_DELETION_INSERTION + (reference_length == 1 ? weight_position : 2 * weight_position));
 
-  size_t weight = weight_trivial;
+  size_t weight = 2 * weight_position + WEIGHT_INSERTION + 3 * WEIGHT_SEPARATOR; // []
 
   if (sample_length > 2 * weight_position + WEIGHT_SEPARATOR)
   {
@@ -252,12 +256,11 @@ size_t extractor_transposition(std::vector<Variant> &variant,
     extractor(transposition, reference, complement, 0, global_reference_length, sample, sample_start, sample_end, true);
 
 
-    weight = 2 * weight_position + 3 * WEIGHT_SEPARATOR;
     for (std::vector<Variant>::iterator it = transposition.begin(); it != transposition.end(); ++it)
     {
       if (it->type == IDENTITY || it->type == REVERSE_COMPLEMENT)
       {
-        it->weight = 2 * weight_position + WEIGHT_SEPARATOR;
+        it->weight = 2 * weight_position + WEIGHT_SEPARATOR + (it->type == REVERSE_COMPLEMENT ? WEIGHT_INVERSION : 0);
         weight += it->weight;
         variant.push_back(Variant(reference_start, reference_end, it->sample_start, it->sample_end, it->type, it->weight, it->reference_start, it->reference_end));
       } // if
@@ -271,8 +274,9 @@ size_t extractor_transposition(std::vector<Variant> &variant,
 
     if (variant.size() > 0)
     {
-      variant.begin()->type |= TRANSPOSITION_OPEN;
-      variant.end()->type |= TRANSPOSITION_CLOSE;
+      weight += variant.size() - 1;
+      variant.front().type |= TRANSPOSITION_OPEN;
+      variant.back().type |= TRANSPOSITION_CLOSE;
     } // if
 
 #if defined(__debug__)
@@ -384,6 +388,11 @@ size_t LCS_1(std::vector<Substring> &substring,
       {
         LCS_line_rc[i % 2][j] = 0;
       } // else
+
+      if (length >= sample_length)
+      {
+        break;
+      } // if
 
     } // for
   } // for
