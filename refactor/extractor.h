@@ -139,7 +139,6 @@ size_t LCS_1(std::vector<Substring> &substring,
              size_t const            sample_start,
              size_t const            sample_end);
 
-/*
 size_t LCS_k(std::vector<Substring> &substring,
              char_t const* const     reference,
              char_t const* const     complement,
@@ -149,7 +148,16 @@ size_t LCS_k(std::vector<Substring> &substring,
              size_t const            sample_start,
              size_t const            sample_end,
              size_t const            k);
-*/
+
+
+bool string_match(char_t const* const string_1,
+                  char_t const* const string_2,
+                  size_t const        length);
+
+bool string_match_reverse(char_t const* const string_1,
+                          char_t const* const string_2,
+                          size_t const        length);
+
 
 size_t prefix_match(char_t const* const reference,
                     size_t const        reference_length,
