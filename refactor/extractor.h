@@ -112,8 +112,7 @@ size_t extractor(std::vector<Variant> &variant,
                  size_t const          reference_end,
                  char_t const* const   sample,
                  size_t const          sample_start,
-                 size_t const          sample_end,
-                 bool const            transposition = false);
+                 size_t const          sample_end);
 
 size_t extractor_transposition(std::vector<Variant> &variant,
                                char_t const* const   reference,
@@ -122,7 +121,8 @@ size_t extractor_transposition(std::vector<Variant> &variant,
                                size_t const          reference_end,
                                char_t const* const   sample,
                                size_t const          sample_start,
-                               size_t const          sample_end);
+                               size_t const          sample_end,
+                               size_t const          weight_trivial = 0);
 
 
 struct Substring
@@ -205,6 +205,7 @@ size_t Dprint_truncated(char_t const* const string,
                         size_t const        length = 40,
                         FILE*               stream = stderr);
 #endif
+
 
 } // mutalyzer
 

@@ -49,6 +49,7 @@ size_t extract(std::vector<Variant> &variant,
   size_t const prefix = prefix_match(reference, reference_length, sample, sample_length);
   size_t const suffix = suffix_match(reference, reference_length, sample, sample_length, prefix);
 
+
 #if defined(__debug__)
   fputs("reference: ", stderr);
   Dprint_truncated(reference, 0, reference_length);
@@ -66,6 +67,7 @@ size_t extract(std::vector<Variant> &variant,
 #endif
 
   char_t const* complement = type == TYPE_DNA ? IUPAC_complement(reference, reference_length) : 0;
+
 
 #if defined(__debug__)
   fputs("complement: ", stderr);
@@ -99,19 +101,13 @@ size_t extractor(std::vector<Variant> &variant,
                  size_t const          reference_end,
                  char_t const* const   sample,
                  size_t const          sample_start,
-                 size_t const          sample_end,
-                 bool const            transposition)
+                 size_t const          sample_end)
 {
   size_t const reference_length = reference_end - reference_start;
   size_t const sample_length = sample_end - sample_start;
-  size_t const weight_trivial = weight_position + WEIGHT_DELETION_INSERTION + WEIGHT_BASE * sample_length + (reference_length > 1 ? weight_position + WEIGHT_SEPARATOR : 0);
+  size_t const weight_trivial = weight_position + WEIGHT_DELETION_INSERTION + WEIGHT_BASE * sample_length + (reference_length != 1 ? weight_position + WEIGHT_SEPARATOR : 0);
   size_t weight = 0;
 
-  if (transposition && sample_length < 2 * weight_position + WEIGHT_SEPARATOR)
-  {
-    variant.push_back(Variant(reference_start, reference_end, sample_start, sample_end, SUBSTITUTION, weight_trivial));
-    return weight_trivial;
-  } // if
 
 #if defined(__debug__)
   fputs("Extraction\n", stderr);
@@ -127,6 +123,7 @@ size_t extractor(std::vector<Variant> &variant,
   fprintf(stderr, "  trivial weight: %ld\n", weight_trivial);
 #endif
 
+
   // insertions
   if (reference_length <= 0)
   {
@@ -135,14 +132,22 @@ size_t extractor(std::vector<Variant> &variant,
       weight = 2 * weight_position + WEIGHT_SEPARATOR + WEIGHT_INSERTION + WEIGHT_BASE * sample_length;
 
       std::vector<Variant> transposition;
-      size_t const weight_transposition = extractor_transposition(transposition, reference, complement, reference_start, reference_end, sample, sample_start, sample_end);
+      size_t const weight_transposition = extractor_transposition(transposition, reference, complement, reference_start, reference_end, sample, sample_start, sample_end, weight) + 2 * weight_position + 3 * WEIGHT_SEPARATOR + WEIGHT_INSERTION;
+
 
 #if defined(__debug__)
-  fprintf(stderr, "weight: %ld (%ld)\n", weight_transposition, weight);
+  fprintf(stderr, "Transpositions: %ld (trivial: %ld)\n", weight_transposition, weight);
+  for (std::vector<Variant>::iterator it = transposition.begin(); it != transposition.end(); ++it)
+  {
+    fprintf(stderr, "  %ld--%ld, %ld--%ld, %d, %ld, %ld--%ld\n", it->reference_start, it->reference_end, it->sample_start, it->sample_end, it->type, it->weight, it->transposition_start, it->transposition_end);
+  } // for
 #endif
+
 
       if (weight > weight_transposition && transposition.size() > 0)
       {
+        transposition.front().type |= TRANSPOSITION_OPEN;
+        transposition.back().type |= TRANSPOSITION_CLOSE;
         variant.insert(variant.end(), transposition.begin(), transposition.end());
         return weight_transposition;
       } // if
@@ -178,27 +183,26 @@ size_t extractor(std::vector<Variant> &variant,
   {
     weight = weight_trivial;
 
-    if (!(transposition && reference_start == 0 && reference_end == global_reference_length))
-    {
+    std::vector<Variant> transposition;
+    size_t const weight_transposition = extractor_transposition(transposition, reference, complement, reference_start, reference_end, sample, sample_start, sample_end, weight)  + 2 * weight_position + 3 * WEIGHT_SEPARATOR + WEIGHT_INSERTION;
 
-      std::vector<Variant> transposition;
-      size_t const weight_transposition = extractor_transposition(transposition, reference, complement, reference_start, reference_end, sample, sample_start, sample_end);
 
 #if defined(__debug__)
-  fprintf(stderr, "weight: %ld (%ld)\n", weight_transposition, weight);
+  fprintf(stderr, "Transpositions: %ld (trivial: %ld)\n", weight_transposition, weight);
+  for (std::vector<Variant>::iterator it = transposition.begin(); it != transposition.end(); ++it)
+  {
+    fprintf(stderr, "  %ld--%ld, %ld--%ld, %d, %ld, %ld--%ld\n", it->reference_start, it->reference_end, it->sample_start, it->sample_end, it->type, it->weight, it->transposition_start, it->transposition_end);
+  } // for
 #endif
 
-      if (weight > weight_transposition && transposition.size() > 0)
-      {
-        variant.insert(variant.end(), transposition.begin(), transposition.end());
-        return weight_transposition;
-      } // if
-    } // if
-    else
+
+    if (weight > weight_transposition && transposition.size() > 0)
     {
-      variant.clear();
-      return 0;
-    } // else
+      transposition.front().type |= TRANSPOSITION_OPEN;
+      transposition.back().type |= TRANSPOSITION_CLOSE;
+      variant.insert(variant.end(), transposition.begin(), transposition.end());
+      return weight_transposition;
+    } // if
 
     variant.push_back(Variant(reference_start, reference_end, sample_start, sample_end, SUBSTITUTION, weight_trivial));
     return weight_trivial;
@@ -210,6 +214,7 @@ size_t extractor(std::vector<Variant> &variant,
   {
     weight = 2 * weight_position + WEIGHT_SEPARATOR + WEIGHT_INVERSION;
   } // if
+
 
 #if defined(__debug__)
   fprintf(stderr, "  LCS (x%ld)\n", substring.size());
@@ -235,19 +240,20 @@ size_t extractor(std::vector<Variant> &variant,
   } // for
 #endif
 
-  std::vector<Variant> prefix;
-  weight += extractor(prefix, reference, complement, reference_start, lcs->reference_index, sample, sample_start, lcs->sample_index, transposition);
 
-  if (!transposition && weight > weight_trivial)
+  std::vector<Variant> prefix;
+  weight += extractor(prefix, reference, complement, reference_start, lcs->reference_index, sample, sample_start, lcs->sample_index);
+
+  if (weight > weight_trivial)
   {
     variant.push_back(Variant(reference_start, reference_end, sample_start, sample_end, SUBSTITUTION, weight_trivial));
     return weight_trivial;
   } // if
 
   std::vector<Variant> suffix;
-  weight += extractor(suffix, reference, complement, lcs->reference_index + length, reference_end, sample, lcs->sample_index + length, sample_end, transposition);
+  weight += extractor(suffix, reference, complement, lcs->reference_index + length, reference_end, sample, lcs->sample_index + length, sample_end);
 
-  if (!transposition && weight > weight_trivial)
+  if (weight > weight_trivial)
   {
     variant.push_back(Variant(reference_start, reference_end, sample_start, sample_end, SUBSTITUTION, weight_trivial));
     return weight_trivial;
@@ -277,57 +283,112 @@ size_t extractor_transposition(std::vector<Variant> &variant,
                                size_t const          reference_end,
                                char_t const* const   sample,
                                size_t const          sample_start,
-                               size_t const          sample_end)
+                               size_t const          sample_end,
+                               size_t const          weight_trivial)
 {
   size_t const sample_length = sample_end - sample_start;
 
-  size_t weight = 2 * weight_position + WEIGHT_INSERTION + 3 * WEIGHT_SEPARATOR; // []
+  size_t weight = 0;
 
-  if (sample_length > 2 * weight_position + WEIGHT_SEPARATOR)
-  {
 
 #if defined(__debug__)
-  fprintf(stderr, "Transposition extraction\n");
+  fputs("Transposition extraction\n", stderr);
+  fprintf(stderr, "  reference %ld--%ld:  ", 0ul, global_reference_length);
+  Dprint_truncated(reference, 0, global_reference_length);
+  fprintf(stderr, " (%ld)\n", global_reference_length);
+  fprintf(stderr, "  complement %ld--%ld: ", 0ul, global_reference_length);
+  Dprint_truncated(complement, 0, global_reference_length);
+  fprintf(stderr, " (%ld)\n", global_reference_length);
+  fprintf(stderr, "  sample %ld--%ld:     ", sample_start, sample_end);
+  Dprint_truncated(sample, sample_start, sample_end);
+  fprintf(stderr, " (%ld)\n", sample_length);
+  fprintf(stderr, "  trivial weight: %ld\n", weight_trivial);
 #endif
 
-    std::vector<Variant> transposition;
-    extractor(transposition, reference, complement, 0, global_reference_length, sample, sample_start, sample_end, true);
 
+  if (sample_length <= 2 * weight_position)
+  {
+    return sample_length * WEIGHT_BASE;
+  } // if
 
-    for (std::vector<Variant>::iterator it = transposition.begin(); it != transposition.end(); ++it)
-    {
-      if (it->type == IDENTITY || it->type == REVERSE_COMPLEMENT)
-      {
-        it->weight = 2 * weight_position + WEIGHT_SEPARATOR + (it->type == REVERSE_COMPLEMENT ? WEIGHT_INVERSION : 0);
-        weight += it->weight;
-        variant.push_back(Variant(reference_start, reference_end, it->sample_start, it->sample_end, it->type, it->weight, it->reference_start, it->reference_end));
-      } // if
-      else if (it->sample_end - it->sample_start > 0)
-      {
-        it->weight = (it->sample_end - it->sample_start) * WEIGHT_BASE;
-        weight += it->weight;
-        variant.push_back(Variant(reference_start, reference_end, it->sample_start, it->sample_end, it->type, it->weight));
-      } // if
-    } // for
+  std::vector<Substring> substring;
+  size_t const length = LCS(substring, reference, complement, 0, global_reference_length, sample, sample_start, sample_end);
 
-    if (variant.size() > 0)
-    {
-      weight += variant.size() - 1;
-      variant.front().type |= TRANSPOSITION_OPEN;
-      variant.back().type |= TRANSPOSITION_CLOSE;
-    } // if
+  if (length <= 0 || substring.size() <= 0)
+  {
+    weight = sample_length * WEIGHT_BASE;
+    variant.push_back(Variant(reference_start, reference_end, sample_start, sample_end, SUBSTITUTION, weight));
+    return weight;
+  } // if
+
+  std::vector<Substring>::iterator const lcs = substring.begin();
+
+  weight += 2 * weight_position + WEIGHT_SEPARATOR;
+  if (lcs->reverse_complement)
+  {
+    weight += WEIGHT_INVERSION;
+  } // if
+
 
 #if defined(__debug__)
-  fprintf(stderr, "Transpositions:\n");
-  for (std::vector<Variant>::iterator it = variant.begin(); it != variant.end(); ++it)
+  fprintf(stderr, "  LCS (x%ld)\n", substring.size());
+  for (std::vector<Substring>::iterator it = substring.begin() ; it != substring.end(); ++it)
   {
-    fprintf(stderr, "  %ld--%ld, %ld--%ld, %d, %ld, %ld--%ld\n", it->reference_start, it->reference_end, it->sample_start, it->sample_end, it->type, it->weight, it->transposition_start, it->transposition_end);
+    if (!it->reverse_complement)
+    {
+      fprintf(stderr, "    %ld--%ld: ", it->reference_index, it->reference_index + length);
+      Dprint_truncated(reference, it->reference_index, it->reference_index + length);
+      fprintf(stderr, " (%ld)\n    %ld--%ld: ", length, it->sample_index, it->sample_index + length);
+      Dprint_truncated(sample, it->sample_index, it->sample_index + length);
+      fprintf(stderr, " (%ld)", length);
+    } // if
+    else
+    {
+      fprintf(stderr, "    %ld--%ld: ", it->reference_index, it->reference_index + length);
+      Dprint_truncated(complement, it->reference_index, it->reference_index + length);
+      fprintf(stderr, " (%ld), (reverse complement)\n    %ld--%ld: ", length, it->sample_index, it->sample_index + length);
+      Dprint_truncated(sample, it->sample_index, it->sample_index + length);
+      fprintf(stderr, " (%ld)", length);
+    } // else
+    fputs("\n", stderr);
   } // for
 #endif
 
+
+  std::vector<Variant> prefix;
+  weight += extractor_transposition(prefix, reference, complement, reference_start, reference_end, sample, sample_start, lcs->sample_index, weight_trivial - weight);
+
+  if (weight > weight_trivial)
+  {
+    weight = sample_length * WEIGHT_BASE;
+    variant.push_back(Variant(reference_start, reference_end, sample_start, sample_end, SUBSTITUTION, weight));
+    return weight;
   } // if
 
-  return weight;
+  std::vector<Variant> suffix;
+  weight += extractor_transposition(suffix, reference, complement, reference_start, reference_end, sample, lcs->sample_index + length, sample_end, weight_trivial - weight);
+
+  if (weight > weight_trivial)
+  {
+    weight = sample_length * WEIGHT_BASE;
+    variant.push_back(Variant(reference_start, reference_end, sample_start, sample_end, SUBSTITUTION, weight));
+    return weight;
+  } // if
+
+  variant.insert(variant.end(), prefix.begin(), prefix.end());
+
+  if (!lcs->reverse_complement)
+  {
+    variant.push_back(Variant(reference_start, reference_end, lcs->sample_index, lcs->sample_index + length, IDENTITY, 2 * weight_position + WEIGHT_SEPARATOR, lcs->reference_index, lcs->reference_index + length));
+  } // if
+  else
+  {
+    variant.push_back(Variant(reference_start, reference_end, lcs->sample_index, lcs->sample_index + length, REVERSE_COMPLEMENT, 2 * weight_position + WEIGHT_SEPARATOR + WEIGHT_INVERSION, lcs->reference_index, lcs->reference_index + length));
+  } // else
+
+  variant.insert(variant.end(), suffix.begin(), suffix.end());
+
+  return weight + variant.size() - 1;
 } // extractor_transposition
 
 
@@ -352,9 +413,11 @@ size_t LCS(std::vector<Substring> &substring,
   while (k > cut_off)
   {
 
+
 #if defined(__debug__)
-  fprintf(stderr, "  k = %ld\n", k);
+  fprintf(stderr, "  k = %ld (cut-off: %ld)\n", k, cut_off);
 #endif
+
 
     substring.clear();
 
@@ -370,13 +433,22 @@ size_t LCS(std::vector<Substring> &substring,
 
   if (cut_off > 1)
   {
+
+
+#if defined(__debug__)
+  fprintf(stderr, "  cut-off\n");
+#endif
+
+
     substring.clear();
     return 0;
   } // if
 
+
 #if defined(__debug__)
   fprintf(stderr, "  k = 1\n");
 #endif
+
 
   return LCS_1(substring, reference, complement, reference_start, reference_end, sample, sample_start, sample_end);
 } // LCS
@@ -787,6 +859,7 @@ size_t Dprint_truncated(char_t const* const string,
          fwrite(string + end - (length / 2) + 1, sizeof(char_t), length / 2 - 1, stream);
 } // Dprint_truncated
 #endif
+
 
 } // mutalyzer
 
