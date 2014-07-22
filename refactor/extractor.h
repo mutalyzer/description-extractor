@@ -1,3 +1,21 @@
+// *******************************************************************
+//   (C) Copyright 2014 Leiden Institute of Advanced Computer Science
+//   Universiteit Leiden
+//   All Rights Reserved
+// *******************************************************************
+// Extractor (library)
+// *******************************************************************
+// FILE INFORMATION:
+//   File:     extractor.h (implemented in extractor.cc)
+//   Author:   Jonathan K. Vis
+//   Revision: 2.01a
+//   Date:     2014/07/22
+// *******************************************************************
+// DESCRIPTION:
+//   This library can be used to generate HGVS variant descriptions as
+//   accepted by the Mutalyzer Name Checker.
+// *******************************************************************
+
 #if !defined(__extractor_h__)
 #define __extractor_h__
 
@@ -74,11 +92,17 @@ struct Variant
 }; // Variant
 
 
+std::vector<Variant> extract(char_t const* const reference,
+                             size_t const        reference_length,
+                             char_t const* const sample,
+                             size_t const        sample_length,
+                             int const           type = TYPE_DNA);
+
 size_t extract(std::vector<Variant> &variant,
                char_t const* const   reference,
                size_t const          reference_length,
                char_t const* const   sample,
-               size_t const          sample_start,
+               size_t const          sample_length,
                int const             type = TYPE_DNA);
 
 size_t extractor(std::vector<Variant> &variant,

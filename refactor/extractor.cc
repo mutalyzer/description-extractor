@@ -1,3 +1,21 @@
+// *******************************************************************
+//   (C) Copyright 2014 Leiden Institute of Advanced Computer Science
+//   Universiteit Leiden
+//   All Rights Reserved
+// *******************************************************************
+// Extractor (library)
+// *******************************************************************
+// FILE INFORMATION:
+//   File:     extractor.cc (depends on extractor.h)
+//   Author:   Jonathan K. Vis
+//   Revision: 2.01a
+//   Date:     2014/07/22
+// *******************************************************************
+// DESCRIPTION:
+//   This library can be used to generete HGVS variant descriptions as
+//   accepted by the Mutalyzer Name Checker.
+// *******************************************************************
+
 #include "extractor.h"
 
 namespace mutalyzer
@@ -7,6 +25,16 @@ size_t global_reference_length = 0;
 
 size_t weight_position = 0;
 
+std::vector<Variant> extract(char_t const* const reference,
+                             size_t const        reference_length,
+                             char_t const* const sample,
+                             size_t const        sample_length,
+                             int const           type)
+{
+  std::vector<Variant> variant;
+  extract(variant, reference, reference_length, sample, sample_length, type);
+  return variant;
+} // extract
 
 size_t extract(std::vector<Variant> &variant,
                char_t const* const   reference,
@@ -46,16 +74,6 @@ size_t extract(std::vector<Variant> &variant,
   fprintf(stderr, "position weight: %ld\n", weight_position);
 #endif
 
-  std::vector<Substring> substring;
-
-  LCS_k(substring, reference, 0, 0, global_reference_length, sample, 793, 801, 2);
-
-  for (std::vector<Substring>::iterator it = substring.begin(); it != substring.end(); ++it)
-  {
-    fprintf(stderr, "Substring: %ld, %ld: %ld (%d)\n", it->reference_index, it->sample_index, it->length, it->reverse_complement);
-  } // for
-
-  return 0;
 
   if (prefix > 0)
   {
@@ -160,18 +178,27 @@ size_t extractor(std::vector<Variant> &variant,
   {
     weight = weight_trivial;
 
-    std::vector<Variant> transposition;
-    size_t const weight_transposition = extractor_transposition(transposition, reference, complement, reference_start, reference_end, sample, sample_start, sample_end);
+    if (!(transposition && reference_start == 0 && reference_end == global_reference_length))
+    {
+
+      std::vector<Variant> transposition;
+      size_t const weight_transposition = extractor_transposition(transposition, reference, complement, reference_start, reference_end, sample, sample_start, sample_end);
 
 #if defined(__debug__)
   fprintf(stderr, "weight: %ld (%ld)\n", weight_transposition, weight);
 #endif
 
-    if (weight > weight_transposition && transposition.size() > 0)
-    {
-      variant.insert(variant.end(), transposition.begin(), transposition.end());
-      return weight_transposition;
+      if (weight > weight_transposition && transposition.size() > 0)
+      {
+        variant.insert(variant.end(), transposition.begin(), transposition.end());
+        return weight_transposition;
+      } // if
     } // if
+    else
+    {
+      variant.clear();
+      return 0;
+    } // else
 
     variant.push_back(Variant(reference_start, reference_end, sample_start, sample_end, SUBSTITUTION, weight_trivial));
     return weight_trivial;
@@ -316,9 +343,13 @@ size_t LCS(std::vector<Substring> &substring,
   size_t const reference_length = reference_end - reference_start;
   size_t const sample_length = sample_end - sample_start;
 
+  static size_t const THRESHOLD = 16000;
+
+  size_t const cut_off = (reference_length > THRESHOLD ? floor(log10(reference_length)) : 0) + 1;
+
   size_t k = reference_length > sample_length ? sample_length / 4 : reference_length / 4;
 
-  while (k > 1)
+  while (k > cut_off)
   {
 
 #if defined(__debug__)
@@ -336,6 +367,12 @@ size_t LCS(std::vector<Substring> &substring,
     } // if
     k /= 3;
   } // while
+
+  if (cut_off > 1)
+  {
+    substring.clear();
+    return 0;
+  } // if
 
 #if defined(__debug__)
   fprintf(stderr, "  k = 1\n");
@@ -479,14 +516,6 @@ size_t LCS_k(std::vector<Substring> &substring,
       // A match
       if (string_match(reference + reference_start + j * k, sample + sample_start + i, k))
       {
-
-      fprintf(stderr, "%ld, %ld\n  ", j, i);
-      Dprint_truncated(reference, reference_start + j * k, reference_start + j * k + k);
-      fputs("\n  ", stderr);
-      Dprint_truncated(sample, sample_start + i, sample_start + i + k);
-      fputs("\n", stderr);
-
-
         if (i < k || j == 0)
         {
           LCS_line[i % (k + 1)][j] = 1;
@@ -507,7 +536,7 @@ size_t LCS_k(std::vector<Substring> &substring,
           // guaranteerd to be of maximal length - 1.
           for (std::vector<Substring>::iterator it = substring.begin(); it != substring.end(); ++it)
           {
-            if (length - it->length > 1 || (it->reference_index == j - 1 && it->sample_index == i - k))
+            if (length - it->length > 1 || (it->reference_index == j - 1 && it->sample_index == i - k && !it->reverse_complement))
             {
               std::vector<Substring>::iterator const temp = it - 1;
               substring.erase(it);
@@ -520,15 +549,6 @@ size_t LCS_k(std::vector<Substring> &substring,
         {
           substring.push_back(Substring(j, i, LCS_line[i % (k + 1)][j]));
         } // if
-
-
-      fprintf(stderr, "length: %ld\n", LCS_line[i % (k + 1)][j]);
-      for (std::vector<Substring>::iterator it = substring.begin(); it != substring.end(); ++it)
-      {
-        fprintf(stderr, "substring: %ld, %ld: %ld (%d)\n", it->reference_index, it->sample_index, it->length, it->reverse_complement);
-      } // for
-      fprintf(stderr, "\n");
-
       } // if
       else
       {
@@ -557,7 +577,7 @@ size_t LCS_k(std::vector<Substring> &substring,
           // guaranteerd to be of maximal length - 1.
           for (std::vector<Substring>::iterator it = substring.begin(); it != substring.end(); ++it)
           {
-            if (length - it->length > 1 || (it->reference_index == j - 1 && it->sample_index == i - k))
+            if (length - it->length > 1 || (it->reference_index == j - 1 && it->sample_index == i - k && it->reverse_complement))
             {
               std::vector<Substring>::iterator const temp = it - 1;
               substring.erase(it);
@@ -646,6 +666,7 @@ size_t LCS_k(std::vector<Substring> &substring,
       reverse_complement = false;
     } // if
   } // for
+
 
   for (std::vector<Substring>::iterator it = substring.begin(); it != substring.end(); ++it)
   {
