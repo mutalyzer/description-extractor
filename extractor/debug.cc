@@ -1,65 +1,58 @@
-// *******************************************************************
-//   (C) Copyright 2014 Leiden Institute of Advanced Computer Science
-//   Universiteit Leiden
-//   All Rights Reserved
-// *******************************************************************
-// Extractor (library)
-// *******************************************************************
-// FILE INFORMATION:
-//   File:     debug.cc (depends on extractor.h)
-//   Author:   Jonathan K. Vis
-//   Revision: 1.05a
-//   Date:     2014/02/05
-// *******************************************************************
-// DESCRIPTION:
-//   This source can be used to debug the Extractor library within
-//   C/C++.
-// *******************************************************************
-
 #include "extractor.h"
 using namespace mutalyzer;
 
 #include <cstdio>
-#include <cstdlib>
-#include <fstream>
-#include <iostream>
-#include <vector>
-using namespace std;
 
 int main(int argc, char* argv[])
 {
-  static_cast<void>(argc);
 
-  char* reference;
-  char* sample;
-  ifstream file(argv[1]);
-
-  fprintf(stderr, "debug.cc --- loading files\n  reference: %s\n  sample:    %s\n", argv[1], argv[2]);
-
-  file.seekg(0, file.end);
-  size_t const reference_length = static_cast<size_t>(file.tellg()) - 1;
-  file.seekg(0, file.beg);
-  reference = new char[reference_length];
-  file.read(reference, reference_length);
-  file.close();
-  file.open(argv[2]);
-  file.seekg(0, file.end);
-  size_t const sample_length = static_cast<size_t>(file.tellg()) - 1;
-  file.seekg(0, file.beg);
-  sample = new char[sample_length];
-  file.read(sample, sample_length);
-  file.close();
-
-  fprintf(stderr, "debug.cc --- files loaded\n  reference: %ld\n  sample:    %ld\n", reference_length, sample_length);
-
-  vector<Variant> result = extract(reference, reference_length, sample, sample_length);
-
-  for (size_t i = 0; i < result.size(); ++i)
+  if (argc < 3)
   {
-    cout << result[i].reference_start << "--" << result[i].reference_end << ", "
-         << result[i].sample_start << "--" << result[i].sample_end << ", " << result[i].type << endl;
-  } // for
+    fprintf(stderr, "usage: %s reference sample\n", argv[0]);
+    return 1;
+  } // if
 
+  fprintf(stderr, "HGVS description extractor\n");
+  FILE* file = fopen(argv[1], "r");
+  if (file == 0)
+  {
+    fprintf(stderr, "ERROR: could not open file `%s'\n", argv[1]);
+    return 1;
+  } // if
+  fseek(file, 0, SEEK_END);
+  size_t const reference_length = ftell(file) - 1;
+  rewind(file);
+  char_t* reference = new char_t[reference_length];
+  fread(reference, sizeof(char_t), reference_length, file);
+  fclose(file);
+
+  file = fopen(argv[2], "r");
+  if (file == 0)
+  {
+    fprintf(stderr, "ERROR: could not open file `%s'\n", argv[2]);
+    delete[] reference;
+    return 1;
+  } // if
+  fseek(file, 0, SEEK_END);
+  size_t const sample_length = ftell(file) - 1;
+  rewind(file);
+  char_t* sample = new char_t[sample_length];
+  fread(sample, sizeof(char_t), sample_length, file);
+  fclose(file);
+
+
+  std::vector<Variant> variant;
+  size_t const weight = extract(variant, reference, reference_length, sample, sample_length);
+
+
+  fprintf(stderr, "\nVariants (%ld / %ld):\n", variant.size(), weight);
+  for (std::vector<Variant>::iterator it = variant.begin() ; it != variant.end(); ++it)
+  {
+    //if (it->type != IDENTITY)
+    {
+      fprintf(stderr, "%ld--%ld, %ld--%ld, %d, %ld, %ld--%ld\n", it->reference_start, it->reference_end, it->sample_start, it->sample_end, it->type, it->weight, it->transposition_start, it->transposition_end);
+    } // if
+  } // for
 
   delete[] reference;
   delete[] sample;

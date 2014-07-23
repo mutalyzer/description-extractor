@@ -8,8 +8,8 @@
 // FILE INFORMATION:
 //   File:     extractor.cc (depends on extractor.h)
 //   Author:   Jonathan K. Vis
-//   Revision: 1.05b
-//   Date:     2014/07/07
+//   Revision: 2.01a
+//   Date:     2014/07/22
 // *******************************************************************
 // DESCRIPTION:
 //   This library can be used to generete HGVS variant descriptions as
@@ -18,352 +18,456 @@
 
 #include "extractor.h"
 
-#include <cstdlib>
-#include <cmath>
-
-#if defined(__debug__)
-#include <cstdio>
-#endif
-
 namespace mutalyzer
 {
 
-// This global variable is a dirty trick used to always have access to
-// the complete reference strings even when deep into the recursion.
-// This seems necessary to compute transpositions.
 size_t global_reference_length = 0;
 
+size_t weight_position = 0;
 
-// The (average) description length of a position. Depends on the
-// reference string length: ceil(10log(|reference|)).
-size_t position_length = 1;
-
-
-// This function is more or less equivalent to C's strncmp, but it
-// returns true iff both strings are the same.
-static inline bool string_match(char const* const string_1,
-                                char const* const string_2,
-                                size_t const      n)
+std::vector<Variant> extract(char_t const* const reference,
+                             size_t const        reference_length,
+                             char_t const* const sample,
+                             size_t const        sample_length,
+                             int const           type)
 {
-  for (size_t i = 0; i < n; ++i)
-  {
-    if (string_1[i] != string_2[i])
-    {
-      return false;
-    } // if
-  } // for
-  return true;
-} // string_match
-
-// This function is very similar to C's strncmp, but it traverses
-// string_1 from end to start while traversing string_2 from start to
-// end (useful for the reverse complement in DNA/RNA), and it returns
-// true iff both strings are the same in their respective directions.
-static inline bool string_match_reverse(char const* const string_1,
-                                        char const* const string_2,
-                                        size_t const      n)
-{
-  for (size_t i = 0; i < n; ++i)
-  {
-    if (string_1[-i] != string_2[i])
-    {
-      return false;
-    } // if
-  } // for
-  return true;
-} // string_match_reverse
-
-// This function calculates the length (in characters) of the shared
-// prefix between two strings. The result of this function is also
-// used in the suffix_match function.
-static inline size_t prefix_match(char const* const reference,
-                                  size_t const      reference_length,
-                                  char const* const sample,
-                                  size_t const      sample_length)
-{
-  size_t result = 0;
-
-  // Traverse both strings towards the end as long as their characters
-  // are equal. Do not exceed the length of the strings.
-  while (result < reference_length && result < sample_length && reference[result] == sample[result])
-  {
-    ++result;
-  } // while
-  return result;
-} // prefix_match
-
-// This function calculates the length (in characters) of the shared
-// suffix between two strings. It needs the calculated shared prefix.
-static inline size_t suffix_match(char const* const reference,
-                                  size_t const      reference_length,
-                                  char const* const sample,
-                                  size_t const      sample_length,
-                                  size_t const      prefix = 0)
-{
-  size_t result = 0;
-
-  // Start at the end of both strings and traverse towards the start
-  // as long as their characters are equal. Do not exceed the length
-  // of the strings.
-  while (result < reference_length - prefix && result < sample_length - prefix && reference[reference_length - result - 1] == sample[sample_length - result - 1])
-  {
-    ++result;
-  } // while
-  return result;
-} // suffix_match
-
-// The main library function. Extract all variants (regions of change)
-// from the given strings.
-std::vector<Variant> extract(char const* const reference,
-                             size_t const      reference_length,
-                             char const* const sample,
-                             size_t const      sample_length,
-                             int const         type)
-{
-#if defined(__debug__)
-  fprintf(stderr, "extractor.cc --- prefix removal\n");
-#endif
-  // First remove the common prefix and suffix (in that order!).
-  size_t const prefix = prefix_match(reference, reference_length, sample, sample_length);
-#if defined(__debug__)
-  fprintf(stderr, "  prefix: %ld\n", prefix);
-#endif
-
-#if defined(__debug__)
-  fprintf(stderr, "extractor.cc --- suffix removal\n");
-#endif
-  size_t const suffix = suffix_match(reference, reference_length, sample, sample_length, prefix);
-#if defined(__debug__)
-  fprintf(stderr, "  suffix: %ld\n", suffix);
-#endif
-
-  // Always have access to the complete reference string(s).
-  global_reference_length = reference_length;
-  position_length = log10(global_reference_length) + 1;
-
-#if defined(__debug__)
-  fprintf(stderr, "extractor.cc --- constructing IUPAC complement\n");
-#endif
-  // Do NOT construct a complement string for protein strings. All
-  // other string types default to DNA/RNA.
-  char const* const complement = type != TYPE_PROTEIN ? IUPAC_complement(reference, reference_length) : 0;
-
-  std::vector<Variant> result;
-  if (prefix > 0)
-  {
-    result.push_back(Variant(0, prefix, 0, prefix, IDENTITY));
-  } // if
-
-#if defined(__debug__)
-  fprintf(stderr, "extractor.cc --- starting variant extraction\n");
-#endif
-  extractor(reference, complement, prefix, reference_length - suffix, sample, prefix, sample_length - suffix, result);
-  if (suffix > 0)
-  {
-    result.push_back(Variant(reference_length - suffix, reference_length, sample_length - suffix, sample_length, IDENTITY));
-  } // if
-
-#if defined(__debug__)
-  fprintf(stderr, "extractor.cc --- variant extraction done, cleaning up\n");
-#endif
-  // do NOT forget to clean up the complement string.
-  if (complement != 0)
-  {
-    delete[] complement;
-  } // if
-  return result;
+  std::vector<Variant> variant;
+  extract(variant, reference, reference_length, sample, sample_length, type);
+  return variant;
 } // extract
 
-// This function tries to extract transpositions from inserted
-// sequences (insertions or deletion/insertions). Be careful that
-// SNPs (substitutions) also fall in this category and they should
-// never be rewritten as a transposition.
-static void transposition_extractor(char const* const     reference,
-                                    char const* const     complement,
-                                    size_t const          reference_start,
-                                    size_t const          reference_end,
-                                    char const* const     sample,
-                                    size_t const          sample_start,
-                                    size_t const          sample_end,
-                                    std::vector<Variant> &result)
+size_t extract(std::vector<Variant> &variant,
+               char_t const* const   reference,
+               size_t const          reference_length,
+               char_t const* const   sample,
+               size_t const          sample_length,
+               int const             type)
 {
-  // Only consider large enough inserted regions (>> 1), based on
-  // (average) description length of a position. Also, we are not
-  // currently extracting a transposition already.
-  if (sample_end - sample_start > 2 * position_length + 1 &&
-      !(reference_start == 0 && reference_end == global_reference_length))
-  {
+  global_reference_length = reference_length;
+  weight_position = ceil(log10(reference_length / 4));
+
+  size_t const prefix = prefix_match(reference, reference_length, sample, sample_length);
+  size_t const suffix = suffix_match(reference, reference_length, sample, sample_length, prefix);
+
 
 #if defined(__debug__)
-  fprintf(stderr, "extractor.cc --- starting transposition extraction\n");
+  fputs("reference: ", stderr);
+  Dprint_truncated(reference, 0, reference_length);
+  fprintf(stderr, " (%ld)\n", reference_length);
+  fputs("sample:    ", stderr);
+  Dprint_truncated(sample, 0, sample_length);
+  fprintf(stderr, " (%ld)\n", sample_length);
+  fputs("prefix: ", stderr);
+  Dprint_truncated(reference, 0, prefix);
+  fprintf(stderr, " (%ld)\n", prefix);
+  fputs("suffix: ", stderr);
+  Dprint_truncated(reference, reference_length - suffix, reference_length);
+  fprintf(stderr, " (%ld)\n", suffix);
+  fputs("Construction IUPAC complement\n", stderr);
 #endif
-    std::vector<Variant> transposition;
 
-    extractor(reference, complement, 0, global_reference_length, sample, sample_start, sample_end, transposition, true);
+
+  char_t const* complement = type == TYPE_DNA ? IUPAC_complement(reference, reference_length) : 0;
+
 
 #if defined(__debug__)
-  fprintf(stderr, "  transpositions: %ld\n", transposition.size());
-  //print(reference, sample, std::vector<Variant>(1, Variant(reference_start, reference_end, sample_start, sample_end)));
-  //print(reference, sample, transposition);
-  fprintf(stderr, "  %ld--%ld\n", reference_start, reference_end);
+  fputs("complement: ", stderr);
+  Dprint_truncated(complement, 0, reference_length);
+  fprintf(stderr, " (%ld)\n", reference_length);
+  fprintf(stderr, "position weight: %ld\n", weight_position);
 #endif
 
-    // When there are more then one transposition variants it is a
-    // true transposition rewrite: we always get at least one
-    // deletion/insertion.
-    if (transposition.size() > 1)
-    {
-      size_t const open = result.size();
-      // This variant can be described as a transposition.
-      for (size_t i = 0; i < transposition.size(); ++i)
-      {
-        // Ignore all deletions (or deleted parts).
-        if (transposition[i].type == IDENTITY ||
-            transposition[i].type == REVERSE_COMPLEMENT)
-        {
-          result.push_back(Variant(reference_start, reference_end, transposition[i].sample_start, transposition[i].sample_end, transposition[i].reference_start, transposition[i].reference_end, transposition[i].type));
-        } // if
-        else if (transposition[i].sample_end - transposition[i].sample_start > 0)
-        {
-          result.push_back(Variant(reference_start, reference_end, transposition[i].sample_start, transposition[i].sample_end, transposition[i].type));
-        } // if
-      } // for
-      result[open].type |= TRANSPOSITION_OPEN;
-      result[result.size() - 1].type |= TRANSPOSITION_CLOSE;
-      return;
-    } // if
+
+  if (prefix > 0)
+  {
+    variant.push_back(Variant(0, prefix, 0, prefix));
   } // if
 
-#if defined(__debug__)
-  fprintf(stderr, "  just a regular insertion\n");
-#endif
-  // Insertion considered to be too short for transposition extraction
-  // or no transposition was found, so just insert the regular
-  // insertion, deletion/insertion or substitution.
-  result.push_back(Variant(reference_start, reference_end, sample_start, sample_end));
-  return;
-} // transposition_extractor
+  size_t const weight = extractor(variant, reference, complement, prefix, reference_length - suffix, sample, prefix, sample_length - suffix);
 
-
-// This is the recursive extractor function. It works as follows:
-// First, determine the ``best fitting'' longest common substring
-// (LCS) (possibly as a reverse complement) and discard it from the
-// solution. Then apply the same function on the remaining prefixes
-// and suffixes. If there is no LCS it is a variant (region of
-// change), i.e., a deletion/insertion.
-// With regard to the reverse complement: the complement string is, as
-// its name suggests, just the complement (DNA/RNA) of the reference
-// string but it is NOT reversed.
-void extractor(char const* const     reference,
-               char const* const     complement,
-               size_t const          reference_start,
-               size_t const          reference_end,
-               char const* const     sample,
-               size_t const          sample_start,
-               size_t const          sample_end,
-               std::vector<Variant> &result,
-               bool const            transposition)
-{
-#if defined(__debug__)
-  fprintf(stderr, "extractor.cc --- extractor\n  reference: %ld--%ld (%ld)\n  sample:    %ld--%ld (%ld)\n", reference_start, reference_end, reference_end - reference_start, sample_start, sample_end, sample_end - sample_start);
-#endif
-
-  // When we are processing a transposition, stop when the length of
-  // the string to be described (sample) falls below the transposition
-  // threshold.
-  if (transposition && sample_end - sample_start <= 2 * position_length + 1)
+  if (suffix > 0)
   {
-    return;
+    variant.push_back(Variant(reference_length - suffix, reference_length, sample_length - suffix, sample_length));
   } // if
 
-  // First some base cases to end the recursion.
-  // No more reference string.
-  if (reference_end - reference_start <= 0)
-  {
-    // But some of the sample string is remaining: this is an
-    // insertion.
-    if (sample_end - sample_start > 0)
-    {
-      // First, we check if we can match the inserted substring
-      // somewhere in the complete reference string. This will
-      // indicate a possible transposition. Otherwise it is a regular
-      // insertion.
-      transposition_extractor(reference, complement, reference_start, reference_end, sample, sample_start, sample_end, result);
-    } // if
-    return;
-  } // if
+  delete[] complement;
 
-  // Obviously there is a piece of reference string left, but no more
-  // sample string: this is a deletion.
-  if (sample_end - sample_start <= 0)
-  {
-    result.push_back(Variant(reference_start, reference_end, sample_start, sample_end));
-    return;
-  } // if
+  return weight;
+} // extract
 
-#if defined(__debug__)
-  fprintf(stderr, "extractor.cc --- calculating LCS\n");
-#endif
-  // Calculate the LCS (possibly in reverse complement) of the two
-  // strings.
-  std::vector<Substring> LCS_result = LCS(reference, complement, reference_start, reference_end, sample, sample_start, sample_end);
-
-  // No LCS found: this is an deletion/insertion or a substitution.
-  if (LCS_result.size() == 0)
-  {
-    transposition_extractor(reference, complement, reference_start, reference_end, sample, sample_start, sample_end, result);
-    return;
-  } // if
-
-#if defined(__debug__)
-  fprintf(stderr, "  LCS length: %ld\n", LCS_result[0].length);
-#endif
-
-  // Pick the ``best fitting'' LCS, i.e., the location of the LCS
-  // within their respective strings is close.
-  // TODO: we could extract all non-overlapping LCSs in one go
-  size_t difference = (reference_end - reference_start) + (sample_end - sample_start);
-  size_t index = 0;
-  for (size_t i = 0; i < LCS_result.size(); ++i)
-  {
-    if (static_cast<size_t>(abs(LCS_result[i].reference_index - LCS_result[i].sample_index)) < difference)
-    {
-      difference = abs(LCS_result[i].reference_index - LCS_result[i].sample_index);
-      index = i;
-    } // if
-  } // for
-
-  // Apply this function to the prefixes of the strings.
-  extractor(reference, complement, reference_start, LCS_result[index].reference_index, sample, sample_start, LCS_result[index].sample_index, result, transposition);
-
-  // We always add a full description including the region that did
-  // not change.
-  if (!LCS_result[index].reverse_complement)
-  {
-    result.push_back(Variant(LCS_result[index].reference_index, LCS_result[index].reference_index + LCS_result[index].length, LCS_result[index].sample_index, LCS_result[index].sample_index + LCS_result[index].length, IDENTITY));
-  } // if
-  else
-  {
-    result.push_back(Variant(LCS_result[index].reference_index, LCS_result[index].reference_index + LCS_result[index].length, LCS_result[index].sample_index, LCS_result[index].sample_index + LCS_result[index].length, REVERSE_COMPLEMENT));
-  } // else
-  
-  // Apply this function to the suffixes of the strings.
-  extractor(reference, complement, LCS_result[index].reference_index + LCS_result[index].length, reference_end, sample, LCS_result[index].sample_index + LCS_result[index].length, sample_end, result, transposition);
-  return;
-} // extractor
-
-// Calculate the LCS in the well-known way using dynamic programming.
-// NOT suitable for large strings.
-std::vector<Substring> LCS_1(char const* const reference,
-                             char const* const complement,
-                             size_t const      reference_start,
-                             size_t const      reference_end,
-                             char const* const sample,
-                             size_t const      sample_start,
-                             size_t const      sample_end)
+size_t extractor(std::vector<Variant> &variant,
+                 char_t const* const   reference,
+                 char_t const* const   complement,
+                 size_t const          reference_start,
+                 size_t const          reference_end,
+                 char_t const* const   sample,
+                 size_t const          sample_start,
+                 size_t const          sample_end)
 {
   size_t const reference_length = reference_end - reference_start;
   size_t const sample_length = sample_end - sample_start;
+  size_t const weight_trivial = weight_position + WEIGHT_DELETION_INSERTION + WEIGHT_BASE * sample_length + (reference_length != 1 ? weight_position + WEIGHT_SEPARATOR : 0);
+  size_t weight = 0;
+
+
+#if defined(__debug__)
+  fputs("Extraction\n", stderr);
+  fprintf(stderr, "  reference %ld--%ld:  ", reference_start, reference_end);
+  Dprint_truncated(reference, reference_start, reference_end);
+  fprintf(stderr, " (%ld)\n", reference_length);
+  fprintf(stderr, "  complement %ld--%ld: ", reference_start, reference_end);
+  Dprint_truncated(complement, reference_start, reference_end);
+  fprintf(stderr, " (%ld)\n", reference_length);
+  fprintf(stderr, "  sample %ld--%ld:     ", sample_start, sample_end);
+  Dprint_truncated(sample, sample_start, sample_end);
+  fprintf(stderr, " (%ld)\n", sample_length);
+  fprintf(stderr, "  trivial weight: %ld\n", weight_trivial);
+#endif
+
+
+  // insertions
+  if (reference_length <= 0)
+  {
+    if (sample_length > 0)
+    {
+      weight = 2 * weight_position + WEIGHT_SEPARATOR + WEIGHT_INSERTION + WEIGHT_BASE * sample_length;
+
+      std::vector<Variant> transposition;
+      size_t const weight_transposition = extractor_transposition(transposition, reference, complement, reference_start, reference_end, sample, sample_start, sample_end, weight) + 2 * weight_position + 3 * WEIGHT_SEPARATOR + WEIGHT_INSERTION;
+
+
+#if defined(__debug__)
+  fprintf(stderr, "Transpositions: %ld (trivial: %ld)\n", weight_transposition, weight);
+  for (std::vector<Variant>::iterator it = transposition.begin(); it != transposition.end(); ++it)
+  {
+    fprintf(stderr, "  %ld--%ld, %ld--%ld, %d, %ld, %ld--%ld\n", it->reference_start, it->reference_end, it->sample_start, it->sample_end, it->type, it->weight, it->transposition_start, it->transposition_end);
+  } // for
+#endif
+
+
+      if (weight > weight_transposition && transposition.size() > 0 && !(transposition.size() == 1 && transposition.front().type == SUBSTITUTION))
+      {
+        transposition.front().type |= TRANSPOSITION_OPEN;
+        transposition.back().type |= TRANSPOSITION_CLOSE;
+        variant.insert(variant.end(), transposition.begin(), transposition.end());
+        return weight_transposition;
+      } // if
+
+      // simple insertion
+      variant.push_back(Variant(reference_start, reference_end, sample_start, sample_end, SUBSTITUTION, weight));
+    } // if
+    return weight;
+  } // if
+
+  // deletions
+  if (sample_length <= 0)
+  {
+    weight = weight_position + WEIGHT_DELETION + (reference_length > 1 ? weight_position + WEIGHT_SEPARATOR : 0);
+    variant.push_back(Variant(reference_start, reference_end, sample_start, sample_end, SUBSTITUTION, weight));
+    return weight;
+  } // if
+
+  // simple substitutions
+  if (reference_length == 1 && sample_length == 1)
+  {
+    weight = weight_position + 2 * WEIGHT_BASE + WEIGHT_SUBSTITUTION;
+    variant.push_back(Variant(reference_start, reference_end, sample_start, sample_end, SUBSTITUTION, weight));
+    return weight;
+  } // if
+
+
+  std::vector<Substring> substring;
+  size_t const length = LCS(substring, reference, complement, reference_start, reference_end, sample, sample_start, sample_end);
+
+  // deletion/insertion
+  if (length <= 0 || substring.size() <= 0)
+  {
+    weight = weight_trivial;
+
+    std::vector<Variant> transposition;
+    size_t const weight_transposition = extractor_transposition(transposition, reference, complement, reference_start, reference_end, sample, sample_start, sample_end, weight)  + 2 * weight_position + 3 * WEIGHT_SEPARATOR + WEIGHT_INSERTION;
+
+
+#if defined(__debug__)
+  fprintf(stderr, "Transpositions: %ld (trivial: %ld)\n", weight_transposition, weight);
+  for (std::vector<Variant>::iterator it = transposition.begin(); it != transposition.end(); ++it)
+  {
+    fprintf(stderr, "  %ld--%ld, %ld--%ld, %d, %ld, %ld--%ld\n", it->reference_start, it->reference_end, it->sample_start, it->sample_end, it->type, it->weight, it->transposition_start, it->transposition_end);
+  } // for
+#endif
+
+
+    if (weight > weight_transposition && transposition.size() > 0 && !(transposition.size() == 1 && transposition.front().type == SUBSTITUTION))
+    {
+      transposition.front().type |= TRANSPOSITION_OPEN;
+      transposition.back().type |= TRANSPOSITION_CLOSE;
+      variant.insert(variant.end(), transposition.begin(), transposition.end());
+      return weight_transposition;
+    } // if
+
+    variant.push_back(Variant(reference_start, reference_end, sample_start, sample_end, SUBSTITUTION, weight_trivial));
+    return weight_trivial;
+  } // if
+
+
+  std::vector<Substring>::iterator const lcs = substring.begin();
+  if (lcs->reverse_complement)
+  {
+    weight = 2 * weight_position + WEIGHT_SEPARATOR + WEIGHT_INVERSION;
+  } // if
+
+
+#if defined(__debug__)
+  fprintf(stderr, "  LCS (x%ld)\n", substring.size());
+  for (std::vector<Substring>::iterator it = substring.begin() ; it != substring.end(); ++it)
+  {
+    if (!it->reverse_complement)
+    {
+      fprintf(stderr, "    %ld--%ld: ", it->reference_index, it->reference_index + length);
+      Dprint_truncated(reference, it->reference_index, it->reference_index + length);
+      fprintf(stderr, " (%ld)\n    %ld--%ld: ", length, it->sample_index, it->sample_index + length);
+      Dprint_truncated(sample, it->sample_index, it->sample_index + length);
+      fprintf(stderr, " (%ld)", length);
+    } // if
+    else
+    {
+      fprintf(stderr, "    %ld--%ld: ", it->reference_index, it->reference_index + length);
+      Dprint_truncated(complement, it->reference_index, it->reference_index + length);
+      fprintf(stderr, " (%ld), (reverse complement)\n    %ld--%ld: ", length, it->sample_index, it->sample_index + length);
+      Dprint_truncated(sample, it->sample_index, it->sample_index + length);
+      fprintf(stderr, " (%ld)", length);
+    } // else
+    fputs("\n", stderr);
+  } // for
+#endif
+
+
+  std::vector<Variant> prefix;
+  weight += extractor(prefix, reference, complement, reference_start, lcs->reference_index, sample, sample_start, lcs->sample_index);
+
+  if (weight > weight_trivial)
+  {
+    variant.push_back(Variant(reference_start, reference_end, sample_start, sample_end, SUBSTITUTION, weight_trivial));
+    return weight_trivial;
+  } // if
+
+  std::vector<Variant> suffix;
+  weight += extractor(suffix, reference, complement, lcs->reference_index + length, reference_end, sample, lcs->sample_index + length, sample_end);
+
+  if (weight > weight_trivial)
+  {
+    variant.push_back(Variant(reference_start, reference_end, sample_start, sample_end, SUBSTITUTION, weight_trivial));
+    return weight_trivial;
+  } // if
+
+
+  variant.insert(variant.end(), prefix.begin(), prefix.end());
+
+  if (!lcs->reverse_complement)
+  {
+    variant.push_back(Variant(lcs->reference_index, lcs->reference_index + length, lcs->sample_index, lcs->sample_index + length));
+  } // if
+  else
+  {
+    variant.push_back(Variant(lcs->reference_index, lcs->reference_index + length, lcs->sample_index, lcs->sample_index + length, REVERSE_COMPLEMENT, 2 * weight_position + WEIGHT_SEPARATOR + WEIGHT_INVERSION));
+  } // else
+
+  variant.insert(variant.end(), suffix.begin(), suffix.end());
+
+  return weight;
+} // extractor
+
+size_t extractor_transposition(std::vector<Variant> &variant,
+                               char_t const* const   reference,
+                               char_t const* const   complement,
+                               size_t const          reference_start,
+                               size_t const          reference_end,
+                               char_t const* const   sample,
+                               size_t const          sample_start,
+                               size_t const          sample_end,
+                               size_t const          weight_trivial)
+{
+  size_t const sample_length = sample_end - sample_start;
+
+  size_t weight = 0;
+
+
+#if defined(__debug__)
+  fputs("Transposition extraction\n", stderr);
+  fprintf(stderr, "  reference %ld--%ld:  ", 0ul, global_reference_length);
+  Dprint_truncated(reference, 0, global_reference_length);
+  fprintf(stderr, " (%ld)\n", global_reference_length);
+  fprintf(stderr, "  complement %ld--%ld: ", 0ul, global_reference_length);
+  Dprint_truncated(complement, 0, global_reference_length);
+  fprintf(stderr, " (%ld)\n", global_reference_length);
+  fprintf(stderr, "  sample %ld--%ld:     ", sample_start, sample_end);
+  Dprint_truncated(sample, sample_start, sample_end);
+  fprintf(stderr, " (%ld)\n", sample_length);
+  fprintf(stderr, "  trivial weight: %ld\n", weight_trivial);
+#endif
+
+
+  if (sample_length <= 2 * weight_position)
+  {
+    return sample_length * WEIGHT_BASE;
+  } // if
+
+  std::vector<Substring> substring;
+  size_t const length = LCS(substring, reference, complement, 0, global_reference_length, sample, sample_start, sample_end);
+
+  if (length <= 0 || substring.size() <= 0)
+  {
+    weight = sample_length * WEIGHT_BASE;
+    variant.push_back(Variant(reference_start, reference_end, sample_start, sample_end, SUBSTITUTION, weight));
+    return weight;
+  } // if
+
+  std::vector<Substring>::iterator const lcs = substring.begin();
+
+  weight += 2 * weight_position + WEIGHT_SEPARATOR;
+  if (lcs->reverse_complement)
+  {
+    weight += WEIGHT_INVERSION;
+  } // if
+
+
+#if defined(__debug__)
+  fprintf(stderr, "  LCS (x%ld)\n", substring.size());
+  for (std::vector<Substring>::iterator it = substring.begin() ; it != substring.end(); ++it)
+  {
+    if (!it->reverse_complement)
+    {
+      fprintf(stderr, "    %ld--%ld: ", it->reference_index, it->reference_index + length);
+      Dprint_truncated(reference, it->reference_index, it->reference_index + length);
+      fprintf(stderr, " (%ld)\n    %ld--%ld: ", length, it->sample_index, it->sample_index + length);
+      Dprint_truncated(sample, it->sample_index, it->sample_index + length);
+      fprintf(stderr, " (%ld)", length);
+    } // if
+    else
+    {
+      fprintf(stderr, "    %ld--%ld: ", it->reference_index, it->reference_index + length);
+      Dprint_truncated(complement, it->reference_index, it->reference_index + length);
+      fprintf(stderr, " (%ld), (reverse complement)\n    %ld--%ld: ", length, it->sample_index, it->sample_index + length);
+      Dprint_truncated(sample, it->sample_index, it->sample_index + length);
+      fprintf(stderr, " (%ld)", length);
+    } // else
+    fputs("\n", stderr);
+  } // for
+#endif
+
+
+  std::vector<Variant> prefix;
+  weight += extractor_transposition(prefix, reference, complement, reference_start, reference_end, sample, sample_start, lcs->sample_index, weight_trivial - weight);
+
+  if (weight > weight_trivial)
+  {
+    weight = sample_length * WEIGHT_BASE;
+    variant.push_back(Variant(reference_start, reference_end, sample_start, sample_end, SUBSTITUTION, weight));
+    return weight;
+  } // if
+
+  std::vector<Variant> suffix;
+  weight += extractor_transposition(suffix, reference, complement, reference_start, reference_end, sample, lcs->sample_index + length, sample_end, weight_trivial - weight);
+
+  if (weight > weight_trivial)
+  {
+    weight = sample_length * WEIGHT_BASE;
+    variant.push_back(Variant(reference_start, reference_end, sample_start, sample_end, SUBSTITUTION, weight));
+    return weight;
+  } // if
+
+  variant.insert(variant.end(), prefix.begin(), prefix.end());
+
+  if (!lcs->reverse_complement)
+  {
+    variant.push_back(Variant(reference_start, reference_end, lcs->sample_index, lcs->sample_index + length, IDENTITY, 2 * weight_position + WEIGHT_SEPARATOR, lcs->reference_index, lcs->reference_index + length));
+  } // if
+  else
+  {
+    variant.push_back(Variant(reference_start, reference_end, lcs->sample_index, lcs->sample_index + length, REVERSE_COMPLEMENT, 2 * weight_position + WEIGHT_SEPARATOR + WEIGHT_INVERSION, lcs->reference_index, lcs->reference_index + length));
+  } // else
+
+  variant.insert(variant.end(), suffix.begin(), suffix.end());
+
+  return weight + variant.size() - 1;
+} // extractor_transposition
+
+
+size_t LCS(std::vector<Substring> &substring,
+           char_t const* const     reference,
+           char_t const* const     complement,
+           size_t const            reference_start,
+           size_t const            reference_end,
+           char_t const* const     sample,
+           size_t const            sample_start,
+           size_t const            sample_end)
+{
+  size_t const reference_length = reference_end - reference_start;
+  size_t const sample_length = sample_end - sample_start;
+
+  static size_t const THRESHOLD = 16000;
+
+  double const a = reference_length >= sample_length ? reference_length : sample_length;
+  double const b = reference_length >= sample_length ? sample_length : reference_length;
+  size_t const cut_off = (reference_length > THRESHOLD ? ceil((1.0 - b / (a + 0.1 * b)) * b) / 8 : 0) + 1;
+
+  size_t k = reference_length > sample_length ? sample_length / 4 : reference_length / 4;
+
+  while (k > 4 && k > cut_off)
+  {
+
+
+#if defined(__debug__)
+  fprintf(stderr, "  k = %ld (cut-off: %ld)\n", k, cut_off);
+#endif
+
+
+    substring.clear();
+
+    size_t const length = LCS_k(substring, reference, complement, reference_start, reference_end, sample, sample_start, sample_end, k);
+
+    // A LCS of sufficient length has been found.
+    if (length >= 2 * k && substring.size() > 0)
+    {
+      return length;
+    } // if
+    k /= 3;
+  } // while
+
+  if (cut_off > 1)
+  {
+
+
+#if defined(__debug__)
+  fprintf(stderr, "  cut-off\n");
+#endif
+
+
+    substring.clear();
+    return 0;
+  } // if
+
+
+#if defined(__debug__)
+  fprintf(stderr, "  k = 1\n");
+#endif
+
+
+  return LCS_1(substring, reference, complement, reference_start, reference_end, sample, sample_start, sample_end);
+} // LCS
+
+size_t LCS_1(std::vector<Substring> &substring,
+             char_t const* const     reference,
+             char_t const* const     complement,
+             size_t const            reference_start,
+             size_t const            reference_end,
+             char_t const* const     sample,
+             size_t const            sample_start,
+             size_t const            sample_end)
+{
+  size_t const reference_length = reference_end - reference_start;
+  size_t const sample_length = sample_end - sample_start;
+  bool reverse_complement = false;
 
   // Just a fancy way of allocation a continuous 2D array in heap
   // space.
@@ -371,7 +475,6 @@ std::vector<Substring> LCS_1(char const* const reference,
   array &LCS_line = *(reinterpret_cast<array*>(new size_t[2 * reference_length]));
   array &LCS_line_rc = *(reinterpret_cast<array*>(new size_t[2 * reference_length]));
 
-  std::vector<Substring> result;
   size_t length = 0;
 
   // Filling the LCS matrix (actually only the current and the
@@ -392,16 +495,18 @@ std::vector<Substring> LCS_1(char const* const reference,
           LCS_line[i % 2][j] = LCS_line[(i + 1) % 2][j - 1] + 1;
         } // else
 
-        // Check for a new maximal length.
-        if (LCS_line[i % 2][j] > length)
+        if (LCS_line[i % 2][j] >= length)
         {
-          length = LCS_line[i % 2][j];
-          result = std::vector<Substring>(1, Substring(j - length + reference_start + 1, i - length + sample_start + 1, length));
-        } // if
-        // Found a LCS of the same maximal length.
-        else if (LCS_line[i % 2][j] == length)
-        {
-          result.push_back(Substring(j - length + reference_start + 1, i - length + sample_start + 1, length));
+          if (reverse_complement || LCS_line[i % 2][j] > length)
+          {
+            length = LCS_line[i % 2][j];
+            substring = std::vector<Substring>(1, Substring(j - length + reference_start + 1, i - length + sample_start + 1, length));
+          } // if
+          else
+          {
+            substring.push_back(Substring(j - length + reference_start + 1, i - length + sample_start + 1, length));
+          } // else
+          reverse_complement = false;
         } // if
       } // if
       else
@@ -422,59 +527,60 @@ std::vector<Substring> LCS_1(char const* const reference,
         {
           LCS_line_rc[i % 2][j] = LCS_line_rc[(i + 1) % 2][j - 1] + 1;
         } // else
-        if (LCS_line_rc[i % 2][j] > length)
+
+        if (LCS_line_rc[i % 2][j] > 1 && LCS_line_rc[i % 2][j] > length)
         {
           length = LCS_line_rc[i % 2][j];
-          result = std::vector<Substring>(1, Substring(reference_end - j - 1, i - length + sample_start + 1, length, true));
-        } // if
-        else if (LCS_line_rc[i % 2][j] == length)
-        {
-          result.push_back(Substring(reference_end - j - 1, i - length + sample_start + 1, length, true));
+          substring = std::vector<Substring>(1, Substring(reference_end - j - 1, i - length + sample_start + 1, length, true));
+          reverse_complement = true;
         } // if
       } // if
       else
       {
         LCS_line_rc[i % 2][j] = 0;
       } // else
+
+      if (!reverse_complement && length >= sample_length)
+      {
+        break;
+      } // if
+
     } // for
   } // for
 
   delete[] &LCS_line;
   delete[] &LCS_line_rc;
 
-  return result;
+  return length;
 } // LCS_1
 
-// Calculate the LCS using overlapping and non-overlapping k-mers.
-// This function should be suitable for large (similar) strings.
-// Be careful: if the resulting LCS is of length <= 2k it might not be
-// the actual LCS. Remedy: try again with a reduced k.
-std::vector<Substring> LCS_k(char const* const reference,
-                             char const* const complement,
-                             size_t const      reference_start,
-                             size_t const      reference_end,
-                             char const* const sample,
-                             size_t const      sample_start,
-                             size_t const      sample_end,
-                             size_t const      k)
+size_t LCS_k(std::vector<Substring> &substring,
+             char_t const* const     reference,
+             char_t const* const     complement,
+             size_t const            reference_start,
+             size_t const            reference_end,
+             char_t const* const     sample,
+             size_t const            sample_start,
+             size_t const            sample_end,
+             size_t const            k)
 {
-  size_t const reference_length = (reference_end - reference_start) / k;
+  size_t length = 0;
 
   // Stop if we cannot partition the strings into k-mers.
-  if (reference_end - reference_start < k || sample_end - sample_start < k)
+  if (k <= 1 || reference_end - reference_start < k || sample_end - sample_start < k)
   {
-    return std::vector<Substring>();
+    return length;
   } // if
+
+  size_t const reference_length = (reference_end - reference_start) / k;
   size_t const sample_length = sample_end - sample_start - k + 1;
+  bool reverse_complement = false;
 
   // Just a fancy way of allocation a continuous (k+1)D array in heap
   // space.
   typedef size_t array[k + 1][reference_length];
   array &LCS_line = *(reinterpret_cast<array*>(new size_t[(k + 1) * reference_length]));
   array &LCS_line_rc = *(reinterpret_cast<array*>(new size_t[(k + 1) * reference_length]));
-
-  std::vector<Substring> result;
-  size_t length = 0;
 
   // Filling the LCS k-mer matrix (actually only the current and the k
   // previous rows). We count in k-mers.
@@ -503,24 +609,20 @@ std::vector<Substring> LCS_k(char const* const reference,
           // new maximal length. And remove also the partial LCS that
           // was extended to the new maximal length because it is
           // guaranteerd to be of maximal length - 1.
-          for (size_t e = 0; e < result.size(); ++e)
+          for (std::vector<Substring>::iterator it = substring.begin(); it != substring.end(); ++it)
           {
-            if (length - result[e].length > 1 || (result[e].reference_index == j - 1 && result[e].sample_index == i - k))
+            if (length - it->length > 1 || (it->reference_index == j - 1 && it->sample_index == i - k && !it->reverse_complement))
             {
-              result.erase(result.begin() + e);
-              --e;
+              std::vector<Substring>::iterator const temp = it - 1;
+              substring.erase(it);
+              it = temp;
             } // if
           } // for
-
-          // The actual indices are calculated afterwards (this is in
-          // k-mer space).
-          result.push_back(Substring(j, i, length));
+          substring.push_back(Substring(j, i, LCS_line[i % (k + 1)][j]));
         } // if
-        // Found a LCS of the same maximal length or maximal
-        // length - 1.
-        else if (length - LCS_line[i % (k + 1)][j] < 1)
+        else if (LCS_line[i % (k + 1)][j] > 0 && length - LCS_line[i % (k + 1)][j] <= 1)
         {
-          result.push_back(Substring(j, i, length));
+          substring.push_back(Substring(j, i, LCS_line[i % (k + 1)][j]));
         } // if
       } // if
       else
@@ -528,9 +630,6 @@ std::vector<Substring> LCS_k(char const* const reference,
         LCS_line[i % (k + 1)][j] = 0;
       } // else
 
-      // If applicable check for a LCS in reverse complement space.
-      // The same code is used as before but the complement string is
-      // travesed backwards (towards the start).
       if (complement != 0 && string_match_reverse(complement + reference_end - j * k - 1, sample + sample_start + i, k))
       {
         if (i < k || j == 0)
@@ -541,182 +640,229 @@ std::vector<Substring> LCS_k(char const* const reference,
         {
           LCS_line_rc[i % (k + 1)][j] = LCS_line_rc[(i + 1) % (k + 1)][j - 1] + 1;
         } // else
+
+        // Check for a new maximal length.
         if (LCS_line_rc[i % (k + 1)][j] > length)
         {
           length = LCS_line_rc[i % (k + 1)][j];
-          for (size_t e = 0; e < result.size(); ++e)
+
+          // Remove all solutions with a length more than 1 from the
+          // new maximal length. And remove also the partial LCS that
+          // was extended to the new maximal length because it is
+          // guaranteerd to be of maximal length - 1.
+          for (std::vector<Substring>::iterator it = substring.begin(); it != substring.end(); ++it)
           {
-            if (length - result[e].length > 1 || (result[e].reference_index == j - 1 && result[e].sample_index == i - k))
+            if (length - it->length > 1 || (it->reference_index == j - 1 && it->sample_index == i - k && it->reverse_complement))
             {
-              result.erase(result.begin() + e);
-              --e;
+              std::vector<Substring>::iterator const temp = it - 1;
+              substring.erase(it);
+              it = temp;
             } // if
           } // for
-          result.push_back(Substring(j, i, length, true));
+          substring.push_back(Substring(j, i, LCS_line_rc[i % (k + 1)][j], true));
         } // if
-        else if (length - LCS_line_rc[i % (k + 1)][j] < 1)
+        else if (LCS_line[i % (k + 1)][j] > 0 && length - LCS_line_rc[i % (k + 1)][j] <= 1)
         {
-          result.push_back(Substring(j, i, length, true));
+          substring.push_back(Substring(j, i, LCS_line[i % (k + 1)][j], true));
         } // if
       } // if
       else
       {
         LCS_line_rc[i % (k + 1)][j] = 0;
       } // else
+
     } // for
   } // for
 
-  // Now we need to do some extensions of the found LCSs to find their
-  // exact lengths. We extend up to k positions to the left (towards
-  // the start of the strings) and to the right (towards the end of
-  // the string).
-  length *= k;
-  for (size_t i = 0; i < result.size(); ++i)
+
+  // extending LCS
+  for (std::vector<Substring>::iterator it = substring.begin(); it != substring.end(); ++it)
   {
-
-    // In reverse complement space matters are complicated: in the
-    // complement string we have to extend towards the other
-    // direction.
-    if (result[i].reverse_complement)
+    if (!it->reverse_complement)
     {
-      // The correct positions of the LCS within the strings. Here the
-      // indices are updated to their actual value.
-      result[i].reference_index = reference_end - (result[i].reference_index + 1) * k;
-      result[i].sample_index = result[i].sample_index - (result[i].length - 1) * k + sample_start;
-      result[i].length *= k;
-      size_t j;
-
-      // Extend to the left.
-      for (j = 1; j < k; ++j)
+      it->reference_index = reference_start + (it->reference_index - it->length + 1) * k;
+      it->sample_index = sample_start + it->sample_index - (it->length - 1) * k;
+      it->length *= k;
+      // extending to the right
       {
-        if (result[i].reference_index + result[i].length + j - 1 >= reference_end || result[i].sample_index - j < sample_start || complement[result[i].reference_index + result[i].length + j - 1] !=  sample[result[i].sample_index - j])
+        size_t i = 0;
+        while (i <= k && it->reference_index + it->length + i < reference_end && it->sample_index + it->length + i < sample_end && reference[it->reference_index + it->length + i] == sample[it->sample_index + it->length + i])
         {
-          break;
-        } // if
-      } // for
-      result[i].sample_index -= j - 1;
-      result[i].length += j - 1;
-
-      // Extend to the right.
-      for (j = 1; j < k; ++j)
+          ++i;
+        } // while
+        it->length += i;
+      }
+      // extending to the left
       {
-        if (result[i].reference_index - j < reference_start || result[i].sample_index + result[i].length + j - 1 >= sample_end || complement[result[i].reference_index - j] != sample[result[i].sample_index + result[i].length + j - 1])
+        size_t i = 0;
+        while (i <= k && it->reference_index - i - 1 >= reference_start && it->sample_index - i - 1 >= sample_start && reference[it->reference_index - i - 1] == sample[it->sample_index - i - 1])
         {
-          break;
-        } // if
-      } // for
-      result[i].reference_index -= j - 1;
-      result[i].length += j - 1;
-      if (result[i].length > length)
-      {
-        length = result[i].length;
-      } // if
+          ++i;
+        } // while
+        it->reference_index -= i;
+        it->sample_index -= i;
+        it->length += i;
+      }
     } // if
-
-    // ``Normal'' LCSs (almost the same as reverse complement)
     else
     {
-      result[i].reference_index = ((result[i].reference_index + 1) * k + reference_start - 1) - result[i].length * k + 1;
-      result[i].sample_index = result[i].sample_index - (result[i].length - 1) * k + sample_start;
-      result[i].length *= k;
-      size_t j;
-
-      // Extend to the left.
-      for (j = 1; j < k; ++j)
+      it->reference_index = reference_end - (it->reference_index + 1) * k;
+      it->sample_index = sample_start + it->sample_index - (it->length - 1) * k;
+      it->length *= k;
+      // extending to the right (sample orientation)
       {
-        if (result[i].reference_index - j < reference_start || result[i].sample_index - j < sample_start || reference[result[i].reference_index - j] != sample[result[i].sample_index - j])
+        size_t i = 0;
+        while (i <= k && it->reference_index - i - 1 >= reference_start && it->sample_index + it->length + i < sample_end && complement[it->reference_index - i - 1] == sample[it->sample_index + it->length + i])
         {
-          break;
-        } // if
-      } // for
-      result[i].reference_index -= j - 1;
-      result[i].sample_index -= j - 1;
-      result[i].length += j - 1;
-
-      // Extend to the right.
-      for (j = 0; j < k - 1; ++j)
+          ++i;
+        } // while
+        it->reference_index -= i;
+        it->length += i;
+      }
+      // extending to the left (sample orientation)
       {
-        if (result[i].reference_index + result[i].length + j >= reference_end || result[i].sample_index + result[i].length + j >= sample_end || reference[result[i].reference_index + result[i].length + j] != sample[result[i].sample_index + result[i].length + j])
+        size_t i = 0;
+        while (i <= k && it->reference_index + it->length + i < reference_end && it->sample_index - i - 1 >= sample_start && complement[it->reference_index + it->length + i] == sample[it->sample_index - i - 1])
         {
-          break;
-        } // if
-      } // for
-      result[i].length += j;
-      if (result[i].length > length)
-      {
-        length = result[i].length;
-      } // if
+          ++i;
+        } // while
+        it->sample_index -= i;
+        it->length += i;
+      }
     } // else
+
+    if (it->length > length)
+    {
+      length = it->length;
+      reverse_complement = it->reverse_complement;
+    } // if
+    else if (reverse_complement && it->length == length)
+    {
+      reverse_complement = false;
+    } // if
   } // for
 
-  // Remove all sub-optimal LCSs from the solution.
-  for (size_t i = 0; i < result.size(); ++i)
+
+  for (std::vector<Substring>::iterator it = substring.begin(); it != substring.end(); ++it)
   {
-    if (result[i].length < length)
+    if (it->length < length || reverse_complement != it->reverse_complement)
     {
-      result.erase(result.begin() + i);
-      --i;
+      std::vector<Substring>::iterator const temp = it - 1;
+      substring.erase(it);
+      it = temp;
     } // if
   } // for
 
   delete[] &LCS_line;
   delete[] &LCS_line_rc;
 
-  return result;
+  return length;
 } // LCS_k
 
-// This function calculates the LCS using the LCS_k function by
-// choosing an initial k and reducing it if necessary until the
-// strings represent random strings.
-std::vector<Substring> LCS(char const* const reference,
-                           char const* const complement,
-                           size_t const      reference_start,
-                           size_t const      reference_end,
-                           char const* const sample,
-                           size_t const      sample_start,
-                           size_t const      sample_end)
+
+bool string_match(char_t const* const string_1,
+                  char_t const* const string_2,
+                  size_t const        length)
 {
-  size_t const reference_length = reference_end - reference_start;
-  size_t const sample_length = sample_end - sample_start;
-
-  size_t k = reference_length > sample_length ? sample_length / 4 : reference_length / 4;
-
-  // Dynamic cut-off
-  double const a = reference_length >= sample_length ? reference_length : sample_length;
-  double const b = reference_length >= sample_length ? sample_length : reference_length;
-  size_t const c = ceil((1.0 - b / (a + 0.1 * b)) * b);
-
-  std::vector<Substring> result;
-
-  // FIXME: preformance test
-  while (k > 1 && 4 * k >= c)
+  for (size_t i = 0; i < length; ++i)
   {
-
-#if defined(__debug__)
-  fprintf(stderr, "  k = %ld (c = %ld)\n", k, c);
-#endif
-
-    result = LCS_k(reference, complement, reference_start, reference_end, sample, sample_start, sample_end, k);
-
-    // A LCS of sufficient length has been found.
-    if (result.size() > 0 && result[0].length >= 2 * k)
+    if (string_1[i] != string_2[i])
     {
-      return result;
+      return false;
     } // if
-    k /= 3;
-  } // while
+  } // for
+  return true;
+} // string_match
 
-  // FIXME: performance test
-  if (c > 1)
+bool string_match_reverse(char_t const* const string_1,
+                          char_t const* const string_2,
+                          size_t const        length)
+{
+  for (size_t i = 0; i < length; ++i)
   {
-    //return std::vector<Substring>();
-  } // if
+    if (string_1[-i] != string_2[i])
+    {
+      return false;
+    } // if
+  } // for
+  return true;
+} // string_match_reverse
+
+
+size_t prefix_match(char_t const* const reference,
+                    size_t const        reference_length,
+                    char_t const* const sample,
+                    size_t const        sample_length)
+{
+  size_t i = 0;
+  while (i < reference_length && i < sample_length && reference[i] == sample[i])
+  {
+    ++i;
+  } // while
+  return i;
+} // prefix_match
+
+size_t suffix_match(char_t const* const reference,
+                    size_t const        reference_length,
+                    char_t const* const sample,
+                    size_t const        sample_length,
+                    size_t const        prefix)
+
+{
+  size_t i = 0;
+  while (i < reference_length - prefix && i < sample_length - prefix && reference[reference_length - i - 1] == sample[sample_length - i - 1])
+  {
+    ++i;
+  } // while
+  return i;
+} // suffix_match
+
+char_t IUPAC_base_complement(char_t const base)
+{
+  switch (base)
+  {
+    case 'A':
+      return 'T';
+    case 'C':
+      return 'G';
+    case 'G':
+      return 'C';
+    case 'T':
+    case 'U':
+      return 'A';
+  } // switch
+  return base;
+} // IUPAC_base_complement
+
+char_t const* IUPAC_complement(char_t const* const string,
+                               size_t const        length)
+{
+  char_t* complement = new char_t[length];
+  for (size_t i = 0; i < length; ++i)
+  {
+    complement[i] = IUPAC_base_complement(string[i]);
+  } // for
+  return complement;
+} // IUPAC_complement
+
 
 #if defined(__debug__)
-  fprintf(stderr, "  k = 1\n");
+size_t Dprint_truncated(char_t const* const string,
+                        size_t const        start,
+                        size_t const        end,
+                        size_t const        length,
+                        FILE*               stream)
+{
+  if (end - start <= length - 3)
+  {
+    return fwrite(string + start, sizeof(char_t), end - start, stream);
+  } // if
+  return fwrite(string + start, sizeof(char_t), length / 2 - 1, stream) +
+         fputs("...", stream) +
+         fwrite(string + end - (length / 2) + 1, sizeof(char_t), length / 2 - 1, stream);
+} // Dprint_truncated
 #endif
-  return LCS_1(reference, complement, reference_start, reference_end, sample, sample_start, sample_end);
-} // LCS
 
-} // namespace
+
+} // mutalyzer
 
