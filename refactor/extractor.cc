@@ -66,6 +66,7 @@ size_t extract(std::vector<Variant> &variant,
   fputs("Construction IUPAC complement\n", stderr);
 #endif
 
+
   char_t const* complement = type == TYPE_DNA ? IUPAC_complement(reference, reference_length) : 0;
 
 
@@ -406,11 +407,13 @@ size_t LCS(std::vector<Substring> &substring,
 
   static size_t const THRESHOLD = 16000;
 
-  size_t const cut_off = (reference_length > THRESHOLD ? floor(log10(reference_length)) : 0) + 1;
+  double const a = reference_length >= sample_length ? reference_length : sample_length;
+  double const b = reference_length >= sample_length ? sample_length : reference_length;
+  size_t const cut_off = (reference_length > THRESHOLD ? ceil((1.0 - b / (a + 0.1 * b)) * b) / 8 : 0) + 1;
 
   size_t k = reference_length > sample_length ? sample_length / 4 : reference_length / 4;
 
-  while (k > cut_off)
+  while (k > 4 && k > cut_off)
   {
 
 
