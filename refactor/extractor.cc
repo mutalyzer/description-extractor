@@ -145,7 +145,7 @@ size_t extractor(std::vector<Variant> &variant,
 #endif
 
 
-      if (weight > weight_transposition && transposition.size() > 0)
+      if (weight > weight_transposition && transposition.size() > 0 && !(transposition.size() == 1 && transposition.front().type == SUBSTITUTION))
       {
         transposition.front().type |= TRANSPOSITION_OPEN;
         transposition.back().type |= TRANSPOSITION_CLOSE;
@@ -197,7 +197,7 @@ size_t extractor(std::vector<Variant> &variant,
 #endif
 
 
-    if (weight > weight_transposition && transposition.size() > 0)
+    if (weight > weight_transposition && transposition.size() > 0 && !(transposition.size() == 1 && transposition.front().type == SUBSTITUTION))
     {
       transposition.front().type |= TRANSPOSITION_OPEN;
       transposition.back().type |= TRANSPOSITION_CLOSE;
