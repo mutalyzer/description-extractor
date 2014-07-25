@@ -33,6 +33,9 @@
 namespace mutalyzer
 {
 
+static char const* const VERSION = "MUTALYZER DESCRIPTION EXTRACTOR V2.01a";
+
+
 typedef char char_t;
 
 
