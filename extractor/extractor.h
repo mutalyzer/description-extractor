@@ -9,7 +9,7 @@
 //   File:     extractor.h (implemented in extractor.cc)
 //   Author:   Jonathan K. Vis
 //   Revision: 2.01a
-//   Date:     2014/07/22
+//   Date:     2014/07/28
 // *******************************************************************
 // DESCRIPTION:
 //   This library can be used to generate HGVS variant descriptions as
@@ -33,7 +33,7 @@
 namespace mutalyzer
 {
 
-static char const* const VERSION = "MUTALYZER DESCRIPTION EXTRACTOR V2.01a";
+static char const* const VERSION = "Description Extractor Rev 2.01a (2014/07/28)";
 
 
 typedef char char_t;
