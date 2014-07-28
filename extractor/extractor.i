@@ -9,7 +9,7 @@
 //   File:     extractor.i (SWIG interface file)
 //   Author:   Jonathan K. Vis
 //   Revision: 2.01a
-//   Date:     2014/07/22
+//   Date:     2014/07/28
 // *******************************************************************
 // DESCRIPTION:
 //   Defines the SWIG interface for the Extractor library for use in
@@ -30,6 +30,8 @@ namespace std
 
 namespace mutalyzer
 {
+
+static char const* const VERSION = "Description Extractor Rev 2.01a (2014/07/28)";
 
 typedef char char_t;
 

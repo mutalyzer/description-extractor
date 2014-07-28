@@ -9,7 +9,7 @@
 //   File:     extractor.cc (depends on extractor.h)
 //   Author:   Jonathan K. Vis
 //   Revision: 2.01a
-//   Date:     2014/07/22
+//   Date:     2014/07/28
 // *******************************************************************
 // DESCRIPTION:
 //   This library can be used to generete HGVS variant descriptions as
@@ -210,7 +210,19 @@ size_t extractor(std::vector<Variant> &variant,
   } // if
 
 
-  std::vector<Substring>::iterator const lcs = substring.begin();
+  size_t diff = (reference_end - reference_start) + (sample_end - sample_start);
+  std::vector<Substring>::iterator lcs = substring.begin();
+  for (std::vector<Substring>::iterator it = substring.begin(); it != substring.end(); ++it)
+  {
+    size_t const prefix_diff = abs((it->reference_index - reference_start) - (it->sample_index - sample_start));
+    size_t const suffix_diff = abs((reference_end - (it->reference_index + it->length)) - (sample_end - (it->sample_index + it->length)));
+    if (prefix_diff + suffix_diff < diff)
+    {
+      diff = prefix_diff + suffix_diff;
+      lcs = it;
+    } // if
+  } // for
+
   if (lcs->reverse_complement)
   {
     weight = 2 * weight_position + WEIGHT_SEPARATOR + WEIGHT_INVERSION;
