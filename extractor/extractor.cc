@@ -9,7 +9,7 @@
 //   File:     extractor.cc (depends on extractor.h)
 //   Author:   Jonathan K. Vis
 //   Revision: 2.01a
-//   Date:     2014/07/28
+//   Date:     2014/07/29
 // *******************************************************************
 // DESCRIPTION:
 //   This library can be used to generete HGVS variant descriptions as
@@ -21,10 +21,16 @@
 namespace mutalyzer
 {
 
+// This global variable is a dirty trick used to always have access to
+// the complete reference strings even when deep into the recursion.
+// This seems necessary to compute transpositions.
 size_t global_reference_length = 0;
 
-size_t weight_position = 0;
+// The (average) description length of a position. Depends on the
+// reference string length: ceil(log10(|reference| / 4)).
+size_t weight_position = 1;
 
+// Only used to interface to Python: calls the C++ extract function.
 std::vector<Variant> extract(char_t const* const reference,
                              size_t const        reference_length,
                              char_t const* const sample,
@@ -36,6 +42,8 @@ std::vector<Variant> extract(char_t const* const reference,
   return variant;
 } // extract
 
+// The main library function. Extract all variants (regions of change)
+// from the given strings.
 size_t extract(std::vector<Variant> &variant,
                char_t const* const   reference,
                size_t const          reference_length,
@@ -43,9 +51,11 @@ size_t extract(std::vector<Variant> &variant,
                size_t const          sample_length,
                int const             type)
 {
+  // The global variables are set for this extraction run.
   global_reference_length = reference_length;
   weight_position = ceil(log10(reference_length / 4));
 
+  // Common prefix and suffix snooping.
   size_t const prefix = prefix_match(reference, reference_length, sample, sample_length);
   size_t const suffix = suffix_match(reference, reference_length, sample, sample_length, prefix);
 
@@ -67,6 +77,8 @@ size_t extract(std::vector<Variant> &variant,
 #endif
 
 
+  // Do NOT construct a complement string for protein strings. All
+  // other string types default to protein strings.
   char_t const* complement = type == TYPE_DNA ? IUPAC_complement(reference, reference_length) : 0;
 
 
@@ -83,6 +95,7 @@ size_t extract(std::vector<Variant> &variant,
     variant.push_back(Variant(0, prefix, 0, prefix));
   } // if
 
+  // The actual extraction process starts here.
   size_t const weight = extractor(variant, reference, complement, prefix, reference_length - suffix, sample, prefix, sample_length - suffix);
 
   if (suffix > 0)
@@ -90,11 +103,21 @@ size_t extract(std::vector<Variant> &variant,
     variant.push_back(Variant(reference_length - suffix, reference_length, sample_length - suffix, sample_length));
   } // if
 
+  // Do NOT forget to clean up the complement string.
   delete[] complement;
 
   return weight;
 } // extract
 
+// This is the recursive extractor function. It works as follows:
+// First, determine the ``best fitting'' longest common substring
+// (LCS) (possibly as a reverse complement) and discard it from the
+// solution. Then apply the same function on the remaining prefixes
+// and suffixes. If there is no LCS it is a variant (region of
+// change), i.e., a deletion/insertion.
+// With regard to the reverse complement: the complement string is, as
+// its name suggests, just the complement (DNA/RNA) of the reference
+// string but it is NOT reversed.
 size_t extractor(std::vector<Variant> &variant,
                  char_t const* const   reference,
                  char_t const* const   complement,
@@ -106,6 +129,8 @@ size_t extractor(std::vector<Variant> &variant,
 {
   size_t const reference_length = reference_end - reference_start;
   size_t const sample_length = sample_end - sample_start;
+
+  // Assume this is a deletion/insertion.
   size_t const weight_trivial = weight_position + WEIGHT_DELETION_INSERTION + WEIGHT_BASE * sample_length + (reference_length != 1 ? weight_position + WEIGHT_SEPARATOR : 0);
   size_t weight = 0;
 
@@ -125,13 +150,20 @@ size_t extractor(std::vector<Variant> &variant,
 #endif
 
 
-  // insertions
+  // First some base cases to end the recursion.
+  // No more reference string.
   if (reference_length <= 0)
   {
+    // But some of the sample string is remaining: this is an
+    // insertion or transposition.
     if (sample_length > 0)
     {
       weight = 2 * weight_position + WEIGHT_SEPARATOR + WEIGHT_INSERTION + WEIGHT_BASE * sample_length;
 
+      // First, we check if we can match the inserted substring
+      // somewhere in the complete reference string. This will
+      // indicate a possible transposition. Otherwise it is a regular
+      // insertion.
       std::vector<Variant> transposition;
       size_t const weight_transposition = extractor_transposition(transposition, reference, complement, reference_start, reference_end, sample, sample_start, sample_end, weight) + 2 * weight_position + 3 * WEIGHT_SEPARATOR + WEIGHT_INSERTION;
 
@@ -145,6 +177,7 @@ size_t extractor(std::vector<Variant> &variant,
 #endif
 
 
+      // Add transpositions if any.
       if (weight > weight_transposition && transposition.size() > 0 && !(transposition.size() == 1 && transposition.front().type == SUBSTITUTION))
       {
         transposition.front().type |= TRANSPOSITION_OPEN;
@@ -153,13 +186,14 @@ size_t extractor(std::vector<Variant> &variant,
         return weight_transposition;
       } // if
 
-      // simple insertion
+      // This is an actual insertion.
       variant.push_back(Variant(reference_start, reference_end, sample_start, sample_end, SUBSTITUTION, weight));
     } // if
     return weight;
   } // if
 
-  // deletions
+  // Obviously there is a piece of reference string left, but no more
+  // sample string: this is a deletion.
   if (sample_length <= 0)
   {
     weight = weight_position + WEIGHT_DELETION + (reference_length > 1 ? weight_position + WEIGHT_SEPARATOR : 0);
@@ -167,7 +201,7 @@ size_t extractor(std::vector<Variant> &variant,
     return weight;
   } // if
 
-  // simple substitutions
+  // Single-nucleotide polymorphism (SNP): a special case for HGVS.
   if (reference_length == 1 && sample_length == 1)
   {
     weight = weight_position + 2 * WEIGHT_BASE + WEIGHT_SUBSTITUTION;
@@ -176,14 +210,20 @@ size_t extractor(std::vector<Variant> &variant,
   } // if
 
 
+  // Calculate the LCS (possibly in reverse complement) of the two
+  // strings.
   std::vector<Substring> substring;
   size_t const length = LCS(substring, reference, complement, reference_start, reference_end, sample, sample_start, sample_end);
 
-  // deletion/insertion
+
+  // No LCS found: this is a transposition or a deletion/insertion.
   if (length <= 0 || substring.size() <= 0)
   {
     weight = weight_trivial;
 
+    // First, we check if we can match the inserted substring
+    // somewhere in the complete reference string. This will
+    // indicate a possible transposition.
     std::vector<Variant> transposition;
     size_t const weight_transposition = extractor_transposition(transposition, reference, complement, reference_start, reference_end, sample, sample_start, sample_end, weight)  + 2 * weight_position + 3 * WEIGHT_SEPARATOR + WEIGHT_INSERTION;
 
@@ -197,6 +237,7 @@ size_t extractor(std::vector<Variant> &variant,
 #endif
 
 
+    // Add transpositions if any.
     if (weight > weight_transposition && transposition.size() > 0 && !(transposition.size() == 1 && transposition.front().type == SUBSTITUTION))
     {
       transposition.front().type |= TRANSPOSITION_OPEN;
@@ -205,11 +246,14 @@ size_t extractor(std::vector<Variant> &variant,
       return weight_transposition;
     } // if
 
+    // This is an actual deletion/insertion.
     variant.push_back(Variant(reference_start, reference_end, sample_start, sample_end, SUBSTITUTION, weight_trivial));
     return weight_trivial;
   } // if
 
 
+  // Pick the ``best fitting'' LCS, i.e., the remaining prefixes and
+  // suffixes are of the same length.
   size_t diff = (reference_end - reference_start) + (sample_end - sample_start);
   std::vector<Substring>::iterator lcs = substring.begin();
   for (std::vector<Substring>::iterator it = substring.begin(); it != substring.end(); ++it)
@@ -218,11 +262,14 @@ size_t extractor(std::vector<Variant> &variant,
     size_t const suffix_diff = abs((reference_end - (it->reference_index + it->length)) - (sample_end - (it->sample_index + it->length)));
     if (prefix_diff + suffix_diff < diff)
     {
+      // A better fitting LCS.
       diff = prefix_diff + suffix_diff;
       lcs = it;
     } // if
   } // for
 
+
+  // Add some weight for reverse complement LCS.
   if (lcs->reverse_complement)
   {
     weight = 2 * weight_position + WEIGHT_SEPARATOR + WEIGHT_INVERSION;
@@ -254,18 +301,22 @@ size_t extractor(std::vector<Variant> &variant,
 #endif
 
 
+  // Recursively apply this function to the prefixes of the strings.
   std::vector<Variant> prefix;
   weight += extractor(prefix, reference, complement, reference_start, lcs->reference_index, sample, sample_start, lcs->sample_index);
 
+  // Stop if the weight of the variant exeeds the trivial weight.
   if (weight > weight_trivial)
   {
     variant.push_back(Variant(reference_start, reference_end, sample_start, sample_end, SUBSTITUTION, weight_trivial));
     return weight_trivial;
   } // if
 
+  // Recursively apply this function to the suffixes of the strings.
   std::vector<Variant> suffix;
   weight += extractor(suffix, reference, complement, lcs->reference_index + length, reference_end, sample, lcs->sample_index + length, sample_end);
 
+  // Stop if the weight of the variant exeeds the trivial weight.
   if (weight > weight_trivial)
   {
     variant.push_back(Variant(reference_start, reference_end, sample_start, sample_end, SUBSTITUTION, weight_trivial));
@@ -273,6 +324,7 @@ size_t extractor(std::vector<Variant> &variant,
   } // if
 
 
+  // Add all variants (in order) to the variant vector.
   variant.insert(variant.end(), prefix.begin(), prefix.end());
 
   if (!lcs->reverse_complement)
@@ -289,6 +341,10 @@ size_t extractor(std::vector<Variant> &variant,
   return weight;
 } // extractor
 
+// This function tries to extract transpositions from inserted
+// sequences (insertions or deletion/insertions). Again we use a
+// recursive method: extract the LCS and apply to the remaining prefix
+// and suffix.
 size_t extractor_transposition(std::vector<Variant> &variant,
                                char_t const* const   reference,
                                char_t const* const   complement,
@@ -319,14 +375,20 @@ size_t extractor_transposition(std::vector<Variant> &variant,
 #endif
 
 
+  // Only consider large enough inserted regions (>> 1), based on
+  // (average) description length of a position.
   if (sample_length <= 2 * weight_position)
   {
     return sample_length * WEIGHT_BASE;
   } // if
 
+
+  // Extract the LCS (from the whole reference string).
   std::vector<Substring> substring;
   size_t const length = LCS(substring, reference, complement, 0, global_reference_length, sample, sample_start, sample_end);
 
+
+  // No LCS found: this is an deletion/insertion.
   if (length <= 0 || substring.size() <= 0)
   {
     weight = sample_length * WEIGHT_BASE;
@@ -334,8 +396,10 @@ size_t extractor_transposition(std::vector<Variant> &variant,
     return weight;
   } // if
 
+  // We do NOT have to bother about a ``best fitting'' LCS here.
   std::vector<Substring>::iterator const lcs = substring.begin();
 
+  // Update the weight of the transposition.
   weight += 2 * weight_position + WEIGHT_SEPARATOR;
   if (lcs->reverse_complement)
   {
@@ -368,9 +432,11 @@ size_t extractor_transposition(std::vector<Variant> &variant,
 #endif
 
 
+  // Recursively apply this function to the prefixes of the strings
   std::vector<Variant> prefix;
   weight += extractor_transposition(prefix, reference, complement, reference_start, reference_end, sample, sample_start, lcs->sample_index, weight_trivial - weight);
 
+  // Stop if the weight of the variant exeeds the trivial weight.
   if (weight > weight_trivial)
   {
     weight = sample_length * WEIGHT_BASE;
@@ -378,9 +444,11 @@ size_t extractor_transposition(std::vector<Variant> &variant,
     return weight;
   } // if
 
+  // Recursively apply this function to the suffixes of the strings.
   std::vector<Variant> suffix;
   weight += extractor_transposition(suffix, reference, complement, reference_start, reference_end, sample, lcs->sample_index + length, sample_end, weight_trivial - weight);
 
+  // Stop if the weight of the variant exeeds the trivial weight.
   if (weight > weight_trivial)
   {
     weight = sample_length * WEIGHT_BASE;
@@ -388,6 +456,8 @@ size_t extractor_transposition(std::vector<Variant> &variant,
     return weight;
   } // if
 
+
+  // Add all variants (in order) to the variant vector.
   variant.insert(variant.end(), prefix.begin(), prefix.end());
 
   if (!lcs->reverse_complement)
@@ -401,10 +471,15 @@ size_t extractor_transposition(std::vector<Variant> &variant,
 
   variant.insert(variant.end(), suffix.begin(), suffix.end());
 
+
+  // Separators within transpositions are counted.
   return weight + variant.size() - 1;
 } // extractor_transposition
 
 
+// This function calculates the LCS using the LCS_k function by
+// choosing an initial k and reducing it if necessary until the
+// strings represent random strings modeled by a threshold value.
 size_t LCS(std::vector<Substring> &substring,
            char_t const* const     reference,
            char_t const* const     complement,
@@ -417,14 +492,19 @@ size_t LCS(std::vector<Substring> &substring,
   size_t const reference_length = reference_end - reference_start;
   size_t const sample_length = sample_end - sample_start;
 
+  // Always fully explore strings smaller than this threshold.
   static size_t const THRESHOLD = 16000;
 
+  // A dynamic cut-off for unevenly matched string lengths.
   double const a = reference_length >= sample_length ? reference_length : sample_length;
   double const b = reference_length >= sample_length ? sample_length : reference_length;
   size_t const cut_off = (reference_length > THRESHOLD ? ceil((1.0 - b / (a + 0.1 * b)) * b) / 8 : 0) + 1;
 
+  // The initial k.
   size_t k = reference_length > sample_length ? sample_length / 4 : reference_length / 4;
 
+
+  // Reduce k until the cut-off is reached.
   while (k > 4 && k > cut_off)
   {
 
@@ -434,8 +514,8 @@ size_t LCS(std::vector<Substring> &substring,
 #endif
 
 
+    // Try to find a LCS with k.
     substring.clear();
-
     size_t const length = LCS_k(substring, reference, complement, reference_start, reference_end, sample, sample_start, sample_end, k);
 
     // A LCS of sufficient length has been found.
@@ -446,6 +526,7 @@ size_t LCS(std::vector<Substring> &substring,
     k /= 3;
   } // while
 
+  // Cut-off: no LCS found.
   if (cut_off > 1)
   {
 
@@ -465,9 +546,12 @@ size_t LCS(std::vector<Substring> &substring,
 #endif
 
 
+  // As a last resort try running the classical algorithm.
   return LCS_1(substring, reference, complement, reference_start, reference_end, sample, sample_start, sample_end);
 } // LCS
 
+// Calculate the LCS in the well-known way using dynamic programming.
+// NOT suitable for large strings.
 size_t LCS_1(std::vector<Substring> &substring,
              char_t const* const     reference,
              char_t const* const     complement,
@@ -507,6 +591,7 @@ size_t LCS_1(std::vector<Substring> &substring,
           LCS_line[i % 2][j] = LCS_line[(i + 1) % 2][j - 1] + 1;
         } // else
 
+        // Check for a new maximal length.
         if (LCS_line[i % 2][j] >= length)
         {
           if (reverse_complement || LCS_line[i % 2][j] > length)
@@ -552,6 +637,8 @@ size_t LCS_1(std::vector<Substring> &substring,
         LCS_line_rc[i % 2][j] = 0;
       } // else
 
+
+      // We can stop if the whole sample string is part of the LCS.
       if (!reverse_complement && length >= sample_length)
       {
         break;
@@ -560,12 +647,17 @@ size_t LCS_1(std::vector<Substring> &substring,
     } // for
   } // for
 
+  // Cleaning up.
   delete[] &LCS_line;
   delete[] &LCS_line_rc;
 
   return length;
 } // LCS_1
 
+// Calculate the LCS using overlapping and non-overlapping k-mers.
+// This function should be suitable for large (similar) strings.
+// Be careful: if the resulting LCS is of length <= 2k it might not be
+// the actual LCS. Remedy: try again with a reduced k.
 size_t LCS_k(std::vector<Substring> &substring,
              char_t const* const     reference,
              char_t const* const     complement,
@@ -642,6 +734,9 @@ size_t LCS_k(std::vector<Substring> &substring,
         LCS_line[i % (k + 1)][j] = 0;
       } // else
 
+      // If applicable check for a LCS in reverse complement space.
+      // The same code is used as before but the complement string is
+      // travesed backwards (towards the start).
       if (complement != 0 && string_match_reverse(complement + reference_end - j * k - 1, sample + sample_start + i, k))
       {
         if (i < k || j == 0)
@@ -687,7 +782,10 @@ size_t LCS_k(std::vector<Substring> &substring,
   } // for
 
 
-  // extending LCS
+  // Now we need to do some extensions of the found LCSs to find their
+  // exact lengths. We extend up to k positions to the left (towards
+  // the start of the strings) and to the right (towards the end of
+  // the string).
   for (std::vector<Substring>::iterator it = substring.begin(); it != substring.end(); ++it)
   {
     if (!it->reverse_complement)
@@ -695,7 +793,7 @@ size_t LCS_k(std::vector<Substring> &substring,
       it->reference_index = reference_start + (it->reference_index - it->length + 1) * k;
       it->sample_index = sample_start + it->sample_index - (it->length - 1) * k;
       it->length *= k;
-      // extending to the right
+      // Extending to the right.
       {
         size_t i = 0;
         while (i <= k && it->reference_index + it->length + i < reference_end && it->sample_index + it->length + i < sample_end && reference[it->reference_index + it->length + i] == sample[it->sample_index + it->length + i])
@@ -704,7 +802,7 @@ size_t LCS_k(std::vector<Substring> &substring,
         } // while
         it->length += i;
       }
-      // extending to the left
+      // Extending to the left.
       {
         size_t i = 0;
         while (i <= k && it->reference_index - i - 1 >= reference_start && it->sample_index - i - 1 >= sample_start && reference[it->reference_index - i - 1] == sample[it->sample_index - i - 1])
@@ -721,7 +819,7 @@ size_t LCS_k(std::vector<Substring> &substring,
       it->reference_index = reference_end - (it->reference_index + 1) * k;
       it->sample_index = sample_start + it->sample_index - (it->length - 1) * k;
       it->length *= k;
-      // extending to the right (sample orientation)
+      // Extending to the right (sample orientation).
       {
         size_t i = 0;
         while (i <= k && it->reference_index - i - 1 >= reference_start && it->sample_index + it->length + i < sample_end && complement[it->reference_index - i - 1] == sample[it->sample_index + it->length + i])
@@ -731,7 +829,7 @@ size_t LCS_k(std::vector<Substring> &substring,
         it->reference_index -= i;
         it->length += i;
       }
-      // extending to the left (sample orientation)
+      // Extending to the left (sample orientation).
       {
         size_t i = 0;
         while (i <= k && it->reference_index + it->length + i < reference_end && it->sample_index - i - 1 >= sample_start && complement[it->reference_index + it->length + i] == sample[it->sample_index - i - 1])
@@ -755,6 +853,7 @@ size_t LCS_k(std::vector<Substring> &substring,
   } // for
 
 
+  // Remove all sub-optimal LCSs from the solution.
   for (std::vector<Substring>::iterator it = substring.begin(); it != substring.end(); ++it)
   {
     if (it->length < length || reverse_complement != it->reverse_complement)
@@ -765,13 +864,15 @@ size_t LCS_k(std::vector<Substring> &substring,
     } // if
   } // for
 
+  // Cleaning up.
   delete[] &LCS_line;
   delete[] &LCS_line_rc;
 
   return length;
 } // LCS_k
 
-
+// This function is more or less equivalent to C's strncmp, but it
+// returns true iff both strings are the same.
 bool string_match(char_t const* const string_1,
                   char_t const* const string_2,
                   size_t const        length)
@@ -786,6 +887,10 @@ bool string_match(char_t const* const string_1,
   return true;
 } // string_match
 
+// This function is very similar to C's strncmp, but it traverses
+// string_1 from end to start while traversing string_2 from start to
+// end (useful for the reverse complement in DNA/RNA), and it returns
+// true iff both strings are the same in their respective directions.
 bool string_match_reverse(char_t const* const string_1,
                           char_t const* const string_2,
                           size_t const        length)
@@ -800,13 +905,18 @@ bool string_match_reverse(char_t const* const string_1,
   return true;
 } // string_match_reverse
 
-
+// This function calculates the length (in characters) of the common
+// prefix between two strings. The result of this function is also
+// used in the suffix_match function.
 size_t prefix_match(char_t const* const reference,
                     size_t const        reference_length,
                     char_t const* const sample,
                     size_t const        sample_length)
 {
   size_t i = 0;
+
+  // Traverse both strings towards the end as long as their characters
+  // are equal. Do NOT exceed the length of the strings.
   while (i < reference_length && i < sample_length && reference[i] == sample[i])
   {
     ++i;
@@ -814,6 +924,8 @@ size_t prefix_match(char_t const* const reference,
   return i;
 } // prefix_match
 
+// This function calculates the length (in characters) of the common
+// suffix between two strings. It needs the calculated common prefix.
 size_t suffix_match(char_t const* const reference,
                     size_t const        reference_length,
                     char_t const* const sample,
@@ -822,6 +934,10 @@ size_t suffix_match(char_t const* const reference,
 
 {
   size_t i = 0;
+
+  // Start at the end of both strings and traverse towards the start
+  // as long as their characters are equal. Do not exceed the length
+  // of the strings.
   while (i < reference_length - prefix && i < sample_length - prefix && reference[reference_length - i - 1] == sample[sample_length - i - 1])
   {
     ++i;
@@ -829,6 +945,8 @@ size_t suffix_match(char_t const* const reference,
   return i;
 } // suffix_match
 
+// This function converts a IUPAC Nucleotide Acid Notation into its
+// complement.
 char_t IUPAC_base_complement(char_t const base)
 {
   switch (base)
@@ -846,6 +964,9 @@ char_t IUPAC_base_complement(char_t const base)
   return base;
 } // IUPAC_base_complement
 
+// This function converts a string in IUPAC Nucleotide Acid Notation
+// into its complement. A new string is allocated, so deletion is
+// the responsibility of the caller.
 char_t const* IUPAC_complement(char_t const* const string,
                                size_t const        length)
 {
@@ -859,6 +980,8 @@ char_t const* IUPAC_complement(char_t const* const string,
 
 
 #if defined(__debug__)
+// Debug function for printing large strings in truncated form: a
+// prefix of a certain length ... a suffix of the same length.
 size_t Dprint_truncated(char_t const* const string,
                         size_t const        start,
                         size_t const        end,
