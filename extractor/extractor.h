@@ -34,7 +34,7 @@ namespace mutalyzer
 {
 
 // Version string for run-time identification.
-static char const* const VERSION = "Description Extractor Rev 2.01a (2014/07/29)";
+static char const* const VERSION = "2.0.2";
 
 
 // The character type used for all strings. For now it should be just
@@ -65,11 +65,11 @@ static int const TYPE_PROTEIN = 1; // Protein or other strings
 // IDENTITY | TRANSPOSITION_OPEN for describing a real transposition.
 // Note that some combinations do NOT make sense, e.g.,
 // SUBSTITUION | REVERSE_COMPLEMENT.
-static int const IDENTITY            = 0;
-static int const REVERSE_COMPLEMENT  = 1;
-static int const SUBSTITUTION        = 2;
-static int const TRANSPOSITION_OPEN  = 4;
-static int const TRANSPOSITION_CLOSE = 8;
+static int const IDENTITY            = 0x01;
+static int const REVERSE_COMPLEMENT  = 0x02;
+static int const SUBSTITUTION        = 0x04;
+static int const TRANSPOSITION_OPEN  = 0x08;
+static int const TRANSPOSITION_CLOSE = 0x10;
 
 
 // These constants are used in calculating the weight of the generated
