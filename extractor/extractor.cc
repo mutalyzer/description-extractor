@@ -8,7 +8,7 @@
 // FILE INFORMATION:
 //   File:     extractor.cc (depends on extractor.h)
 //   Author:   Jonathan K. Vis
-//   Revision: 2.0.3
+//   Revision: 2.0.4
 //   Date:     2014/07/31
 // *******************************************************************
 // DESCRIPTION:
@@ -445,7 +445,7 @@ size_t extractor_transposition(std::vector<Variant> &variant,
 
   // Recursively apply this function to the prefixes of the strings
   std::vector<Variant> prefix;
-  weight += extractor_transposition(prefix, reference, complement, reference_start, reference_end, sample, sample_start, lcs->sample_index, weight_trivial - weight);
+  weight += extractor_transposition(prefix, reference, complement, reference_start, reference_end, sample, sample_start, lcs->sample_index, lcs->sample_index - sample_start);
 
   // Stop if the weight of the variant exeeds the trivial weight.
   if (weight > weight_trivial)
@@ -457,7 +457,7 @@ size_t extractor_transposition(std::vector<Variant> &variant,
 
   // Recursively apply this function to the suffixes of the strings.
   std::vector<Variant> suffix;
-  weight += extractor_transposition(suffix, reference, complement, reference_start, reference_end, sample, lcs->sample_index + length, sample_end, weight_trivial - weight);
+  weight += extractor_transposition(suffix, reference, complement, reference_start, reference_end, sample, lcs->sample_index + length, sample_end, sample_end - (lcs->sample_index + length));
 
   // Stop if the weight of the variant exeeds the trivial weight.
   if (weight > weight_trivial)
