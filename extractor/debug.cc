@@ -8,8 +8,8 @@
 // FILE INFORMATION:
 //   File:     debug.cc
 //   Author:   Jonathan K. Vis
-//   Revision: 2.01a
-//   Date:     2014/07/29
+//   Revision: 2.0.3
+//   Date:     2014/07/31
 // *******************************************************************
 // DESCRIPTION:
 //   This source can be used to debug the Extractor library within

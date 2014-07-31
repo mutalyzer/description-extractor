@@ -8,8 +8,8 @@
 ## FILE INFORMATION:
 ##   File:     Makefile
 ##   Author:   Jonathan K. Vis
-##   Revision: 2.01a
-##   Date:     2014/07/22
+##   Revision: 2.0.3
+##   Date:     2014/07/31
 ## *******************************************************************
 ## DESCRIPTION:
 ##  Build the Extractor library for python.

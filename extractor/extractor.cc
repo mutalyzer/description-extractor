@@ -8,8 +8,8 @@
 // FILE INFORMATION:
 //   File:     extractor.cc (depends on extractor.h)
 //   Author:   Jonathan K. Vis
-//   Revision: 2.01a
-//   Date:     2014/07/29
+//   Revision: 2.0.3
+//   Date:     2014/07/31
 // *******************************************************************
 // DESCRIPTION:
 //   This library can be used to generete HGVS variant descriptions as
@@ -375,11 +375,22 @@ size_t extractor_transposition(std::vector<Variant> &variant,
 #endif
 
 
+  // End transposition extraction if no more of the sample string
+  // remains.
+  if (sample_length <= 0)
+  {
+    return weight;
+  } // if
+
+
   // Only consider large enough inserted regions (>> 1), based on
-  // (average) description length of a position.
+  // (average) description length of a position, otherwise it is just
+  // a deletion/insertion.
   if (sample_length <= 2 * weight_position)
   {
-    return sample_length * WEIGHT_BASE;
+    weight = sample_length * WEIGHT_BASE;
+    variant.push_back(Variant(reference_start, reference_end, sample_start, sample_end, SUBSTITUTION, weight));
+    return weight;
   } // if
 
 
@@ -388,7 +399,7 @@ size_t extractor_transposition(std::vector<Variant> &variant,
   size_t const length = LCS(substring, reference, complement, 0, global_reference_length, sample, sample_start, sample_end);
 
 
-  // No LCS found: this is an deletion/insertion.
+  // No LCS found: this is a deletion/insertion.
   if (length <= 0 || substring.size() <= 0)
   {
     weight = sample_length * WEIGHT_BASE;
