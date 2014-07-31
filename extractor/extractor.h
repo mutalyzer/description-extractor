@@ -37,7 +37,7 @@ namespace mutalyzer
 static char const* const VERSION = "Description Extractor Rev 2.01a (2014/07/29)";
 
 
-// The character type used for all strings. For now it should be just
+// The character type used for all strings. For now it should just be
 // a char.
 typedef char char_t;
 
