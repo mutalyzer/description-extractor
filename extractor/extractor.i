@@ -21,12 +21,12 @@
 %module extractor
 %{
 #include "extractor.h"
-%} // %module
+%} // extractor
 
 namespace std
 {
 %template(VariantVector) vector<mutalyzer::Variant>;
-} // namespace
+} // std
 
 namespace mutalyzer
 {
@@ -48,11 +48,10 @@ static int const TYPE_PROTEIN = 1;
 // These constants can be used to deterimine the type of variant.
 // Substitution covers most: deletions, insertions, substitutions, and
 // insertion/deletions. Indentity is used to describe the unchanged
-// (matched) regions. The transposition constants are coded as
-// bitfields and should be appropriately combined, e.g.,
-// IDENTITY | TRANSPOSITION_OPEN for describing a real transposition.
-// Note that some combinations do NOT make sense, e.g.,
-// SUBSTITUION | REVERSE_COMPLEMENT.
+// (matched) regions. The constants are coded as bitfields and should
+// be appropriately combined, e.g., IDENTITY | TRANSPOSITION_OPEN for
+// describing a real transposition. Note that some combinations do NOT
+// make sense, e.g., SUBSTITUION | REVERSE_COMPLEMENT.
 static int const IDENTITY            = 0x01;
 static int const REVERSE_COMPLEMENT  = 0x02;
 static int const SUBSTITUTION        = 0x04;
@@ -110,7 +109,7 @@ std::vector<Variant> extract(char_t const* const reference,
                              size_t const        sample_length,
                              int const           type = TYPE_DNA);
 
-} // namespace
+} // mutalyzer
 
 #include "extractor.h"
 
