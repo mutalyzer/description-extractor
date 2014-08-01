@@ -8,7 +8,7 @@
 // FILE INFORMATION:
 //   File:     extractor.i (SWIG interface file)
 //   Author:   Jonathan K. Vis
-//   Revision: 2.0.4
+//   Revision: 2.1.0
 //   Date:     2014/07/31
 // *******************************************************************
 // DESCRIPTION:
@@ -32,7 +32,7 @@ namespace mutalyzer
 {
 
 // Version string for run-time identification.
-static char const* const VERSION = "2.0.4";
+static char const* const VERSION = "2.1.0";
 
 // The character type used for all strings. For now it should just be
 // a char.

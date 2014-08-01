@@ -8,7 +8,7 @@
 // FILE INFORMATION:
 //   File:     extractor.cc (depends on extractor.h)
 //   Author:   Jonathan K. Vis
-//   Revision: 2.0.5
+//   Revision: 2.1.0
 //   Date:     2014/08/01
 // *******************************************************************
 // DESCRIPTION:

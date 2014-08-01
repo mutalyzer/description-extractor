@@ -8,7 +8,7 @@
 // FILE INFORMATION:
 //   File:     extractor.h (implemented in extractor.cc)
 //   Author:   Jonathan K. Vis
-//   Revision: 2.0.5
+//   Revision: 2.1.0
 //   Date:     2014/08/01
 // *******************************************************************
 // DESCRIPTION:
@@ -34,7 +34,7 @@ namespace mutalyzer
 {
 
 // Version string for run-time identification.
-static char const* const VERSION = "2.0.5";
+static char const* const VERSION = "2.1.0";
 
 
 // The character type used for all strings. For now it should just be
