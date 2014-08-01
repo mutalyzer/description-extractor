@@ -8,8 +8,8 @@
 // FILE INFORMATION:
 //   File:     extractor.cc (depends on extractor.h)
 //   Author:   Jonathan K. Vis
-//   Revision: 2.0.4
-//   Date:     2014/07/31
+//   Revision: 2.0.5
+//   Date:     2014/08/01
 // *******************************************************************
 // DESCRIPTION:
 //   This library can be used to generete HGVS variant descriptions as
@@ -225,7 +225,7 @@ size_t extractor(std::vector<Variant> &variant,
     // somewhere in the complete reference string. This will
     // indicate a possible transposition.
     std::vector<Variant> transposition;
-    size_t const weight_transposition = extractor_transposition(transposition, reference, complement, reference_start, reference_end, sample, sample_start, sample_end, weight)  + 2 * weight_position + 3 * WEIGHT_SEPARATOR + WEIGHT_INSERTION;
+    size_t const weight_transposition = extractor_transposition(transposition, reference, complement, reference_start, reference_end, sample, sample_start, sample_end, weight)  + 2 * weight_position + 3 * WEIGHT_SEPARATOR + WEIGHT_DELETION_INSERTION;
 
 
 #if defined(__debug__)
@@ -308,6 +308,34 @@ size_t extractor(std::vector<Variant> &variant,
   // Stop if the weight of the variant exeeds the trivial weight.
   if (weight > weight_trivial)
   {
+    weight = weight_trivial;
+
+    // First, we check if we can match the inserted substring
+    // somewhere in the complete reference string. This will
+    // indicate a possible transposition.
+    std::vector<Variant> transposition;
+    size_t const weight_transposition = extractor_transposition(transposition, reference, complement, reference_start, reference_end, sample, sample_start, sample_end, weight)  + 2 * weight_position + 3 * WEIGHT_SEPARATOR + WEIGHT_DELETION_INSERTION;
+
+
+#if defined(__debug__)
+  fprintf(stderr, "Transpositions: %ld (trivial: %ld)\n", weight_transposition, weight);
+  for (std::vector<Variant>::iterator it = transposition.begin(); it != transposition.end(); ++it)
+  {
+    fprintf(stderr, "  %ld--%ld, %ld--%ld, %d, %ld, %ld--%ld\n", it->reference_start, it->reference_end, it->sample_start, it->sample_end, it->type, it->weight, it->transposition_start, it->transposition_end);
+  } // for
+#endif
+
+
+    // Add transpositions if any.
+    if (weight > weight_transposition && transposition.size() > 0 && !(transposition.size() == 1 && transposition.front().type == SUBSTITUTION))
+    {
+      transposition.front().type |= TRANSPOSITION_OPEN;
+      transposition.back().type |= TRANSPOSITION_CLOSE;
+      variant.insert(variant.end(), transposition.begin(), transposition.end());
+      return weight_transposition;
+    } // if
+
+    // This is an actual deletion/insertion.
     variant.push_back(Variant(reference_start, reference_end, sample_start, sample_end, SUBSTITUTION, weight_trivial));
     return weight_trivial;
   } // if
@@ -319,6 +347,34 @@ size_t extractor(std::vector<Variant> &variant,
   // Stop if the weight of the variant exeeds the trivial weight.
   if (weight > weight_trivial)
   {
+    weight = weight_trivial;
+
+    // First, we check if we can match the inserted substring
+    // somewhere in the complete reference string. This will
+    // indicate a possible transposition.
+    std::vector<Variant> transposition;
+    size_t const weight_transposition = extractor_transposition(transposition, reference, complement, reference_start, reference_end, sample, sample_start, sample_end, weight)  + 2 * weight_position + 3 * WEIGHT_SEPARATOR + WEIGHT_DELETION_INSERTION;
+
+
+#if defined(__debug__)
+  fprintf(stderr, "Transpositions: %ld (trivial: %ld)\n", weight_transposition, weight);
+  for (std::vector<Variant>::iterator it = transposition.begin(); it != transposition.end(); ++it)
+  {
+    fprintf(stderr, "  %ld--%ld, %ld--%ld, %d, %ld, %ld--%ld\n", it->reference_start, it->reference_end, it->sample_start, it->sample_end, it->type, it->weight, it->transposition_start, it->transposition_end);
+  } // for
+#endif
+
+
+    // Add transpositions if any.
+    if (weight > weight_transposition && transposition.size() > 0 && !(transposition.size() == 1 && transposition.front().type == SUBSTITUTION))
+    {
+      transposition.front().type |= TRANSPOSITION_OPEN;
+      transposition.back().type |= TRANSPOSITION_CLOSE;
+      variant.insert(variant.end(), transposition.begin(), transposition.end());
+      return weight_transposition;
+    } // if
+
+    // This is an actual deletion/insertion.
     variant.push_back(Variant(reference_start, reference_end, sample_start, sample_end, SUBSTITUTION, weight_trivial));
     return weight_trivial;
   } // if

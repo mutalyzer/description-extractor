@@ -8,8 +8,8 @@
 // FILE INFORMATION:
 //   File:     extractor.h (implemented in extractor.cc)
 //   Author:   Jonathan K. Vis
-//   Revision: 2.0.4
-//   Date:     2014/07/31
+//   Revision: 2.0.5
+//   Date:     2014/08/01
 // *******************************************************************
 // DESCRIPTION:
 //   This library can be used to generate HGVS variant descriptions as
@@ -34,7 +34,7 @@ namespace mutalyzer
 {
 
 // Version string for run-time identification.
-static char const* const VERSION = "2.0.4";
+static char const* const VERSION = "2.0.5";
 
 
 // The character type used for all strings. For now it should just be
