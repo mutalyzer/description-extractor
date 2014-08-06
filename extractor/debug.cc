@@ -8,8 +8,8 @@
 // FILE INFORMATION:
 //   File:     debug.cc
 //   Author:   Jonathan K. Vis
-//   Revision: 2.0.3
-//   Date:     2014/07/31
+//   Revision: 2.1.0
+//   Date:     2014/08/06
 // *******************************************************************
 // DESCRIPTION:
 //   This source can be used to debug the Extractor library within
@@ -43,7 +43,7 @@ int main(int argc, char* argv[])
     return 1;
   } // if
   fseek(file, 0, SEEK_END);
-  size_t const reference_length = ftell(file) - 1;
+  size_t const reference_length = ftell(file);
   rewind(file);
   char_t* reference = new char_t[reference_length];
   fread(reference, sizeof(char_t), reference_length, file);
@@ -57,7 +57,7 @@ int main(int argc, char* argv[])
     return 1;
   } // if
   fseek(file, 0, SEEK_END);
-  size_t const sample_length = ftell(file) - 1;
+  size_t const sample_length = ftell(file);
   rewind(file);
   char_t* sample = new char_t[sample_length];
   fread(sample, sizeof(char_t), sample_length, file);
