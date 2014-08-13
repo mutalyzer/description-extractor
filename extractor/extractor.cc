@@ -55,6 +55,10 @@ size_t extract(std::vector<Variant> &variant,
   // The global variables are set for this extraction run.
   global_reference_length = reference_length;
   weight_position = ceil(log10(reference_length / 4));
+  if (weight_position <= 0)
+  {
+    weight_position = 1;
+  } // if
 
   // Common prefix and suffix snooping.
   size_t const prefix = prefix_match(reference, reference_length, sample, sample_length);
