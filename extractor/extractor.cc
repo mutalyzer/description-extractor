@@ -8,8 +8,8 @@
 // FILE INFORMATION:
 //   File:     extractor.cc (depends on extractor.h)
 //   Author:   Jonathan K. Vis
-//   Revision: 2.1.0
-//   Date:     2014/08/01
+//   Revision: 2.1.2
+//   Date:     2014/08/13
 // *******************************************************************
 // DESCRIPTION:
 //   This library can be used to generete HGVS variant descriptions as
@@ -31,15 +31,16 @@ size_t global_reference_length = 0;
 size_t weight_position = 1;
 
 // Only used to interface to Python: calls the C++ extract function.
-std::vector<Variant> extract(char_t const* const reference,
-                             size_t const        reference_length,
-                             char_t const* const sample,
-                             size_t const        sample_length,
-                             int const           type)
+Variant_List extract(char_t const* const reference,
+                     size_t const        reference_length,
+                     char_t const* const sample,
+                     size_t const        sample_length,
+                     int const           type)
 {
-  std::vector<Variant> variant;
-  extract(variant, reference, reference_length, sample, sample_length, type);
-  return variant;
+  Variant_List variant_list;
+  extract(variant_list.variants, reference, reference_length, sample, sample_length, type);
+  variant_list.weight_position = weight_position;
+  return variant_list;
 } // extract
 
 // The main library function. Extract all variants (regions of change)

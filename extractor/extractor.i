@@ -8,7 +8,7 @@
 // FILE INFORMATION:
 //   File:     extractor.i (SWIG interface file)
 //   Author:   Jonathan K. Vis
-//   Revision: 2.1.1
+//   Revision: 2.1.2
 //   Date:     2014/08/13
 // *******************************************************************
 // DESCRIPTION:
@@ -32,7 +32,7 @@ namespace mutalyzer
 {
 
 // Version string for run-time identification.
-static char const* const VERSION = "2.1.1";
+static char const* const VERSION = "2.1.2";
 
 // The character type used for all strings. For now it should just be
 // a char.
@@ -52,11 +52,11 @@ static int const TYPE_PROTEIN = 1;
 // be appropriately combined, e.g., IDENTITY | TRANSPOSITION_OPEN for
 // describing a real transposition. Note that some combinations do NOT
 // make sense, e.g., SUBSTITUION | REVERSE_COMPLEMENT.
-static int const IDENTITY            = 0x01;
-static int const REVERSE_COMPLEMENT  = 0x02;
-static int const SUBSTITUTION        = 0x04;
-static int const TRANSPOSITION_OPEN  = 0x08;
-static int const TRANSPOSITION_CLOSE = 0x10;
+static unsigned int const IDENTITY            = 0x01;
+static unsigned int const REVERSE_COMPLEMENT  = 0x02;
+static unsigned int const SUBSTITUTION        = 0x04;
+static unsigned int const TRANSPOSITION_OPEN  = 0x08;
+static unsigned int const TRANSPOSITION_CLOSE = 0x10;
 
 // These constants are used in calculating the weight of the generated
 // description and consequently used to end the description process
@@ -94,15 +94,29 @@ static size_t const WEIGHT_SUBSTITUTION       = 1; // i.e., >
 // *******************************************************************
 struct Variant
 {
-  size_t reference_start;
-  size_t reference_end;
-  size_t sample_start;
-  size_t sample_end;
-  int    type;
-  size_t weight;
-  size_t transposition_start;
-  size_t transposition_end;
+  size_t       reference_start;
+  size_t       reference_end;
+  size_t       sample_start;
+  size_t       sample_end;
+  unsigned int type;
+  size_t       weight;
+  size_t       transposition_start;
+  size_t       transposition_end;
 }; // Variant
+
+// *******************************************************************
+// Variant_List structure
+//   This structure describes a list of variants with associated
+//   metadata.
+//
+//   @member weight_position: weight used for position descriptors
+//   @member variants: vector of variants
+// *******************************************************************
+struct Variant_List
+{
+  size_t               weight_position;
+  std::vector<Variant> variants;
+}; // Variant_List
 
 // *******************************************************************
 // extract function
@@ -114,13 +128,13 @@ struct Variant
 //   @arg sample_length: length of the sample string
 //   @arg type: type of strings  0 --- DNA/RNA (default)
 //                               1 --- Protein/other
-//   @return: vector of variants
+//   @return: variant list with metadata
 // *******************************************************************
-std::vector<Variant> extract(char_t const* const reference,
-                             size_t const        reference_length,
-                             char_t const* const sample,
-                             size_t const        sample_length,
-                             int const           type = TYPE_DNA);
+Variant_List extract(char_t const* const reference,
+                     size_t const        reference_length,
+                     char_t const* const sample,
+                     size_t const        sample_length,
+                     int const           type = TYPE_DNA);
 
 } // mutalyzer
 

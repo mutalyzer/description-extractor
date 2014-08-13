@@ -8,7 +8,7 @@
 // FILE INFORMATION:
 //   File:     extractor.h (implemented in extractor.cc)
 //   Author:   Jonathan K. Vis
-//   Revision: 2.1.1
+//   Revision: 2.1.2
 //   Date:     2014/08/13
 // *******************************************************************
 // DESCRIPTION:
@@ -34,7 +34,7 @@ namespace mutalyzer
 {
 
 // Version string for run-time identification.
-static char const* const VERSION = "2.1.1";
+static char const* const VERSION = "2.1.2";
 
 
 // The character type used for all strings. For now it should just be
@@ -64,11 +64,11 @@ static int const TYPE_PROTEIN = 1; // Protein or other strings
 // be appropriately combined, e.g., IDENTITY | TRANSPOSITION_OPEN for
 // describing a real transposition. Note that some combinations do NOT
 // make sense, e.g., SUBSTITUION | REVERSE_COMPLEMENT.
-static int const IDENTITY            = 0x01;
-static int const REVERSE_COMPLEMENT  = 0x02;
-static int const SUBSTITUTION        = 0x04;
-static int const TRANSPOSITION_OPEN  = 0x08;
-static int const TRANSPOSITION_CLOSE = 0x10;
+static unsigned int const IDENTITY            = 0x01;
+static unsigned int const REVERSE_COMPLEMENT  = 0x02;
+static unsigned int const SUBSTITUTION        = 0x04;
+static unsigned int const TRANSPOSITION_OPEN  = 0x08;
+static unsigned int const TRANSPOSITION_CLOSE = 0x10;
 
 
 // These constants are used in calculating the weight of the generated
@@ -119,23 +119,23 @@ extern size_t global_reference_length;
 // *******************************************************************
 struct Variant
 {
-  size_t reference_start;
-  size_t reference_end;
-  size_t sample_start;
-  size_t sample_end;
-  int    type;
-  size_t weight;
-  size_t transposition_start;
-  size_t transposition_end;
+  size_t       reference_start;
+  size_t       reference_end;
+  size_t       sample_start;
+  size_t       sample_end;
+  unsigned int type;
+  size_t       weight;
+  size_t       transposition_start;
+  size_t       transposition_end;
 
-  inline Variant(size_t const reference_start,
-                 size_t const reference_end,
-                 size_t const sample_start,
-                 size_t const sample_end,
-                 int const    type                = IDENTITY,
-                 size_t const weight              = 0,
-                 size_t const transposition_start = 0,
-                 size_t const transposition_end   = 0):
+  inline Variant(size_t const       reference_start,
+                 size_t const       reference_end,
+                 size_t const       sample_start,
+                 size_t const       sample_end,
+                 unsigned int const type                = IDENTITY,
+                 size_t const       weight              = 0,
+                 size_t const       transposition_start = 0,
+                 size_t const       transposition_end   = 0):
          reference_start(reference_start),
          reference_end(reference_end),
          sample_start(sample_start),
@@ -149,6 +149,20 @@ struct Variant
 }; // Variant
 
 // *******************************************************************
+// Variant_List structure
+//   This structure describes a list of variants with associated
+//   metadata.
+//
+//   @member weight_position: weight used for position descriptors
+//   @member variants: vector of variants
+// *******************************************************************
+struct Variant_List
+{
+  size_t               weight_position;
+  std::vector<Variant> variants;
+}; // Variant_List
+
+// *******************************************************************
 // extract function
 //   This function is the interface function for Python. It is just a
 //   wrapper for the C++ extract function below.
@@ -159,13 +173,13 @@ struct Variant
 //   @arg sample_length: length of the sample string
 //   @arg type: type of strings  0 --- DNA/RNA (default)
 //                               1 --- Protein/other
-//   @return: vector of variants
+//   @return: variant list with metadata
 // *******************************************************************
-std::vector<Variant> extract(char_t const* const reference,
-                             size_t const        reference_length,
-                             char_t const* const sample,
-                             size_t const        sample_length,
-                             int const           type = TYPE_DNA);
+Variant_List extract(char_t const* const reference,
+                     size_t const        reference_length,
+                     char_t const* const sample,
+                     size_t const        sample_length,
+                     int const           type = TYPE_DNA);
 
 // *******************************************************************
 // extract function
