@@ -62,12 +62,7 @@ static int const TRANSPOSITION_CLOSE = 0x10;
 // description and consequently used to end the description process
 // when a certain ``trivial'' weight is exeeded. The weight constants
 // are based on their HGVS description lengths, i.e., the amount of
-// characters used. The weight_position variable is used to have a
-// constant weight for a position description regardless the actual
-// position. It is usually set to ceil(log10(|reference| / 4)), and
-// its intention is to be constant during an extraction run.
-extern size_t       weight_position;
-
+// characters used.
 static size_t const WEIGHT_BASE               = 1; // i.e., A, G, T, C
 static size_t const WEIGHT_DELETION           = 3; // i.e., del
 static size_t const WEIGHT_DELETION_INSERTION = 6; // i.e., delins
