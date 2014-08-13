@@ -8,8 +8,8 @@
 // FILE INFORMATION:
 //   File:     extractor.i (SWIG interface file)
 //   Author:   Jonathan K. Vis
-//   Revision: 2.1.0
-//   Date:     2014/07/31
+//   Revision: 2.1.1
+//   Date:     2014/08/13
 // *******************************************************************
 // DESCRIPTION:
 //   Defines the SWIG interface for the Extractor library for use in
@@ -32,7 +32,7 @@ namespace mutalyzer
 {
 
 // Version string for run-time identification.
-static char const* const VERSION = "2.1.0";
+static char const* const VERSION = "2.1.1";
 
 // The character type used for all strings. For now it should just be
 // a char.
@@ -57,6 +57,24 @@ static int const REVERSE_COMPLEMENT  = 0x02;
 static int const SUBSTITUTION        = 0x04;
 static int const TRANSPOSITION_OPEN  = 0x08;
 static int const TRANSPOSITION_CLOSE = 0x10;
+
+// These constants are used in calculating the weight of the generated
+// description and consequently used to end the description process
+// when a certain ``trivial'' weight is exeeded. The weight constants
+// are based on their HGVS description lengths, i.e., the amount of
+// characters used. The weight_position variable is used to have a
+// constant weight for a position description regardless the actual
+// position. It is usually set to ceil(log10(|reference| / 4)), and
+// its intention is to be constant during an extraction run.
+extern size_t       weight_position;
+
+static size_t const WEIGHT_BASE               = 1; // i.e., A, G, T, C
+static size_t const WEIGHT_DELETION           = 3; // i.e., del
+static size_t const WEIGHT_DELETION_INSERTION = 6; // i.e., delins
+static size_t const WEIGHT_INSERTION          = 3; // i.e., ins
+static size_t const WEIGHT_INVERSION          = 3; // i.e., inv
+static size_t const WEIGHT_SEPARATOR          = 1; // i.e., _, [, ], ;
+static size_t const WEIGHT_SUBSTITUTION       = 1; // i.e., >
 
 // *******************************************************************
 // Variant structure
