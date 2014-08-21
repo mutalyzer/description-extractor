@@ -8,8 +8,8 @@
 // FILE INFORMATION:
 //   File:     extractor.cc (depends on extractor.h)
 //   Author:   Jonathan K. Vis
-//   Revision: 2.1.2
-//   Date:     2014/08/13
+//   Revision: 2.1.4
+//   Date:     2014/08/21
 // *******************************************************************
 // DESCRIPTION:
 //   This library can be used to generete HGVS variant descriptions as
@@ -217,8 +217,9 @@ size_t extractor(std::vector<Variant> &variant,
 
   // Calculate the LCS (possibly in reverse complement) of the two
   // strings.
+  size_t const cut_off = reference_length < THRESHOLD_CUT_OFF ? 1 : EXTRACTION_CUT_OFF;
   std::vector<Substring> substring;
-  size_t const length = LCS(substring, reference, complement, reference_start, reference_end, sample, sample_start, sample_end);
+  size_t const length = LCS(substring, reference, complement, reference_start, reference_end, sample, sample_start, sample_end, cut_off);
 
 
   // No LCS found: this is a transposition or a deletion/insertion.
@@ -456,8 +457,9 @@ size_t extractor_transposition(std::vector<Variant> &variant,
 
 
   // Extract the LCS (from the whole reference string).
+  size_t const cut_off = static_cast<size_t>(TRANSPOSITION_CUT_OFF * static_cast<double>(sample_length));
   std::vector<Substring> substring;
-  size_t const length = LCS(substring, reference, complement, 0, global_reference_length, sample, sample_start, sample_end);
+  size_t const length = LCS(substring, reference, complement, 0, global_reference_length, sample, sample_start, sample_end, cut_off);
 
 
   // No LCS found: this is a deletion/insertion.
@@ -557,18 +559,12 @@ size_t LCS(std::vector<Substring> &substring,
            size_t const            reference_end,
            char_t const* const     sample,
            size_t const            sample_start,
-           size_t const            sample_end)
+           size_t const            sample_end,
+           size_t const            cut_off)
 {
   size_t const reference_length = reference_end - reference_start;
   size_t const sample_length = sample_end - sample_start;
 
-  // Always fully explore strings smaller than this threshold.
-  static size_t const THRESHOLD = 16000;
-
-  // A dynamic cut-off for unevenly matched string lengths.
-  double const a = reference_length >= sample_length ? reference_length : sample_length;
-  double const b = reference_length >= sample_length ? sample_length : reference_length;
-  size_t const cut_off = (reference_length > THRESHOLD ? ceil((1.0 - b / (a + 0.1 * b)) * b) / 8 : 0) + 1;
 
   // The initial k.
   size_t k = reference_length > sample_length ? sample_length / 4 : reference_length / 4;

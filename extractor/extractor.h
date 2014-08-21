@@ -8,8 +8,8 @@
 // FILE INFORMATION:
 //   File:     extractor.h (implemented in extractor.cc)
 //   Author:   Jonathan K. Vis
-//   Revision: 2.1.2
-//   Date:     2014/08/13
+//   Revision: 2.1.4
+//   Date:     2014/08/21
 // *******************************************************************
 // DESCRIPTION:
 //   This library can be used to generate HGVS variant descriptions as
@@ -34,7 +34,7 @@ namespace mutalyzer
 {
 
 // Version string for run-time identification.
-static char const* const VERSION = "2.1.2";
+static char const* const VERSION = "2.1.4";
 
 
 // The character type used for all strings. For now it should just be
@@ -88,6 +88,15 @@ static size_t const WEIGHT_INSERTION          = 3; // i.e., ins
 static size_t const WEIGHT_INVERSION          = 3; // i.e., inv
 static size_t const WEIGHT_SEPARATOR          = 1; // i.e., _, [, ], ;
 static size_t const WEIGHT_SUBSTITUTION       = 1; // i.e., >
+
+
+// Cut-off constants. For normal extraction use the threshold to
+// specify the maximum reference length without any cut-off. Otherwise
+// the extraction cut-off is used.
+// The for transpositions is set at a fraction of the sample length.
+static size_t const THRESHOLD_CUT_OFF     = 16000;
+static size_t const EXTRACTION_CUT_OFF    =   500;
+static double const TRANSPOSITION_CUT_OFF =   0.3;
 
 
 // This global variable is used to have access to the whole reference
@@ -317,6 +326,7 @@ struct Substring
 //   @arg sample: sample string
 //   @arg sample_start: starting position in the sample string
 //   @arg sample_end: ending position in the sample string
+//   @arg cut_off: optional cut-off value for the k in LCS_k
 //   @return: length of the LCS
 // *******************************************************************
 size_t LCS(std::vector<Substring> &substring,
@@ -326,7 +336,8 @@ size_t LCS(std::vector<Substring> &substring,
            size_t const            reference_end,
            char_t const* const     sample,
            size_t const            sample_start,
-           size_t const            sample_end);
+           size_t const            sample_end,
+           size_t const            cut_off = 1);
 
 // *******************************************************************
 // LCS_1 function

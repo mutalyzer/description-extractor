@@ -8,8 +8,8 @@
 // FILE INFORMATION:
 //   File:     extractor.i (SWIG interface file)
 //   Author:   Jonathan K. Vis
-//   Revision: 2.1.2
-//   Date:     2014/08/13
+//   Revision: 2.1.4
+//   Date:     2014/08/21
 // *******************************************************************
 // DESCRIPTION:
 //   Defines the SWIG interface for the Extractor library for use in
@@ -32,7 +32,7 @@ namespace mutalyzer
 {
 
 // Version string for run-time identification.
-static char const* const VERSION = "2.1.2";
+static char const* const VERSION = "2.1.4";
 
 // The character type used for all strings. For now it should just be
 // a char.
@@ -85,8 +85,6 @@ static size_t const WEIGHT_SUBSTITUTION       = 1; // i.e., >
 //                       sample string
 //   @member type: type of the variant described using the
 //                 constants above
-//   @member weight: weight of the variant according to the weight
-//                   constants above (used internally)
 //   @member transposition_start: starting position of a transposition
 //                                withing the reference string
 //   @member transposition_end: ending position of a transposition
@@ -99,7 +97,6 @@ struct Variant
   size_t       sample_start;
   size_t       sample_end;
   unsigned int type;
-  size_t       weight;
   size_t       transposition_start;
   size_t       transposition_end;
 }; // Variant
