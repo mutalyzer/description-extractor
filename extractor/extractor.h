@@ -8,8 +8,8 @@
 // FILE INFORMATION:
 //   File:     extractor.h (implemented in extractor.cc)
 //   Author:   Jonathan K. Vis
-//   Revision: 2.1.4
-//   Date:     2014/08/21
+//   Revision: 2.1.5
+//   Date:     2014/08/22
 // *******************************************************************
 // DESCRIPTION:
 //   This library can be used to generate HGVS variant descriptions as
@@ -34,7 +34,7 @@ namespace mutalyzer
 {
 
 // Version string for run-time identification.
-static char const* const VERSION = "2.1.4";
+static char const* const VERSION = "2.1.5";
 
 
 // The character type used for all strings. For now it should just be
@@ -90,13 +90,13 @@ static size_t const WEIGHT_SEPARATOR          = 1; // i.e., _, [, ], ;
 static size_t const WEIGHT_SUBSTITUTION       = 1; // i.e., >
 
 
-// Cut-off constants. For normal extraction use the threshold to
-// specify the maximum reference length without any cut-off. Otherwise
-// the extraction cut-off is used.
-// The for transpositions is set at a fraction of the sample length.
+// Cut-off constants. The threshold is used to specify the maximum
+// reference length without any cut-off. Otherwise the extraction
+// cut-off is used. For transpositions the cut-off is specified as
+// a fraction of the sample_length.
 static size_t const THRESHOLD_CUT_OFF     = 16000;
-static size_t const EXTRACTION_CUT_OFF    =   500;
-static double const TRANSPOSITION_CUT_OFF =   0.3;
+static size_t const EXTRACTION_CUT_OFF    =   250;
+static double const TRANSPOSITION_CUT_OFF =   0.1;
 
 
 // This global variable is used to have access to the whole reference

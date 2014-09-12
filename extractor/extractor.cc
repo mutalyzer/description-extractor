@@ -8,8 +8,8 @@
 // FILE INFORMATION:
 //   File:     extractor.cc (depends on extractor.h)
 //   Author:   Jonathan K. Vis
-//   Revision: 2.1.4
-//   Date:     2014/08/21
+//   Revision: 2.1.5
+//   Date:     2014/08/22
 // *******************************************************************
 // DESCRIPTION:
 //   This library can be used to generete HGVS variant descriptions as
@@ -457,7 +457,7 @@ size_t extractor_transposition(std::vector<Variant> &variant,
 
 
   // Extract the LCS (from the whole reference string).
-  size_t const cut_off = static_cast<size_t>(TRANSPOSITION_CUT_OFF * static_cast<double>(sample_length));
+  size_t const cut_off = global_reference_length < THRESHOLD_CUT_OFF ? 1 : TRANSPOSITION_CUT_OFF * sample_length;
   std::vector<Substring> substring;
   size_t const length = LCS(substring, reference, complement, 0, global_reference_length, sample, sample_start, sample_end, cut_off);
 
