@@ -9,7 +9,7 @@
 //   File:     extractor.h (implemented in extractor.cc)
 //   Author:   Jonathan K. Vis
 //   Revision: 2.1.5
-//   Date:     2014/08/22
+//   Date:     2014/09/12
 // *******************************************************************
 // DESCRIPTION:
 //   This library can be used to generate HGVS variant descriptions as
@@ -122,9 +122,9 @@ extern size_t global_reference_length;
 //   @member weight: weight of the variant according to the weight
 //                   constants above (used internally)
 //   @member transposition_start: starting position of a transposition
-//                                withing the reference string
+//                                within the reference string
 //   @member transposition_end: ending position of a transposition
-//                              withing the reference string
+//                              within the reference string
 // *******************************************************************
 struct Variant
 {
