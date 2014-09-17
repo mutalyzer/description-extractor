@@ -8,8 +8,8 @@
 // FILE INFORMATION:
 //   File:     extractor.cc (depends on extractor.h)
 //   Author:   Jonathan K. Vis
-//   Revision: 2.1.5
-//   Date:     2014/08/22
+//   Revision: 2.1.6
+//   Date:     2014/09/17
 // *******************************************************************
 // DESCRIPTION:
 //   This library can be used to generete HGVS variant descriptions as
@@ -217,7 +217,7 @@ size_t extractor(std::vector<Variant> &variant,
 
   // Calculate the LCS (possibly in reverse complement) of the two
   // strings.
-  size_t const cut_off = reference_length < THRESHOLD_CUT_OFF ? 1 : EXTRACTION_CUT_OFF;
+  size_t const cut_off = reference_length < THRESHOLD_CUT_OFF ? 1 : weight_position;
   std::vector<Substring> substring;
   size_t const length = LCS(substring, reference, complement, reference_start, reference_end, sample, sample_start, sample_end, cut_off);
 
