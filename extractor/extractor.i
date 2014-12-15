@@ -8,8 +8,8 @@
 // FILE INFORMATION:
 //   File:     extractor.i (SWIG interface file)
 //   Author:   Jonathan K. Vis
-//   Revision: 2.1.6
-//   Date:     2014/09/17
+//   Revision: 2.1.7
+//   Date:     2014/12/15
 // *******************************************************************
 // DESCRIPTION:
 //   Defines the SWIG interface for the Extractor library for use in
@@ -32,7 +32,7 @@ namespace mutalyzer
 {
 
 // Version string for run-time identification.
-static char const* const VERSION = "2.1.6";
+static char const* const VERSION = "2.1.7";
 
 // The character type used for all strings. For now it should just be
 // a char.
@@ -41,9 +41,12 @@ typedef char char_t;
 // These constants can be used to specify the type of string to be
 // extracted. The extractor is primarily focussed on DNA/RNA. When
 // TYPE_PROTEIN (or another value) is used no complement string is
-// constructed and no reverse complement is calculated.
+// constructed and no reverse complement is calculated. For
+// TYPE_PROTEIN frame shift detection is applied on
+// deletions/insertions.
 static int const TYPE_DNA     = 0;
 static int const TYPE_PROTEIN = 1;
+static int const TYPE_OTHER   = 2;
 
 // These constants can be used to deterimine the type of variant.
 // Substitution covers most: deletions, insertions, substitutions, and
