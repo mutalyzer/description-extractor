@@ -8,8 +8,8 @@
 // FILE INFORMATION:
 //   File:     debug.cc
 //   Author:   Jonathan K. Vis
-//   Revision: 2.1.1
-//   Date:     2014/08/21
+//   Revision: 2.1.7
+//   Date:     2014/12/18
 // *******************************************************************
 // DESCRIPTION:
 //   This source can be used to debug the Extractor library within
@@ -68,12 +68,12 @@ int main(int argc, char* argv[])
 
   // The actual extraction.
   std::vector<Variant> variant;
-  size_t const weight = extract(variant, reference, reference_length, sample, sample_length);
+  size_t const weight = extract(variant, reference, reference_length, sample, sample_length, TYPE_PROTEIN);
 
 
   // Printing the variants.
   fprintf(stdout, "\nVariants (%ld / %ld):\n", variant.size(), weight);
-  for (std::vector<Variant>::iterator it = variant.begin() ; it != variant.end(); ++it)
+  for (std::vector<Variant>::iterator it = variant.begin(); it != variant.end(); ++it)
   {
     //if (it->type != IDENTITY)
     {

@@ -78,7 +78,10 @@ size_t extract(std::vector<Variant> &variant,
   fputs("suffix: ", stderr);
   Dprint_truncated(reference, reference_length - suffix, reference_length);
   fprintf(stderr, " (%ld)\n", suffix);
-  fputs("Construction IUPAC complement\n", stderr);
+  if (type == TYPE_DNA)
+  {
+    fputs("Construction IUPAC complement\n", stderr);
+  } // if
 #endif
 
 
@@ -88,9 +91,12 @@ size_t extract(std::vector<Variant> &variant,
 
 
 #if defined(__debug__)
-  fputs("complement: ", stderr);
-  Dprint_truncated(complement, 0, reference_length);
-  fprintf(stderr, " (%ld)\n", reference_length);
+  if (type == TYPE_DNA)
+  {
+    fputs("complement: ", stderr);
+    Dprint_truncated(complement, 0, reference_length);
+    fprintf(stderr, " (%ld)\n", reference_length);
+  } // if
   fprintf(stderr, "position weight: %ld\n", weight_position);
 #endif
 
@@ -101,11 +107,32 @@ size_t extract(std::vector<Variant> &variant,
   } // if
 
   // The actual extraction process starts here.
-  size_t const weight = extractor(variant, reference, complement, prefix, reference_length - suffix, sample, prefix, sample_length - suffix);
+  size_t weight;
+  if (type == TYPE_PROTEIN)
+  {
+    weight = extractor_protein(variant, reference, prefix, reference_length - suffix, sample, prefix, sample_length - suffix);
+  } // if
+  else
+  {
+    weight = extractor(variant, reference, complement, prefix, reference_length - suffix, sample, prefix, sample_length - suffix);
+  } // else
 
   if (suffix > 0)
   {
     variant.push_back(Variant(reference_length - suffix, reference_length, sample_length - suffix, sample_length));
+  } // if
+
+  // Frame shift annotation starts here.
+  if (type == TYPE_PROTEIN)
+  {
+    for (std::vector<Variant>::iterator it = variant.begin(); it != variant.end(); ++it)
+    {
+      if (it->type == SUBSTITUTION)
+      {
+        std::vector<Variant> annotation;
+        frame_shift(annotation, reference, it->reference_start, it->reference_end, sample, it->sample_start, it->sample_end);
+      } // if
+    } // for
   } // if
 
   // Do NOT forget to clean up the complement string.
@@ -547,6 +574,153 @@ size_t extractor_transposition(std::vector<Variant> &variant,
 
   return weight;
 } // extractor_transposition
+
+// This is the recursive protein extractor function. It works as the
+// regular extractor function, but no reverse complements nor
+// transposion matching is used.
+size_t extractor_protein(std::vector<Variant> &variant,
+                         char_t const* const   reference,
+                         size_t const          reference_start,
+                         size_t const          reference_end,
+                         char_t const* const   sample,
+                         size_t const          sample_start,
+                         size_t const          sample_end)
+{
+  size_t const reference_length = reference_end - reference_start;
+  size_t const sample_length = sample_end - sample_start;
+
+  // Assume this is a deletion/insertion.
+  size_t const weight_trivial = weight_position + WEIGHT_DELETION_INSERTION + WEIGHT_BASE * sample_length + (reference_length != 1 ? weight_position + WEIGHT_SEPARATOR : 0);
+  size_t weight = 0;
+
+
+#if defined(__debug__)
+  fputs("Extraction (protein)\n", stderr);
+  fprintf(stderr, "  reference %ld--%ld:  ", reference_start, reference_end);
+  Dprint_truncated(reference, reference_start, reference_end);
+  fprintf(stderr, " (%ld)\n", reference_length);
+  fprintf(stderr, "  sample %ld--%ld:     ", sample_start, sample_end);
+  Dprint_truncated(sample, sample_start, sample_end);
+  fprintf(stderr, " (%ld)\n", sample_length);
+  fprintf(stderr, "  trivial weight: %ld\n", weight_trivial);
+#endif
+
+
+  // First some base cases to end the recursion.
+  // No more reference string.
+  if (reference_length <= 0)
+  {
+    // But some of the sample string is remaining: this is an
+    // insertion.
+    if (sample_length > 0)
+    {
+      weight = 2 * weight_position + WEIGHT_SEPARATOR + WEIGHT_INSERTION + WEIGHT_BASE * sample_length;
+      variant.push_back(Variant(reference_start, reference_end, sample_start, sample_end, SUBSTITUTION, weight));
+    } // if
+    return weight;
+  } // if
+
+  // Obviously there is a piece of reference string left, but no more
+  // sample string: this is a deletion.
+  if (sample_length <= 0)
+  {
+    weight = weight_position + WEIGHT_DELETION + (reference_length > 1 ? weight_position + WEIGHT_SEPARATOR : 0);
+    variant.push_back(Variant(reference_start, reference_end, sample_start, sample_end, SUBSTITUTION, weight));
+    return weight;
+  } // if
+
+  // Single substitution: a special case for HGVS.
+  if (reference_length == 1 && sample_length == 1)
+  {
+    weight = weight_position + 2 * WEIGHT_BASE + WEIGHT_SUBSTITUTION;
+    variant.push_back(Variant(reference_start, reference_end, sample_start, sample_end, SUBSTITUTION, weight));
+    return weight;
+  } // if
+
+
+  // Calculate the LCS of the two strings.
+  std::vector<Substring> substring;
+  size_t const length = LCS_1(substring, reference, 0, reference_start, reference_end, sample, sample_start, sample_end);
+
+
+  // No LCS found: this is a deletion/insertion.
+  if (length <= 0 || substring.size() <= 0)
+  {
+    weight = weight_trivial;
+
+    // This is an actual deletion/insertion.
+    variant.push_back(Variant(reference_start, reference_end, sample_start, sample_end, SUBSTITUTION, weight_trivial));
+    return weight_trivial;
+  } // if
+
+
+  // Pick the ``best fitting'' LCS, i.e., the remaining prefixes and
+  // suffixes are of the same length.
+  size_t diff = (reference_end - reference_start) + (sample_end - sample_start);
+  std::vector<Substring>::iterator lcs = substring.begin();
+  for (std::vector<Substring>::iterator it = substring.begin(); it != substring.end(); ++it)
+  {
+    size_t const prefix_diff = abs((it->reference_index - reference_start) - (it->sample_index - sample_start));
+    size_t const suffix_diff = abs((reference_end - (it->reference_index + it->length)) - (sample_end - (it->sample_index + it->length)));
+    if (prefix_diff + suffix_diff < diff)
+    {
+      // A better fitting LCS.
+      diff = prefix_diff + suffix_diff;
+      lcs = it;
+    } // if
+  } // for
+
+
+#if defined(__debug__)
+  fprintf(stderr, "  LCS (x%ld)\n", substring.size());
+  for (std::vector<Substring>::iterator it = substring.begin() ; it != substring.end(); ++it)
+  {
+    fprintf(stderr, "    %ld--%ld: ", it->reference_index, it->reference_index + length);
+    Dprint_truncated(reference, it->reference_index, it->reference_index + length);
+    fprintf(stderr, " (%ld)\n    %ld--%ld: ", length, it->sample_index, it->sample_index + length);
+    Dprint_truncated(sample, it->sample_index, it->sample_index + length);
+    fprintf(stderr, " (%ld)", length);
+    fputs("\n", stderr);
+  } // for
+#endif
+
+
+  // Recursively apply this function to the prefixes of the strings.
+  std::vector<Variant> prefix;
+  weight += extractor_protein(prefix, reference, reference_start, lcs->reference_index, sample, sample_start, lcs->sample_index);
+
+  // Stop if the weight of the variant exeeds the trivial weight.
+  if (weight > weight_trivial)
+  {
+    weight = weight_trivial;
+
+    // This is an actual deletion/insertion.
+    variant.push_back(Variant(reference_start, reference_end, sample_start, sample_end, SUBSTITUTION, weight_trivial));
+    return weight_trivial;
+  } // if
+
+  // Recursively apply this function to the suffixes of the strings.
+  std::vector<Variant> suffix;
+  weight += extractor_protein(suffix, reference, lcs->reference_index + length, reference_end, sample, lcs->sample_index + length, sample_end);
+
+  // Stop if the weight of the variant exeeds the trivial weight.
+  if (weight > weight_trivial)
+  {
+    weight = weight_trivial;
+
+    // This is an actual deletion/insertion.
+    variant.push_back(Variant(reference_start, reference_end, sample_start, sample_end, SUBSTITUTION, weight_trivial));
+    return weight_trivial;
+  } // if
+
+
+  // Add all variants (in order) to the variant vector.
+  variant.insert(variant.end(), prefix.begin(), prefix.end());
+  variant.push_back(Variant(lcs->reference_index, lcs->reference_index + length, lcs->sample_index, lcs->sample_index + length));
+  variant.insert(variant.end(), suffix.begin(), suffix.end());
+
+  return weight;
+} // extractor_protein
 
 
 // This function calculates the LCS using the LCS_k function by
@@ -1043,6 +1217,92 @@ char_t const* IUPAC_complement(char_t const* const string,
   } // for
   return complement;
 } // IUPAC_complement
+
+// This function calculates frame shift annotations for
+// deletions/insertions.
+size_t frame_shift(std::vector<Variant> &variant,
+                   char_t const* const   reference,
+                   size_t const          reference_start,
+                   size_t const          reference_end,
+                   char_t const* const   sample,
+                   size_t const          sample_start,
+                   size_t const          sample_end)
+{
+  size_t const reference_length = reference_end - reference_start;
+  size_t const sample_length = sample_end - sample_start;
+  size_t const length = (reference_length <= sample_length ? reference_length : sample_length) - 1;
+
+
+#if defined(__debug__)
+  fprintf(stderr, "Frame shift detection (%ld)\n", length);
+#endif
+
+
+  for (size_t i = 0; i < length; ++i)
+  {
+    size_t const shift = FRAME_SHIFT[amino_index(sample[sample_start + i])][amino_index(sample[sample_start + i + 1])][amino_index(reference[reference_start + i + 1])];
+
+
+#if defined(__debug__)
+  fprintf(stderr, "  %c%c --- %c: %ld\n", sample[sample_start + i], sample[sample_start + i + 1], reference[reference_start + i + 1], shift);
+#endif
+
+
+  } // for
+  return variant.size();
+} // frame_shift
+
+// This function converts a amino acid into its index for accessing
+// the frame shift table.
+size_t amino_index(char_t const amino_acid)
+{
+  switch (amino_acid)
+  {
+    case 'A':
+      return 0;
+    case 'R':
+      return 1;
+    case 'N':
+      return 2;
+    case 'D':
+      return 3;
+    case 'C':
+      return 4;
+    case 'Q':
+      return 5;
+    case 'E':
+      return 6;
+    case 'G':
+      return 7;
+    case 'H':
+      return 8;
+    case 'I':
+      return 9;
+    case 'L':
+      return 10;
+    case 'K':
+      return 11;
+    case 'M':
+      return 12;
+    case 'F':
+      return 13;
+    case 'P':
+      return 14;
+    case 'S':
+      return 15;
+    case 'T':
+      return 16;
+    case 'W':
+      return 17;
+    case 'Y':
+      return 18;
+    case 'V':
+      return 19;
+    case '*':
+      return 20;
+  } // switch
+  return -1;
+} // amino_index
 
 
 #if defined(__debug__)

@@ -9,7 +9,7 @@
 //   File:     extractor.i (SWIG interface file)
 //   Author:   Jonathan K. Vis
 //   Revision: 2.1.7
-//   Date:     2014/12/15
+//   Date:     2014/12/18
 // *******************************************************************
 // DESCRIPTION:
 //   Defines the SWIG interface for the Extractor library for use in
@@ -60,6 +60,8 @@ static unsigned int const REVERSE_COMPLEMENT  = 0x02;
 static unsigned int const SUBSTITUTION        = 0x04;
 static unsigned int const TRANSPOSITION_OPEN  = 0x08;
 static unsigned int const TRANSPOSITION_CLOSE = 0x10;
+static unsigned int const FRAME_SHIFT_1       = 0x20;
+static unsigned int const FRAME_SHIFT_2       = 0x40;
 
 // These constants are used in calculating the weight of the generated
 // description and consequently used to end the description process

@@ -8,8 +8,8 @@
 ## FILE INFORMATION:
 ##   File:     Makefile
 ##   Author:   Jonathan K. Vis
-##   Revision: 2.0.3
-##   Date:     2014/07/31
+##   Revision: 2.1.7
+##   Date:     2014/12/18
 ## *******************************************************************
 ## DESCRIPTION:
 ##  Build the Extractor library for python.
@@ -30,7 +30,7 @@ INCLUDES=-I/usr/include/python2.7
 WRAPPER=$(SOURCES:.cc=.py) $(SOURCES:.cc=)_wrap.cxx
 OBJECTS=$(SOURCES:.cc=.o) $(WRAPPER:.cxx=.o)
 
-.PHONY: all clean debug rebuild tarball
+.PHONY: all clean debug rebuild
 
 all: $(TARGET)
 
@@ -57,7 +57,4 @@ clean:
 	rm -f $(DEBUG:.cc=.o) $(filter-out $(SOURCES:.cc=.py),$(OBJECTS)) $(WRAPPER) $(TARGET) debug
 
 rebuild: clean all
-
-tarball:
-	tar -czf $(SOURCES:.cc=.tgz) $(SOURCES) $(SOURCES:.cc=.i) $(SOURCES:.cc=.h) $(DEBUG) Makefile
 
