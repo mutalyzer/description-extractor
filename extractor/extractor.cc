@@ -125,14 +125,15 @@ size_t extract(std::vector<Variant> &variant,
   // Frame shift annotation starts here.
   if (type == TYPE_PROTEIN)
   {
+    std::vector<Variant> annotation;
     for (std::vector<Variant>::iterator it = variant.begin(); it != variant.end(); ++it)
     {
       if (it->type == SUBSTITUTION)
       {
-        std::vector<Variant> annotation;
         frame_shift(annotation, reference, it->reference_start, it->reference_end, sample, it->sample_start, it->sample_end);
       } // if
     } // for
+    variant.insert(variant.end(), annotation.begin(), annotation.end());
   } // if
 
   // Do NOT forget to clean up the complement string.
@@ -1238,17 +1239,35 @@ size_t frame_shift(std::vector<Variant> &variant,
 #endif
 
 
+  size_t start = 0;
+  unsigned int frame = 0x0;
   for (size_t i = 0; i < length; ++i)
   {
-    size_t const shift = FRAME_SHIFT[amino_index(sample[sample_start + i])][amino_index(sample[sample_start + i + 1])][amino_index(reference[reference_start + i + 1])];
-
+    unsigned int const shift = FRAME_SHIFT_TABLE[amino_index(sample[sample_start + i])][amino_index(sample[sample_start + i + 1])][amino_index(reference[reference_start + i + 1])];
+    if ((frame == 0x0 && shift != 0x0) || (frame & shift) != frame)
+    {
+      if (i - start > 0)
+      {
+        variant.push_back(Variant(reference_start + start, reference_start + i, sample_start + start, sample_start + i, FRAME_SHIFT | frame));
+      } // if
+      frame = shift;
+      start = i;
+    } // if
+    else
+    {
+      frame &= shift;
+    } // else
 
 #if defined(__debug__)
-  fprintf(stderr, "  %c%c --- %c: %ld\n", sample[sample_start + i], sample[sample_start + i + 1], reference[reference_start + i + 1], shift);
+  fprintf(stderr, "  %c%c --- %c: %d  %ld\n", sample[sample_start + i], sample[sample_start + i + 1], reference[reference_start + i + 1], frame, i - start);
 #endif
 
 
   } // for
+  if (length - start > 1)
+  {
+    variant.push_back(Variant(reference_start + start, reference_start + length, sample_start + start, sample_start + length, FRAME_SHIFT | frame));
+  } // if
   return variant.size();
 } // frame_shift
 

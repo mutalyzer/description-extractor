@@ -72,8 +72,9 @@ static unsigned int const REVERSE_COMPLEMENT  = 0x02;
 static unsigned int const SUBSTITUTION        = 0x04;
 static unsigned int const TRANSPOSITION_OPEN  = 0x08;
 static unsigned int const TRANSPOSITION_CLOSE = 0x10;
-static unsigned int const FRAME_SHIFT_1       = 0x20;
-static unsigned int const FRAME_SHIFT_2       = 0x40;
+static unsigned int const FRAME_SHIFT         = 0x20;
+static unsigned int const FRAME_SHIFT_1       = 0x01;
+static unsigned int const FRAME_SHIFT_2       = 0x02;
 
 
 // These constants are used in calculating the weight of the generated
@@ -599,7 +600,7 @@ size_t frame_shift(std::vector<Variant> &variant,
 size_t amino_index(char_t const amino_acid);
 
 // Frame shift table
-static unsigned int const FRAME_SHIFT[21][21][21] =
+static unsigned int const FRAME_SHIFT_TABLE[21][21][21] =
 {
   {
     {0, 3, 0, 0, 2, 1, 0, 2, 0, 0, 1, 0, 0, 0, 1, 2, 0, 0, 0, 0, 0},
