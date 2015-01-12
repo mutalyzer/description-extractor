@@ -1,5 +1,5 @@
 // *******************************************************************
-//   (C) Copyright 2014 Leiden Institute of Advanced Computer Science
+//   (C) Copyright 2015 Leiden Institute of Advanced Computer Science
 //   Universiteit Leiden
 //   All Rights Reserved
 // *******************************************************************
@@ -8,8 +8,8 @@
 // FILE INFORMATION:
 //   File:     debug.cc
 //   Author:   Jonathan K. Vis
-//   Revision: 2.1.7
-//   Date:     2014/12/18
+//   Revision: 2.1.8
+//   Date:     2015/01/12
 // *******************************************************************
 // DESCRIPTION:
 //   This source can be used to debug the Extractor library within
@@ -68,7 +68,7 @@ int main(int argc, char* argv[])
 
   // The actual extraction.
   std::vector<Variant> variant;
-  size_t const weight = extract(variant, reference, reference_length, sample, sample_length, TYPE_PROTEIN);
+  size_t const weight = extract(variant, reference, reference_length, sample, sample_length, TYPE_PROTEIN, "KNKNTTTTRSRSIIMIQHQHPPPPRRRRLLLLEDEDAAAAGGGGVVVV*Y*YSSSS*CWCLFLF");
 
 
   // Printing the variants.

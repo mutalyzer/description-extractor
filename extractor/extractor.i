@@ -1,5 +1,5 @@
 // *******************************************************************
-//   (C) Copyright 2014 Leiden Institute of Advanced Computer Science
+//   (C) Copyright 2015 Leiden Institute of Advanced Computer Science
 //   Universiteit Leiden
 //   All Rights Reserved
 // *******************************************************************
@@ -8,8 +8,8 @@
 // FILE INFORMATION:
 //   File:     extractor.i (SWIG interface file)
 //   Author:   Jonathan K. Vis
-//   Revision: 2.1.7
-//   Date:     2014/12/18
+//   Revision: 2.1.8
+//   Date:     2015/01/12
 // *******************************************************************
 // DESCRIPTION:
 //   Defines the SWIG interface for the Extractor library for use in
@@ -32,7 +32,7 @@ namespace mutalyzer
 {
 
 // Version string for run-time identification.
-static char const* const VERSION = "2.1.7";
+static char const* const VERSION = "2.1.8";
 
 // The character type used for all strings. For now it should just be
 // a char.
@@ -60,8 +60,9 @@ static unsigned int const REVERSE_COMPLEMENT  = 0x02;
 static unsigned int const SUBSTITUTION        = 0x04;
 static unsigned int const TRANSPOSITION_OPEN  = 0x08;
 static unsigned int const TRANSPOSITION_CLOSE = 0x10;
-static unsigned int const FRAME_SHIFT_1       = 0x20;
-static unsigned int const FRAME_SHIFT_2       = 0x40;
+static unsigned int const FRAME_SHIFT         = 0x20;
+static unsigned int const FRAME_SHIFT_1       = 0x01;
+static unsigned int const FRAME_SHIFT_2       = 0x02;
 
 // These constants are used in calculating the weight of the generated
 // description and consequently used to end the description process
@@ -129,14 +130,17 @@ struct Variant_List
 //   @arg sample: sample string
 //   @arg sample_length: length of the sample string
 //   @arg type: type of strings  0 --- DNA/RNA (default)
-//                               1 --- Protein/other
+//                               1 --- Protein
+//                               2 --- Other
+//   @arg codon_string: TODO
 //   @return: variant list with metadata
 // *******************************************************************
 Variant_List extract(char_t const* const reference,
                      size_t const        reference_length,
                      char_t const* const sample,
                      size_t const        sample_length,
-                     int const           type = TYPE_DNA);
+                     int const           type = TYPE_DNA,
+                     char_t const* const codon_string = 0);
 
 } // mutalyzer
 

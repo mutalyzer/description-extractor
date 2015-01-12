@@ -1,5 +1,5 @@
 // *******************************************************************
-//   (C) Copyright 2014 Leiden Institute of Advanced Computer Science
+//   (C) Copyright 2015 Leiden Institute of Advanced Computer Science
 //   Universiteit Leiden
 //   All Rights Reserved
 // *******************************************************************
@@ -8,8 +8,8 @@
 // FILE INFORMATION:
 //   File:     extractor.cc (depends on extractor.h)
 //   Author:   Jonathan K. Vis
-//   Revision: 2.1.7
-//   Date:     2014/12/15
+//   Revision: 2.1.8
+//   Date:     2015/01/12
 // *******************************************************************
 // DESCRIPTION:
 //   This library can be used to generete HGVS variant descriptions as
@@ -18,27 +18,36 @@
 
 #include "extractor.h"
 
+#include <map>
+
 namespace mutalyzer
 {
+
+// The (average) description length of a position. Depends on the
+// reference string length: ceil(log10(|reference| / 4)).
+size_t weight_position = 1;
 
 // This global variable is a dirty trick used to always have access to
 // the complete reference strings even when deep into the recursion.
 // This seems necessary to compute transpositions.
 size_t global_reference_length = 0;
 
-// The (average) description length of a position. Depends on the
-// reference string length: ceil(log10(|reference| / 4)).
-size_t weight_position = 1;
+// TODO
+char_t codon_table[64] = {'\0'};
+
+// TODO
+static std::multimap<char_t const, unsigned int const> codon_map;
 
 // Only used to interface to Python: calls the C++ extract function.
 Variant_List extract(char_t const* const reference,
                      size_t const        reference_length,
                      char_t const* const sample,
                      size_t const        sample_length,
-                     int const           type)
+                     int const           type,
+                     char_t const* const codon_string)
 {
   Variant_List variant_list;
-  extract(variant_list.variants, reference, reference_length, sample, sample_length, type);
+  extract(variant_list.variants, reference, reference_length, sample, sample_length, type, codon_string);
   variant_list.weight_position = weight_position;
   return variant_list;
 } // extract
@@ -50,7 +59,8 @@ size_t extract(std::vector<Variant> &variant,
                size_t const          reference_length,
                char_t const* const   sample,
                size_t const          sample_length,
-               int const             type)
+               int const             type,
+               char_t const* const   codon_string)
 {
   // The global variables are set for this extraction run.
   global_reference_length = reference_length;
@@ -110,6 +120,13 @@ size_t extract(std::vector<Variant> &variant,
   size_t weight;
   if (type == TYPE_PROTEIN)
   {
+    // Build the codon tables.
+    for (unsigned int i = 0; i < 64; ++i)
+    {
+      codon_table[i] = codon_string[i];
+      codon_map.insert(std::pair<char_t const, unsigned int const>(codon_table[i], i));
+    } // for
+
     weight = extractor_protein(variant, reference, prefix, reference_length - suffix, sample, prefix, sample_length - suffix);
   } // if
   else
@@ -128,9 +145,10 @@ size_t extract(std::vector<Variant> &variant,
     std::vector<Variant> annotation;
     for (std::vector<Variant>::iterator it = variant.begin(); it != variant.end(); ++it)
     {
+      // TODO: length conditions?
       if (it->type == SUBSTITUTION)
       {
-        frame_shift(annotation, reference, it->reference_start, it->reference_end, sample, it->sample_start, it->sample_end);
+        annotate_frame_shift(annotation, reference, it->reference_start, it->reference_end, sample, it->sample_start, it->sample_end);
       } // if
     } // for
     variant.insert(variant.end(), annotation.begin(), annotation.end());
@@ -1219,15 +1237,49 @@ char_t const* IUPAC_complement(char_t const* const string,
   return complement;
 } // IUPAC_complement
 
+// TODO
+unsigned int frame_shift(char_t const reference, char_t const sample_1, char_t const sample_2)
+{
+  std::pair<std::multimap<char_t const, unsigned int const>::const_iterator, std::multimap<char_t const, unsigned int const>::const_iterator> const range_1 = codon_map.equal_range(sample_1);
+  std::pair<std::multimap<char_t const, unsigned int const>::const_iterator, std::multimap<char_t const, unsigned int const>::const_iterator> const range_2 = codon_map.equal_range(sample_2);
+
+  unsigned int shift = 0x0;
+  for (std::multimap<char_t const, unsigned int const>::const_iterator it_1 = range_1.first; it_1 != range_1.second; ++it_1)
+  {
+    for (std::multimap<char_t const, unsigned int const>::const_iterator it_2 = range_2.first; it_2 != range_2.second; ++it_2)
+    {
+      const unsigned int codon_1 = ((it_1->second << 0x2) | (it_2->second >> 0x4)) & 0x3f;
+      const unsigned int codon_2 = ((it_1->second << 0x4) | (it_2->second >> 0x2)) & 0x3f;
+      if (reference == codon_table[codon_1])
+      {
+        shift |= FRAME_SHIFT_1;
+        if (shift == (FRAME_SHIFT_1 | FRAME_SHIFT_2))
+        {
+          return shift;
+        } // if
+      } // if
+      else if (reference == codon_table[codon_2])
+      {
+        shift |= FRAME_SHIFT_2;
+        if (shift == (FRAME_SHIFT_1 | FRAME_SHIFT_2))
+        {
+          return shift;
+        } // if
+      } // if
+    } // for
+  } // for
+  return shift;
+} // frame_shift
+
 // This function calculates frame shift annotations for
 // deletions/insertions.
-size_t frame_shift(std::vector<Variant> &variant,
-                   char_t const* const   reference,
-                   size_t const          reference_start,
-                   size_t const          reference_end,
-                   char_t const* const   sample,
-                   size_t const          sample_start,
-                   size_t const          sample_end)
+size_t annotate_frame_shift(std::vector<Variant> &variant,
+                            char_t const* const   reference,
+                            size_t const          reference_start,
+                            size_t const          reference_end,
+                            char_t const* const   sample,
+                            size_t const          sample_start,
+                            size_t const          sample_end)
 {
   size_t const reference_length = reference_end - reference_start;
   size_t const sample_length = sample_end - sample_start;
@@ -1243,7 +1295,7 @@ size_t frame_shift(std::vector<Variant> &variant,
   unsigned int frame = 0x0;
   for (size_t i = 0; i < length; ++i)
   {
-    unsigned int const shift = FRAME_SHIFT_TABLE[amino_index(sample[sample_start + i])][amino_index(sample[sample_start + i + 1])][amino_index(reference[reference_start + i + 1])];
+    unsigned int const shift = frame_shift(reference[reference_start + i + 1], sample[sample_start + i], sample[sample_start + i + 1]);
     if ((frame == 0x0 && shift != 0x0) || (frame & shift) != frame)
     {
       if (i - start > 0)
@@ -1269,59 +1321,7 @@ size_t frame_shift(std::vector<Variant> &variant,
     variant.push_back(Variant(reference_start + start, reference_start + length, sample_start + start, sample_start + length, FRAME_SHIFT | frame));
   } // if
   return variant.size();
-} // frame_shift
-
-// This function converts a amino acid into its index for accessing
-// the frame shift table.
-size_t amino_index(char_t const amino_acid)
-{
-  switch (amino_acid)
-  {
-    case 'A':
-      return 0;
-    case 'R':
-      return 1;
-    case 'N':
-      return 2;
-    case 'D':
-      return 3;
-    case 'C':
-      return 4;
-    case 'Q':
-      return 5;
-    case 'E':
-      return 6;
-    case 'G':
-      return 7;
-    case 'H':
-      return 8;
-    case 'I':
-      return 9;
-    case 'L':
-      return 10;
-    case 'K':
-      return 11;
-    case 'M':
-      return 12;
-    case 'F':
-      return 13;
-    case 'P':
-      return 14;
-    case 'S':
-      return 15;
-    case 'T':
-      return 16;
-    case 'W':
-      return 17;
-    case 'Y':
-      return 18;
-    case 'V':
-      return 19;
-    case '*':
-      return 20;
-  } // switch
-  return -1;
-} // amino_index
+} // annotate_frame_shift
 
 
 #if defined(__debug__)
