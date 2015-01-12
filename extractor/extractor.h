@@ -87,7 +87,7 @@ static unsigned int const FRAME_SHIFT_2       = 0x02;
 // its intention is to be constant during an extraction run.
 extern size_t       weight_position;
 
-static size_t const WEIGHT_BASE               = 1; // i.e., A, G, T, C
+static size_t const WEIGHT_BASE               = 1; // i.e., A, C, G, T
 static size_t const WEIGHT_DELETION           = 3; // i.e., del
 static size_t const WEIGHT_DELETION_INSERTION = 6; // i.e., delins
 static size_t const WEIGHT_INSERTION          = 3; // i.e., ins
@@ -110,7 +110,8 @@ static double const TRANSPOSITION_CUT_OFF =   0.1;
 extern size_t global_reference_length;
 
 
-// TODO
+// Codon to amino acid table assuming the order of A, C, G, T, thus:
+// codon_table[0] = AAA, ..., codon_table[63] = TTT.
 extern char_t codon_table[64];
 
 
@@ -192,7 +193,9 @@ struct Variant_List
 //   @arg type: type of strings  0 --- DNA/RNA (default)
 //                               1 --- Protein
 //                               2 --- Other
-//   @arg codon_string: TODO
+//   @arg codon_string: serialized codon table: 64 characters
+//                      corresponding to the codons AAA, ..., TTT.
+//                      Only for protein extraction (frame shifts).
 //   @return: variant list with metadata
 // *******************************************************************
 Variant_List extract(char_t const* const reference,
@@ -217,7 +220,9 @@ Variant_List extract(char_t const* const reference,
 //   @arg type: type of strings  0 --- DNA/RNA (default)
 //                               1 --- Protein
 //                               2 --- Other
-//   @arg codon_string: TODO
+//   @arg codon_string: serialized codon table: 64 characters
+//                      corresponding to the codons AAA, ..., TTT.
+//                      Only for protein extraction (frame shifts).
 //   @return: weight of the extracted variants
 // *******************************************************************
 size_t extract(std::vector<Variant> &variant,
@@ -553,7 +558,19 @@ char_t const* IUPAC_complement(char_t const* const string,
 //   These functions are useful for calculating frame shifts.
 // *******************************************************************
 
-// TODO
+// *******************************************************************
+// frame_shift function
+//   This function calculates the frame shift A reference amino acid
+//   is checked against two possible partial overlaps between every
+//   combination of two sample (observed) amino acids. Possible
+//   results are: 0 (no frame shift), 1, 2, or 3 (both frame shifts
+//   are possible).
+//
+//   @arg reference: reference amino acid
+//   @arg sample_1: first sample amino acid
+//   @arg sample_2: second sample amino acid
+//   @return: frame shift
+// *******************************************************************
 unsigned int frame_shift(char_t const reference,
                          char_t const sample_1,
                          char_t const sample_2);

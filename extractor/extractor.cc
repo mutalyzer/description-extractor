@@ -32,10 +32,11 @@ size_t weight_position = 1;
 // This seems necessary to compute transpositions.
 size_t global_reference_length = 0;
 
-// TODO
+// Codon to amino acid table assuming the order of A, C, G, T, thus:
+// codon_table[0] = AAA, ..., codon_table[63] = TTT.
 char_t codon_table[64] = {'\0'};
 
-// TODO
+// Reverse codon table: amino acids are mapped to their codons.
 static std::multimap<char_t const, unsigned int const> codon_map;
 
 // Only used to interface to Python: calls the C++ extract function.
@@ -1237,7 +1238,9 @@ char_t const* IUPAC_complement(char_t const* const string,
   return complement;
 } // IUPAC_complement
 
-// TODO
+// This function calculates the frame shift A reference amino acid is
+// checked against two possible partial overlaps between every
+// combination of two sample (observed) amino acids.
 unsigned int frame_shift(char_t const reference, char_t const sample_1, char_t const sample_2)
 {
   std::pair<std::multimap<char_t const, unsigned int const>::const_iterator, std::multimap<char_t const, unsigned int const>::const_iterator> const range_1 = codon_map.equal_range(sample_1);

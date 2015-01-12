@@ -132,7 +132,9 @@ struct Variant_List
 //   @arg type: type of strings  0 --- DNA/RNA (default)
 //                               1 --- Protein
 //                               2 --- Other
-//   @arg codon_string: TODO
+//   @arg codon_string: serialized codon table: 64 characters
+//                      corresponding to the codons AAA, ..., TTT.
+//                      Only for protein extraction (frame shifts).
 //   @return: variant list with metadata
 // *******************************************************************
 Variant_List extract(char_t const* const reference,
