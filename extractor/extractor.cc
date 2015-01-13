@@ -8,8 +8,8 @@
 // FILE INFORMATION:
 //   File:     extractor.cc (depends on extractor.h)
 //   Author:   Jonathan K. Vis
-//   Revision: 2.1.8
-//   Date:     2015/01/12
+//   Revision: 2.1.9
+//   Date:     2015/01/13
 // *******************************************************************
 // DESCRIPTION:
 //   This library can be used to generete HGVS variant descriptions as
@@ -1261,7 +1261,7 @@ unsigned int frame_shift(char_t const reference, char_t const sample_1, char_t c
           return shift;
         } // if
       } // if
-      else if (reference == codon_table[codon_2])
+      if (reference == codon_table[codon_2])
       {
         shift |= FRAME_SHIFT_2;
         if (shift == (FRAME_SHIFT_1 | FRAME_SHIFT_2))
