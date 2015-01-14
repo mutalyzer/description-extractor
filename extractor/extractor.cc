@@ -8,8 +8,8 @@
 // FILE INFORMATION:
 //   File:     extractor.cc (depends on extractor.h)
 //   Author:   Jonathan K. Vis
-//   Revision: 2.1.9
-//   Date:     2015/01/13
+//   Revision: 2.1.10
+//   Date:     2015/01/14
 // *******************************************************************
 // DESCRIPTION:
 //   This library can be used to generete HGVS variant descriptions as
@@ -124,6 +124,10 @@ size_t extract(std::vector<Variant> &variant,
     // Build the codon tables.
     for (unsigned int i = 0; i < 64; ++i)
     {
+      if (codon_string == 0 || codon_string[i] == '\0')
+      {
+        break;
+      } // if
       codon_table[i] = codon_string[i];
       codon_map.insert(std::pair<char_t const, unsigned int const>(codon_table[i], i));
     } // for
@@ -146,13 +150,75 @@ size_t extract(std::vector<Variant> &variant,
     std::vector<Variant> annotation;
     for (std::vector<Variant>::iterator it = variant.begin(); it != variant.end(); ++it)
     {
-      // TODO: length conditions?
       if (it->type == SUBSTITUTION)
       {
         annotate_frame_shift(annotation, reference, it->reference_start, it->reference_end, sample, it->sample_start, it->sample_end);
       } // if
     } // for
-    variant.insert(variant.end(), annotation.begin(), annotation.end());
+
+    if (annotation.size() > 0)
+    {
+      // Construct tables for calculating frame shift probabilities.
+      std::map<std::pair<char_t const, char_t const> const, size_t> fs_1;
+      std::map<std::pair<char_t const, char_t const> const, size_t> fs_2;
+      for (std::multimap<char_t const, unsigned int const>::const_iterator it_1 = codon_map.begin(); it_1 != codon_map.end(); ++it_1)
+      {
+        for (std::multimap<char_t const, unsigned int const>::const_iterator it_2 = codon_map.begin(); it_2 != codon_map.end(); ++it_2)
+        {
+          for (std::multimap<char_t const, unsigned int const>::const_iterator it_3 = codon_map.begin(); it_3 != codon_map.end(); ++it_3)
+          {
+            unsigned int const shift = frame_shift(it_3->first, it_1->first, it_2->first);
+            if ((shift & FRAME_SHIFT_1) == FRAME_SHIFT_1)
+            {
+              ++fs_1[std::pair<char_t const, char_t const>(it_1->first, it_2->first)];
+            } // if
+            if ((shift & FRAME_SHIFT_2) == FRAME_SHIFT_2)
+            {
+              ++fs_2[std::pair<char_t const, char_t const>(it_1->first, it_2->first)];
+            } // if
+            char_t const key = it_3->first;
+            while (it_3 != codon_map.end() && key == it_3->first)
+            {
+              ++it_3;
+            } // while
+            --it_3;
+          } // for
+          char_t const key = it_2->first;
+          while (it_2 != codon_map.end() && key == it_2->first)
+          {
+            ++it_2;
+          } // while
+          --it_2;
+        } // for
+        char_t const key = it_1->first;
+        while (it_1 != codon_map.end() && key == it_1->first)
+        {
+          ++it_1;
+        } // while
+        --it_1;
+      } // for
+
+      // Calculate frame shift probabilities for all annotations.
+      for (std::vector<Variant>::iterator it = annotation.begin(); it != annotation.end(); ++it)
+      {
+        size_t const length = it->reference_end - it->reference_start;
+        it->weight = 0;
+        for (size_t i = 0; i < length; ++i)
+        {
+          if ((it->type & FRAME_SHIFT_1) == FRAME_SHIFT_1)
+          {
+            it->weight += fs_1[std::pair<char_t const, char_t const>(sample[it->sample_start + i], sample[it->sample_start + i + 1])];
+          } // if
+          if ((it->type & FRAME_SHIFT_2) == FRAME_SHIFT_2)
+          {
+            it->weight += fs_2[std::pair<char_t const, char_t const>(sample[it->sample_start + i], sample[it->sample_start + i + 1])];
+          } // if
+        } // for
+      } // for
+
+      // Add the annotations to the end of the variant list.
+      variant.insert(variant.end(), annotation.begin(), annotation.end());
+    } // if
   } // if
 
   // Do NOT forget to clean up the complement string.
@@ -222,7 +288,7 @@ size_t extractor(std::vector<Variant> &variant,
 
 #if defined(__debug__)
   fprintf(stderr, "Transpositions: %ld (trivial: %ld)\n", weight_transposition, weight);
-  for (std::vector<Variant>::iterator it = transposition.begin(); it != transposition.end(); ++it)
+  for (std::vector<Variant>::const_iterator it = transposition.begin(); it != transposition.end(); ++it)
   {
     fprintf(stderr, "  %ld--%ld, %ld--%ld, %d, %ld, %ld--%ld\n", it->reference_start, it->reference_end, it->sample_start, it->sample_end, it->type, it->weight, it->transposition_start, it->transposition_end);
   } // for
@@ -283,7 +349,7 @@ size_t extractor(std::vector<Variant> &variant,
 
 #if defined(__debug__)
   fprintf(stderr, "Transpositions: %ld (trivial: %ld)\n", weight_transposition, weight);
-  for (std::vector<Variant>::iterator it = transposition.begin(); it != transposition.end(); ++it)
+  for (std::vector<Variant>::const_iterator it = transposition.begin(); it != transposition.end(); ++it)
   {
     fprintf(stderr, "  %ld--%ld, %ld--%ld, %d, %ld, %ld--%ld\n", it->reference_start, it->reference_end, it->sample_start, it->sample_end, it->type, it->weight, it->transposition_start, it->transposition_end);
   } // for
@@ -308,8 +374,8 @@ size_t extractor(std::vector<Variant> &variant,
   // Pick the ``best fitting'' LCS, i.e., the remaining prefixes and
   // suffixes are of the same length.
   size_t diff = (reference_end - reference_start) + (sample_end - sample_start);
-  std::vector<Substring>::iterator lcs = substring.begin();
-  for (std::vector<Substring>::iterator it = substring.begin(); it != substring.end(); ++it)
+  std::vector<Substring>::const_iterator lcs = substring.begin();
+  for (std::vector<Substring>::const_iterator it = substring.begin(); it != substring.end(); ++it)
   {
     size_t const prefix_diff = abs((it->reference_index - reference_start) - (it->sample_index - sample_start));
     size_t const suffix_diff = abs((reference_end - (it->reference_index + it->length)) - (sample_end - (it->sample_index + it->length)));
@@ -331,7 +397,7 @@ size_t extractor(std::vector<Variant> &variant,
 
 #if defined(__debug__)
   fprintf(stderr, "  LCS (x%ld)\n", substring.size());
-  for (std::vector<Substring>::iterator it = substring.begin() ; it != substring.end(); ++it)
+  for (std::vector<Substring>::const_iterator it = substring.begin() ; it != substring.end(); ++it)
   {
     if (!it->reverse_complement)
     {
@@ -372,7 +438,7 @@ size_t extractor(std::vector<Variant> &variant,
 
 #if defined(__debug__)
   fprintf(stderr, "Transpositions: %ld (trivial: %ld)\n", weight_transposition, weight);
-  for (std::vector<Variant>::iterator it = transposition.begin(); it != transposition.end(); ++it)
+  for (std::vector<Variant>::const_iterator it = transposition.begin(); it != transposition.end(); ++it)
   {
     fprintf(stderr, "  %ld--%ld, %ld--%ld, %d, %ld, %ld--%ld\n", it->reference_start, it->reference_end, it->sample_start, it->sample_end, it->type, it->weight, it->transposition_start, it->transposition_end);
   } // for
@@ -411,7 +477,7 @@ size_t extractor(std::vector<Variant> &variant,
 
 #if defined(__debug__)
   fprintf(stderr, "Transpositions: %ld (trivial: %ld)\n", weight_transposition, weight);
-  for (std::vector<Variant>::iterator it = transposition.begin(); it != transposition.end(); ++it)
+  for (std::vector<Variant>::const_iterator it = transposition.begin(); it != transposition.end(); ++it)
   {
     fprintf(stderr, "  %ld--%ld, %ld--%ld, %d, %ld, %ld--%ld\n", it->reference_start, it->reference_end, it->sample_start, it->sample_end, it->type, it->weight, it->transposition_start, it->transposition_end);
   } // for
@@ -518,7 +584,7 @@ size_t extractor_transposition(std::vector<Variant> &variant,
   } // if
 
   // We do NOT have to bother about a ``best fitting'' LCS here.
-  std::vector<Substring>::iterator const lcs = substring.begin();
+  std::vector<Substring>::const_iterator const lcs = substring.begin();
 
   // Update the weight of the transposition.
   weight += 2 * weight_position + WEIGHT_SEPARATOR;
@@ -530,7 +596,7 @@ size_t extractor_transposition(std::vector<Variant> &variant,
 
 #if defined(__debug__)
   fprintf(stderr, "  LCS (x%ld)\n", substring.size());
-  for (std::vector<Substring>::iterator it = substring.begin() ; it != substring.end(); ++it)
+  for (std::vector<Substring>::const_iterator it = substring.begin() ; it != substring.end(); ++it)
   {
     if (!it->reverse_complement)
     {
@@ -677,8 +743,8 @@ size_t extractor_protein(std::vector<Variant> &variant,
   // Pick the ``best fitting'' LCS, i.e., the remaining prefixes and
   // suffixes are of the same length.
   size_t diff = (reference_end - reference_start) + (sample_end - sample_start);
-  std::vector<Substring>::iterator lcs = substring.begin();
-  for (std::vector<Substring>::iterator it = substring.begin(); it != substring.end(); ++it)
+  std::vector<Substring>::const_iterator lcs = substring.begin();
+  for (std::vector<Substring>::const_iterator it = substring.begin(); it != substring.end(); ++it)
   {
     size_t const prefix_diff = abs((it->reference_index - reference_start) - (it->sample_index - sample_start));
     size_t const suffix_diff = abs((reference_end - (it->reference_index + it->length)) - (sample_end - (it->sample_index + it->length)));
@@ -693,7 +759,7 @@ size_t extractor_protein(std::vector<Variant> &variant,
 
 #if defined(__debug__)
   fprintf(stderr, "  LCS (x%ld)\n", substring.size());
-  for (std::vector<Substring>::iterator it = substring.begin() ; it != substring.end(); ++it)
+  for (std::vector<Substring>::const_iterator it = substring.begin() ; it != substring.end(); ++it)
   {
     fprintf(stderr, "    %ld--%ld: ", it->reference_index, it->reference_index + length);
     Dprint_truncated(reference, it->reference_index, it->reference_index + length);
@@ -1312,6 +1378,7 @@ size_t annotate_frame_shift(std::vector<Variant> &variant,
     {
       frame &= shift;
     } // else
+
 
 #if defined(__debug__)
   fprintf(stderr, "  %c%c --- %c: %d  %ld\n", sample[sample_start + i], sample[sample_start + i + 1], reference[reference_start + i + 1], frame, i - start);
