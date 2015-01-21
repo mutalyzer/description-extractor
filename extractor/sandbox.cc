@@ -8,8 +8,8 @@
 // FILE INFORMATION:
 //   File:     sandbox.cc
 //   Author:   Jonathan K. Vis
-//   Revision: 1.0.0
-//   Date:     2015/01/20
+//   Revision: 1.0.1
+//   Date:     2015/01/21
 // *******************************************************************
 // DESCRIPTION:
 //  General testing playground: automatic (small) repeat annotation
@@ -157,10 +157,15 @@ size_t primary(Node const* const root, char_t const* const string, size_t const 
 
 int main(int, char*[])
 {
-  size_t const length = 220;
+  size_t const length = 16;
   //char_t const* const string = random_dna(length);
   //char_t const* const string = "ATAGATAGATAGATAG";
-  char_t const* const string = "CATGCTGGCCATATTCACTTGCCCACTTCTGCCCAGGGATCTATTTTTCTGTGGTGTGTATTCCCTGTGCCTTTGGGGGCATCTCTTATACTCATGAAATCAACAGAGGCTTGCATGTATCTATCTGTCTGTCTATCTATCTATCTATCTATCTATCTATCTATCTATCTATCTATCTATGAGACAGGGTCTTGCTCTGTCACCCAGATTGGACTGCAGT";
+  // length = 220
+  //char_t const* const string = "CATGCTGGCCATATTCACTTGCCCACTTCTGCCCAGGGATCTATTTTTCTGTGGTGTGTATTCCCTGTGCCTTTGGGGGCATCTCTTATACTCATGAAATCAACAGAGGCTTGCATGTATCTATCTGTCTGTCTATCTATCTATCTATCTATCTATCTATCTATCTATCTATCTATCTATGAGACAGGGTCTTGCTCTGTCACCCAGATTGGACTGCAGT";
+  // length = 229
+  //char_t const* const string = "ATATGTGAGTCAATTCCCCAAGTGAATTGCCTTCTATCTATCTATCTATCTATCTGTCTGTCTGTCTGTCTGTCTGTCTATCTATCTATATCTATCTATCATCTATCTATCCATATCTATCTATCTATCTATCTATCTATCTATCTATCTATCTATCTATATCTATCGTCTATCTATCCAGTCTATCTACCTCCTATTAGTCTGTCTCTGGAGAACATTGACTAATACA";
+  // length = 204
+  //char_t const* const string = "GGCGACTGAGCAAGACTCAGTCTCAAAGAAAAGAAAAGAAAAGAAAAGAAAAGAAAAGAAAAGAAAAGAAAAGAAAATTGTAAGGAGTTTTCTCAATTAATAACCCAAATAAGAGAATTCTTTCCATGTATCAATCATGATACTAAGCACTTTACACACATGTATGTTATGTAATCATTATATCATGCATGCAAGGTAATGAGT";
 
   for (size_t i = 0; i < length; ++i)
   {
@@ -187,15 +192,20 @@ int main(int, char*[])
 
   traverse(root, string);
 
-  size_t start = 0;
-  size_t const p_length = 4;
-  size_t const count = primary(root, string, p_length, start);
-  printf("primary (%ld) = ", p_length);
-  for (size_t i = 0; i < p_length; ++i)
+  for (size_t sub_length = 2; sub_length < length / 2 + 1; ++sub_length)
   {
-    printf("%c", string[start + i]);
+    size_t start = 0;
+    size_t const count = primary(root, string, sub_length, start);
+    if (count > 1)
+    {
+      printf("primary (%ld) = ", sub_length);
+      for (size_t i = 0; i < sub_length; ++i)
+      {
+        printf("%c", string[start + i]);
+      } // for
+      printf(" (%ld) --- %ld\n", count, count * sub_length);
+    } // if
   } // for
-  printf(" (%ld)\n", count);
 
   //delete[] string;
   remove(root);
