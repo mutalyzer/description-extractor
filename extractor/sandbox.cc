@@ -8,26 +8,18 @@
 // FILE INFORMATION:
 //   File:     sandbox.cc
 //   Author:   Jonathan K. Vis
-//   Revision: 1.1.0
+//   Revision: 1.1.1
 //   Date:     2015/01/22
 // *******************************************************************
 // DESCRIPTION:
-//  General testing playground: automatic (small) repeat annotation
-//  and protein frame shift construction code (in comments).
+//  General testing playground: automatic tandem repeat detection
+//  based on run length encoding with variable run lengths.
 // *******************************************************************
 
 #include <cstdio>
 #include <cstdlib>
 
 typedef char char_t;
-
-static char_t const IUPAC_BASE[4] =
-{
-  'A',
-  'C',
-  'G',
-  'T'
-}; // IUPAC_BASE
 
 bool string_match(char_t const* const string_1,
                   char_t const* const string_2,
@@ -45,61 +37,49 @@ bool string_match(char_t const* const string_1,
 
 int main(int, char* [])
 {
-  size_t const length = 220;
-  //char_t const* const string = "CCATAGATAGATAGCC";
+  size_t const length = 204;
+  //char_t const* const string = "AACAACAAC";
 
   // length = 220
-  char_t const* const string = "CATGCTGGCCATATTCACTTGCCCACTTCTGCCCAGGGATCTATTTTTCTGTGGTGTGTATTCCCTGTGCCTTTGGGGGCATCTCTTATACTCATGAAATCAACAGAGGCTTGCATGTATCTATCTGTCTGTCTATCTATCTATCTATCTATCTATCTATCTATCTATCTATCTATCTATGAGACAGGGTCTTGCTCTGTCACCCAGATTGGACTGCAGT";
+  //char_t const* const string = "CATGCTGGCCATATTCACTTGCCCACTTCTGCCCAGGGATCTATTTTTCTGTGGTGTGTATTCCCTGTGCCTTTGGGGGCATCTCTTATACTCATGAAATCAACAGAGGCTTGCATGTATCTATCTGTCTGTCTATCTATCTATCTATCTATCTATCTATCTATCTATCTATCTATCTATGAGACAGGGTCTTGCTCTGTCACCCAGATTGGACTGCAGT";
   // length = 229
   //char_t const* const string = "ATATGTGAGTCAATTCCCCAAGTGAATTGCCTTCTATCTATCTATCTATCTATCTGTCTGTCTGTCTGTCTGTCTGTCTATCTATCTATATCTATCTATCATCTATCTATCCATATCTATCTATCTATCTATCTATCTATCTATCTATCTATCTATCTATATCTATCGTCTATCTATCCAGTCTATCTACCTCCTATTAGTCTGTCTCTGGAGAACATTGACTAATACA";
   // length = 204
-  //char_t const* const string = "GGCGACTGAGCAAGACTCAGTCTCAAAGAAAAGAAAAGAAAAGAAAAGAAAAGAAAAGAAAAGAAAAGAAAAGAAAATTGTAAGGAGTTTTCTCAATTAATAACCCAAATAAGAGAATTCTTTCCATGTATCAATCATGATACTAAGCACTTTACACACATGTATGTTATGTAATCATTATATCATGCATGCAAGGTAATGAGT";
+  char_t const* const string = "GGCGACTGAGCAAGACTCAGTCTCAAAGAAAAGAAAAGAAAAGAAAAGAAAAGAAAAGAAAAGAAAAGAAAAGAAAATTGTAAGGAGTTTTCTCAATTAATAACCCAAATAAGAGAATTCTTTCCATGTATCAATCATGATACTAAGCACTTTACACACATGTATGTTATGTAATCATTATATCATGCATGCAAGGTAATGAGT";
 
-  for (size_t i = 0; i < length; ++i)
+  size_t i = 0;
+  while (i < length)
   {
-    size_t count;
-    //printf("%ld %c\n", i, string[i]);
+    size_t max_count = 0;
+    size_t max_k = 1;
     for (size_t k = 1; k < length / 2 + 1; ++k)
     {
-      count = 0;
-      //printf("  k = %ld\n", k);
+      size_t count = 0;
       for (size_t j = i + k; j < length - k + 1; j += k)
       {
-        /*
-        printf("    %ld: ", j);
-        for (size_t c = 0; c < k; ++c)
-        {
-          printf("%c", string[i + c]);
-        } // for
-        printf(" --- ");
-        for (size_t c = 0; c < k; ++c)
-        {
-          printf("%c", string[j + c]);
-        } // for
-        printf("\n");
-        */
         if (!string_match(string + i, string + j, k))
         {
           break;
         } // if
         ++count;
       } // for
-      if (count > 0)
+      if (count > max_count)
       {
-        for (size_t j = 0; j < k; ++j)
-        {
-          printf("%c", string[i + j]);
-        } // for
-        printf("%ld;", count + 1);
-        i += (count + 1) * k - 1;
-        break;
+        max_count = count;
+        max_k = k;
       } // if
     } // for
-    if (count == 0)
+    for (size_t j = 0; j < max_k; ++j)
     {
-      printf("%c;", string[i]);
+      printf("%c", string[i + j]);
+    } // for
+    if (max_count > 0)
+    {
+      printf("%ld", max_count + 1);
     } // if
-  } // for
+    printf(";");
+    i += max_k * (max_count + 1);
+  } // while
   printf("\n");
 
   return 0;
