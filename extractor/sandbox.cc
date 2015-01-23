@@ -35,18 +35,11 @@ bool string_match(char_t const* const string_1,
   return true;
 } // string_match
 
-int main(int, char* [])
+void tandem_repeat_annotation(char_t const* const string,
+                              size_t const        start,
+                              size_t const        end)
 {
-  size_t const length = 6;
-  char_t const* const string = "AACAAC";
-
-  // length = 220
-  //char_t const* const string = "CATGCTGGCCATATTCACTTGCCCACTTCTGCCCAGGGATCTATTTTTCTGTGGTGTGTATTCCCTGTGCCTTTGGGGGCATCTCTTATACTCATGAAATCAACAGAGGCTTGCATGTATCTATCTGTCTGTCTATCTATCTATCTATCTATCTATCTATCTATCTATCTATCTATCTATGAGACAGGGTCTTGCTCTGTCACCCAGATTGGACTGCAGT";
-  // length = 229
-  //char_t const* const string = "ATATGTGAGTCAATTCCCCAAGTGAATTGCCTTCTATCTATCTATCTATCTATCTGTCTGTCTGTCTGTCTGTCTGTCTATCTATCTATATCTATCTATCATCTATCTATCCATATCTATCTATCTATCTATCTATCTATCTATCTATCTATCTATCTATATCTATCGTCTATCTATCCAGTCTATCTACCTCCTATTAGTCTGTCTCTGGAGAACATTGACTAATACA";
-  // length = 204
-  //char_t const* const string = "GGCGACTGAGCAAGACTCAGTCTCAAAGAAAAGAAAAGAAAAGAAAAGAAAAGAAAAGAAAAGAAAAGAAAAGAAAATTGTAAGGAGTTTTCTCAATTAATAACCCAAATAAGAGAATTCTTTCCATGTATCAATCATGATACTAAGCACTTTACACACATGTATGTTATGTAATCATTATATCATGCATGCAAGGTAATGAGT";
-
+  size_t const length = end - start;
   size_t i = 0;
   while (i < length)
   {
@@ -57,7 +50,7 @@ int main(int, char* [])
       size_t count = 0;
       for (size_t j = i + k; j < length - k + 1; j += k)
       {
-        if (!string_match(string + i, string + j, k))
+        if (!string_match(string + start + i, string + start + j, k))
         {
           break;
         } // if
@@ -71,7 +64,7 @@ int main(int, char* [])
     } // for
     for (size_t j = 0; j < max_k; ++j)
     {
-      printf("%c", string[i + j]);
+      printf("%c", string[start + i + j]);
     } // for
     if (max_count > 0)
     {
@@ -81,6 +74,20 @@ int main(int, char* [])
     i += max_k * (max_count + 1);
   } // while
   printf("\n");
+  return;
+} // tandem_repeat_annotation
+
+int main(int, char* [])
+{
+  char_t const* const string = "AACAAC";
+  // length = 220
+  //char_t const* const string = "CATGCTGGCCATATTCACTTGCCCACTTCTGCCCAGGGATCTATTTTTCTGTGGTGTGTATTCCCTGTGCCTTTGGGGGCATCTCTTATACTCATGAAATCAACAGAGGCTTGCATGTATCTATCTGTCTGTCTATCTATCTATCTATCTATCTATCTATCTATCTATCTATCTATCTATGAGACAGGGTCTTGCTCTGTCACCCAGATTGGACTGCAGT";
+  // length = 229
+  //char_t const* const string = "ATATGTGAGTCAATTCCCCAAGTGAATTGCCTTCTATCTATCTATCTATCTATCTGTCTGTCTGTCTGTCTGTCTGTCTATCTATCTATATCTATCTATCATCTATCTATCCATATCTATCTATCTATCTATCTATCTATCTATCTATCTATCTATCTATATCTATCGTCTATCTATCCAGTCTATCTACCTCCTATTAGTCTGTCTCTGGAGAACATTGACTAATACA";
+  // length = 204
+  //char_t const* const string = "GGCGACTGAGCAAGACTCAGTCTCAAAGAAAAGAAAAGAAAAGAAAAGAAAAGAAAAGAAAAGAAAAGAAAAGAAAATTGTAAGGAGTTTTCTCAATTAATAACCCAAATAAGAGAATTCTTTCCATGTATCAATCATGATACTAAGCACTTTACACACATGTATGTTATGTAATCATTATATCATGCATGCAAGGTAATGAGT";
+
+  tandem_repeat_annotation(string, 0, 6);
 
   return 0;
 } // main
