@@ -16,7 +16,7 @@
 //  based on run length encoding with variable run lengths.
 // *******************************************************************
 
-#include <cstddef>
+#include <cstdlib>
 #include <vector>
 
 #include <cstdio>
@@ -61,8 +61,8 @@ void tandem_repeat_annotation(std::vector<Repeat> &repeat,
   size_t const length = end - start;
   size_t const k_max = length > THRESHOLD ? THRESHOLD / 2 : length / 2 + 1;
 
-  size_t last_repeat = 0;
   size_t i = 0;
+  size_t last_repeat = i;
   while (i < length)
   {
     size_t max_count = 0;
@@ -106,7 +106,7 @@ int main(int argc, char* argv[])
 {
   if (argc < 2)
   {
-    fprintf(stderr, "usage: %s string\n", argv[0]);
+    fprintf(stderr, "usage: %s string [start] [end]\n", argv[0]);
     return 1;
   } // if
   fprintf(stderr, "Tandem Repeat Annotator\n");
@@ -125,8 +125,27 @@ int main(int argc, char* argv[])
   static_cast<void>(ref_length);
   fclose(file);
 
+  size_t start = 0;
+  if (argc > 2)
+  {
+    start = atoi(argv[2]);
+    if (start > length)
+    {
+      start = 0;
+    } // if
+  } // if
+  size_t end = length;
+  if (argc > 3)
+  {
+    end = atoi(argv[3]);
+    if (end > length)
+    {
+      end = length;
+    } // if
+  } // if
+
   std::vector<Repeat> repeat;
-  tandem_repeat_annotation(repeat, string, 0, length);
+  tandem_repeat_annotation(repeat, string, start, end);
 
   for (std::vector<Repeat>::const_iterator it = repeat.begin(); it != repeat.end(); ++it)
   {
@@ -142,6 +161,30 @@ int main(int argc, char* argv[])
   } // for
   printf("\n");
 
+  char_t* reverse = new char_t[length];
+  for (size_t i = 0; i < length; ++i)
+  {
+    reverse[i] = string[length - i - 1];
+  } // for
+
+  std::vector<Repeat> repeat_reverse;
+  tandem_repeat_annotation(repeat_reverse, reverse, length - end, length - start);
+
+  for (std::vector<Repeat>::const_reverse_iterator it = repeat_reverse.rbegin(); it != repeat_reverse.rend(); ++it)
+  {
+    for (size_t i = it->start; i < it->end; ++i)
+    {
+      printf("%c", reverse[i]);
+    } // for
+    if (it->count > 0)
+    {
+      printf("%ld", it->count + 1);
+    } // if
+    printf(";");
+  } // for
+  printf("\n");
+
+  delete[] reverse;
   delete[] string;
 
   return 0;
