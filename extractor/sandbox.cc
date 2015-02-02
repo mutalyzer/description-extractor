@@ -8,18 +8,36 @@
 // FILE INFORMATION:
 //   File:     sandbox.cc
 //   Author:   Jonathan K. Vis
-//   Revision: 1.1.2
-//   Date:     2015/01/23
+//   Revision: 1.1.5
+//   Date:     2015/02/02
 // *******************************************************************
 // DESCRIPTION:
 //  General testing playground: automatic tandem repeat detection
 //  based on run length encoding with variable run lengths.
 // *******************************************************************
 
+#include <cstddef>
+#include <vector>
+
 #include <cstdio>
-#include <cstdlib>
 
 typedef char char_t;
+
+static size_t const THRESHOLD = 10000;
+
+struct Repeat
+{
+  inline Repeat(size_t const start,
+                size_t const end,
+                size_t const count = 0):
+         start(start), end(end), count(count) { }
+
+  inline Repeat(void) { }
+
+  size_t start;
+  size_t end;
+  size_t count;
+}; // Repeat
 
 bool string_match(char_t const* const string_1,
                   char_t const* const string_2,
@@ -35,17 +53,21 @@ bool string_match(char_t const* const string_1,
   return true;
 } // string_match
 
-void tandem_repeat_annotation(char_t const* const string,
-                              size_t const        start,
-                              size_t const        end)
+void tandem_repeat_annotation(std::vector<Repeat> &repeat,
+                              char_t const* const  string,
+                              size_t const         start,
+                              size_t const         end)
 {
   size_t const length = end - start;
+  size_t const k_max = length > THRESHOLD ? THRESHOLD / 2 : length / 2 + 1;
+
+  size_t last_repeat = 0;
   size_t i = 0;
   while (i < length)
   {
     size_t max_count = 0;
     size_t max_k = 1;
-    for (size_t k = 1; k < length / 2 + 1; ++k)
+    for (size_t k = 1; k < k_max; ++k)
     {
       size_t count = 0;
       for (size_t j = i + k; j < length - k + 1; j += k)
@@ -62,32 +84,65 @@ void tandem_repeat_annotation(char_t const* const string,
         max_k = k;
       } // if
     } // for
-    for (size_t j = 0; j < max_k; ++j)
-    {
-      printf("%c", string[start + i + j]);
-    } // for
     if (max_count > 0)
     {
-      printf("%ld", max_count + 1);
+      if (last_repeat < i)
+      {
+        repeat.push_back(Repeat(start + last_repeat, start + i));
+      } // if
+      repeat.push_back(Repeat(start + i, start + i + max_k, max_count));
+      last_repeat = i + max_k * (max_count + 1);
     } // if
-    printf(";");
     i += max_k * (max_count + 1);
   } // while
-  printf("\n");
+  if (last_repeat < i)
+  {
+    repeat.push_back(Repeat(start + last_repeat, start + i));
+  } // if
   return;
 } // tandem_repeat_annotation
 
-int main(int, char* [])
+int main(int argc, char* argv[])
 {
-  char_t const* const string = "AACAAC";
-  // length = 220
-  //char_t const* const string = "CATGCTGGCCATATTCACTTGCCCACTTCTGCCCAGGGATCTATTTTTCTGTGGTGTGTATTCCCTGTGCCTTTGGGGGCATCTCTTATACTCATGAAATCAACAGAGGCTTGCATGTATCTATCTGTCTGTCTATCTATCTATCTATCTATCTATCTATCTATCTATCTATCTATCTATGAGACAGGGTCTTGCTCTGTCACCCAGATTGGACTGCAGT";
-  // length = 229
-  //char_t const* const string = "ATATGTGAGTCAATTCCCCAAGTGAATTGCCTTCTATCTATCTATCTATCTATCTGTCTGTCTGTCTGTCTGTCTGTCTATCTATCTATATCTATCTATCATCTATCTATCCATATCTATCTATCTATCTATCTATCTATCTATCTATCTATCTATCTATATCTATCGTCTATCTATCCAGTCTATCTACCTCCTATTAGTCTGTCTCTGGAGAACATTGACTAATACA";
-  // length = 204
-  //char_t const* const string = "GGCGACTGAGCAAGACTCAGTCTCAAAGAAAAGAAAAGAAAAGAAAAGAAAAGAAAAGAAAAGAAAAGAAAAGAAAATTGTAAGGAGTTTTCTCAATTAATAACCCAAATAAGAGAATTCTTTCCATGTATCAATCATGATACTAAGCACTTTACACACATGTATGTTATGTAATCATTATATCATGCATGCAAGGTAATGAGT";
+  if (argc < 2)
+  {
+    fprintf(stderr, "usage: %s string\n", argv[0]);
+    return 1;
+  } // if
+  fprintf(stderr, "Tandem Repeat Annotator\n");
 
-  tandem_repeat_annotation(string, 0, 6);
+  FILE* file = fopen(argv[1], "r");
+  if (file == 0)
+  {
+    fprintf(stderr, "ERROR: could not open file `%s'\n", argv[1]);
+    return 1;
+  } // if
+  fseek(file, 0, SEEK_END);
+  size_t const length = ftell(file);
+  rewind(file);
+  char_t* string = new char_t[length];
+  size_t const ref_length = fread(string, sizeof(char_t), length, file);
+  static_cast<void>(ref_length);
+  fclose(file);
+
+  std::vector<Repeat> repeat;
+  tandem_repeat_annotation(repeat, string, 0, length);
+
+  for (std::vector<Repeat>::const_iterator it = repeat.begin(); it != repeat.end(); ++it)
+  {
+    for (size_t i = it->start; i < it->end; ++i)
+    {
+      printf("%c", string[i]);
+    } // for
+    if (it->count > 0)
+    {
+      printf("%ld", it->count + 1);
+    } // if
+    printf(";");
+  } // for
+  printf("\n");
+
+  delete[] string;
 
   return 0;
 } // main
