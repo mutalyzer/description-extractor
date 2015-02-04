@@ -172,9 +172,10 @@ int main(int argc, char* argv[])
 
   for (std::vector<Repeat>::const_reverse_iterator it = repeat_reverse.rbegin(); it != repeat_reverse.rend(); ++it)
   {
-    for (size_t i = it->start; i < it->end; ++i)
+    size_t const repeat_length = it->end - it->start;
+    for (size_t i = 0; i < repeat_length; ++i)
     {
-      printf("%c", reverse[i]);
+      printf("%c", reverse[it->end - 1 - i]);
     } // for
     if (it->count > 0)
     {
