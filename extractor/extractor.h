@@ -8,8 +8,8 @@
 // FILE INFORMATION:
 //   File:     extractor.h (implemented in extractor.cc)
 //   Author:   Jonathan K. Vis
-//   Revision: 2.1.8
-//   Date:     2015/01/12
+//   Revision: 2.1.9
+//   Date:     2015/02/16
 // *******************************************************************
 // DESCRIPTION:
 //   This library can be used to generate HGVS variant descriptions as
@@ -34,7 +34,7 @@ namespace mutalyzer
 {
 
 // Version string for run-time identification.
-static char const* const VERSION = "2.1.8";
+static char const* const VERSION = "2.1.9";
 
 
 // The character type used for all strings. For now it should just be
@@ -596,6 +596,14 @@ size_t annotate_frame_shift(std::vector<Variant> &variant,
                             char_t const* const   sample,
                             size_t const          sample_start,
                             size_t const          sample_end);
+
+size_t annotate_frame_inversion(std::vector<Variant> &variant,
+                                char_t const* const   reference,
+                                size_t const          reference_start,
+                                size_t const          reference_end,
+                                char_t const* const   sample,
+                                size_t const          sample_start,
+                                size_t const          sample_end);
 
 
 #if defined(__debug__)

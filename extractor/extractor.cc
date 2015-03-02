@@ -8,8 +8,8 @@
 // FILE INFORMATION:
 //   File:     extractor.cc (depends on extractor.h)
 //   Author:   Jonathan K. Vis
-//   Revision: 2.1.10
-//   Date:     2015/01/14
+//   Revision: 2.1.11
+//   Date:     2015/02/16
 // *******************************************************************
 // DESCRIPTION:
 //   This library can be used to generete HGVS variant descriptions as
@@ -152,7 +152,9 @@ size_t extract(std::vector<Variant> &variant,
     {
       if (it->type == SUBSTITUTION)
       {
-        annotate_frame_shift(annotation, reference, it->reference_start, it->reference_end, sample, it->sample_start, it->sample_end);
+        annotate_frame_inversion(annotation, reference, it->reference_start, it->reference_end, sample, it->sample_start, it->sample_end);
+
+        //annotate_frame_shift(annotation, reference, it->reference_start, it->reference_end, sample, it->sample_start, it->sample_end);
       } // if
     } // for
 
@@ -1304,7 +1306,7 @@ char_t const* IUPAC_complement(char_t const* const string,
   return complement;
 } // IUPAC_complement
 
-// This function calculates the frame shift A reference amino acid is
+// This function calculates the frame shift. A reference amino acid is
 // checked against two possible partial overlaps between every
 // combination of two sample (observed) amino acids.
 unsigned int frame_shift(char_t const reference, char_t const sample_1, char_t const sample_2)
@@ -1392,6 +1394,27 @@ size_t annotate_frame_shift(std::vector<Variant> &variant,
   } // if
   return variant.size();
 } // annotate_frame_shift
+
+size_t annotate_frame_inversion(std::vector<Variant> &variant,
+                                char_t const* const   reference,
+                                size_t const          reference_start,
+                                size_t const          reference_end,
+                                char_t const* const   sample,
+                                size_t const          sample_start,
+                                size_t const          sample_end)
+{
+  size_t const reference_length = reference_end - reference_start;
+  size_t const sample_length = sample_end - sample_start;
+  size_t const length = (reference_length <= sample_length ? reference_length : sample_length) - 1;
+
+
+#if defined(__debug__)
+  fprintf(stderr, "Frame inversion detection (%ld)\n", length);
+#endif
+
+
+  return 0;
+} // annotate_frame_inversion
 
 
 #if defined(__debug__)

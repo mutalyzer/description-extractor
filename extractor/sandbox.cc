@@ -8,186 +8,106 @@
 // FILE INFORMATION:
 //   File:     sandbox.cc
 //   Author:   Jonathan K. Vis
-//   Revision: 1.1.5
-//   Date:     2015/02/02
+//   Revision: 1.0.0
+//   Date:     2015/03/02
 // *******************************************************************
 // DESCRIPTION:
-//  General testing playground: automatic tandem repeat detection
-//  based on run length encoding with variable run lengths.
+//  General testing playground: protein frame shift construction code.
 // *******************************************************************
 
-#include <cstdlib>
-#include <vector>
-
 #include <cstdio>
+#include <cstdlib>
 
 typedef char char_t;
 
-static size_t const THRESHOLD = 10000;
+#include <map>
 
-struct Repeat
+static unsigned int const FRAME_SHIFT_0            = 0x00;
+static unsigned int const FRAME_SHIFT_1            = 0x01;
+static unsigned int const FRAME_SHIFT_2            = 0x02;
+static unsigned int const FRAME_SHIFT_REVERSE_IDEM = 0x04;
+static unsigned int const FRAME_SHIFT_REVERSE_1    = 0x08;
+static unsigned int const FRAME_SHIFT_REVERSE_2    = 0x10;
+
+static char_t const* const codon_string = "KNKNTTTTRSRSIIMIQHQHPPPPRRRRLLLLEDEDAAAAGGGGVVVV*Y*YSSSS*CWCLFLF";
+
+static char_t const IUPAC_BASE[4] =
 {
-  inline Repeat(size_t const start,
-                size_t const end,
-                size_t const count = 0):
-         start(start), end(end), count(count) { }
+  'A',
+  'C',
+  'G',
+  'T'
+}; // IUPAC_BASE
 
-  inline Repeat(void) { }
+char_t codon_table[64] = {'\0'};
+std::multimap<char_t const, unsigned int const> codon_map;
 
-  size_t start;
-  size_t end;
-  size_t count;
-}; // Repeat
-
-bool string_match(char_t const* const string_1,
-                  char_t const* const string_2,
-                  size_t const        length)
+unsigned int frame_shift(char_t const reference, char_t const sample_1, char_t const sample_2)
 {
-  for (size_t i = 0; i < length; ++i)
+  std::pair<std::multimap<char_t const, unsigned int const>::const_iterator, std::multimap<char_t const, unsigned int const>::const_iterator> const range_1 = codon_map.equal_range(sample_1);
+  std::pair<std::multimap<char_t const, unsigned int const>::const_iterator, std::multimap<char_t const, unsigned int const>::const_iterator> const range_2 = codon_map.equal_range(sample_2);
+
+  unsigned int shift = FRAME_SHIFT_0;
+  for (std::multimap<char_t const, unsigned int const>::const_iterator it_1 = range_1.first; it_1 != range_1.second; ++it_1)
   {
-    if (string_1[i] != string_2[i])
+    for (std::multimap<char_t const, unsigned int const>::const_iterator it_2 = range_2.first; it_2 != range_2.second; ++it_2)
     {
-      return false;
-    } // if
-  } // for
-  return true;
-} // string_match
-
-void tandem_repeat_annotation(std::vector<Repeat> &repeat,
-                              char_t const* const  string,
-                              size_t const         start,
-                              size_t const         end)
-{
-  size_t const length = end - start;
-  size_t const k_max = length > THRESHOLD ? THRESHOLD / 2 : length / 2 + 1;
-
-  size_t i = 0;
-  size_t last_repeat = i;
-  while (i < length)
-  {
-    size_t max_count = 0;
-    size_t max_k = 1;
-    for (size_t k = 1; k < k_max; ++k)
-    {
-      size_t count = 0;
-      for (size_t j = i + k; j < length - k + 1; j += k)
+      const unsigned int codon_1 = ((it_1->second << 0x2) | (it_2->second >> 0x4)) & 0x3f;
+      const unsigned int codon_2 = ((it_1->second << 0x4) | (it_2->second >> 0x2)) & 0x3f;
+      if (reference == codon_table[codon_1])
       {
-        if (!string_match(string + start + i, string + start + j, k))
-        {
-          break;
-        } // if
-        ++count;
-      } // for
-      if (count > 0 && count >= max_count)
-      {
-        max_count = count;
-        max_k = k;
+        shift |= FRAME_SHIFT_1;
       } // if
-    } // for
-    if (max_count > 0)
-    {
-      if (last_repeat < i)
+      if (reference == codon_table[codon_2])
       {
-        repeat.push_back(Repeat(start + last_repeat, start + i));
+        shift |= FRAME_SHIFT_2;
       } // if
-      repeat.push_back(Repeat(start + i, start + i + max_k, max_count));
-      last_repeat = i + max_k * (max_count + 1);
-    } // if
-    i += max_k * (max_count + 1);
-  } // while
-  if (last_repeat < i)
-  {
-    repeat.push_back(Repeat(start + last_repeat, start + i));
-  } // if
-  return;
-} // tandem_repeat_annotation
+      if (shift == (FRAME_SHIFT_1 | FRAME_SHIFT_2))
+      {
+        return shift;
+      } // if
+      printf("%d %d -> %d %d\n", it_1->second, it_2->second, codon_1, codon_2);
+    } // for
+  } // for
+  return shift;
+} // frame_shift
 
-int main(int argc, char* argv[])
+void print_codon(unsigned int const index)
 {
-  if (argc < 2)
-  {
-    fprintf(stderr, "usage: %s string [start] [end]\n", argv[0]);
-    return 1;
-  } // if
-  fprintf(stderr, "Tandem Repeat Annotator\n");
+  printf("%c%c%c", IUPAC_BASE[index >> 0x4], IUPAC_BASE[(index >> 0x2) & 0x3], IUPAC_BASE[index & 0x3]);
+} // print_codon
 
-  FILE* file = fopen(argv[1], "r");
-  if (file == 0)
-  {
-    fprintf(stderr, "ERROR: could not open file `%s'\n", argv[1]);
-    return 1;
-  } // if
-  fseek(file, 0, SEEK_END);
-  size_t const length = ftell(file);
-  rewind(file);
-  char_t* string = new char_t[length];
-  size_t const ref_length = fread(string, sizeof(char_t), length, file);
-  static_cast<void>(ref_length);
-  fclose(file);
+unsigned int reverse_complement(unsigned int const index)
+{
+  return (~((index >> 0x4) | (((index >> 0x2) & 0x3) << 2) | ((index & 0x3) << 0x4)) & 0x3f);
+} // reverse_complement
 
-  size_t start = 0;
-  if (argc > 2)
+unsigned int frame_shift_reverse(char_t const reference, char_t const sample_1)
+{
+  std::pair<std::multimap<char_t const, unsigned int const>::const_iterator, std::multimap<char_t const, unsigned int const>::const_iterator> const range_1 = codon_map.equal_range(sample_1);
+
+  unsigned int shift = FRAME_SHIFT_0;
+  for (std::multimap<char_t const, unsigned int const>::const_iterator it_1 = range_1.first; it_1 != range_1.second; ++it_1)
   {
-    start = atoi(argv[2]);
-    if (start > length)
+    if (reference == codon_table[reverse_complement(it_1->second)])
     {
-      start = 0;
+      shift |= FRAME_SHIFT_REVERSE_IDEM;
     } // if
-  } // if
-  size_t end = length;
-  if (argc > 3)
-  {
-    end = atoi(argv[3]);
-    if (end > length)
-    {
-      end = length;
-    } // if
-  } // if
-
-  std::vector<Repeat> repeat;
-  tandem_repeat_annotation(repeat, string, start, end);
-
-  for (std::vector<Repeat>::const_iterator it = repeat.begin(); it != repeat.end(); ++it)
-  {
-    for (size_t i = it->start; i < it->end; ++i)
-    {
-      printf("%c", string[i]);
-    } // for
-    if (it->count > 0)
-    {
-      printf("%ld", it->count + 1);
-    } // if
-    printf(";");
   } // for
-  printf("\n");
+  return shift;
+} // frame_shift_reverse
 
-  char_t* reverse = new char_t[length];
-  for (size_t i = 0; i < length; ++i)
+
+int main(int, char* [])
+{
+  for (unsigned int i = 0; i < 64; ++i)
   {
-    reverse[i] = string[length - i - 1];
+    codon_table[i] = codon_string[i];
+    codon_map.insert(std::pair<char_t const, unsigned int const>(codon_table[i], i));
   } // for
 
-  std::vector<Repeat> repeat_reverse;
-  tandem_repeat_annotation(repeat_reverse, reverse, length - end, length - start);
-
-  for (std::vector<Repeat>::const_reverse_iterator it = repeat_reverse.rbegin(); it != repeat_reverse.rend(); ++it)
-  {
-    size_t const repeat_length = it->end - it->start;
-    for (size_t i = 0; i < repeat_length; ++i)
-    {
-      printf("%c", reverse[it->end - 1 - i]);
-    } // for
-    if (it->count > 0)
-    {
-      printf("%ld", it->count + 1);
-    } // if
-    printf(";");
-  } // for
-  printf("\n");
-
-  delete[] reverse;
-  delete[] string;
-
+  unsigned int const shift = frame_shift_reverse('D', 'V');
+  printf("%d\n", shift);
   return 0;
 } // main
 
