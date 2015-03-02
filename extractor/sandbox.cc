@@ -1,37 +1,20 @@
-// *******************************************************************
-//   (C) Copyright 2015 Leiden Institute of Advanced Computer Science
-//   Universiteit Leiden
-//   All Rights Reserved
-// *******************************************************************
-// Sandbox (testing playground)
-// *******************************************************************
-// FILE INFORMATION:
-//   File:     sandbox.cc
-//   Author:   Jonathan K. Vis
-//   Revision: 1.0.0
-//   Date:     2015/03/02
-// *******************************************************************
-// DESCRIPTION:
-//  General testing playground: protein frame shift construction code.
-// *******************************************************************
-
 #include <cstdio>
-#include <cstdlib>
 
 typedef char char_t;
+typedef unsigned long long uint64_t;
 
-#include <map>
+static unsigned int const FRAME_SHIFT_NONE      = 0x00;
+static unsigned int const FRAME_SHIFT_1         = 0x01;
+static unsigned int const FRAME_SHIFT_2         = 0x02;
+static unsigned int const FRAME_SHIFT_REVERSE   = 0x04;
+static unsigned int const FRAME_SHIFT_REVERSE_1 = 0x08;
+static unsigned int const FRAME_SHIFT_REVERSE_2 = 0x10;
 
-static unsigned int const FRAME_SHIFT_0            = 0x00;
-static unsigned int const FRAME_SHIFT_1            = 0x01;
-static unsigned int const FRAME_SHIFT_2            = 0x02;
-static unsigned int const FRAME_SHIFT_REVERSE_IDEM = 0x04;
-static unsigned int const FRAME_SHIFT_REVERSE_1    = 0x08;
-static unsigned int const FRAME_SHIFT_REVERSE_2    = 0x10;
 
-static char_t const* const codon_string = "KNKNTTTTRSRSIIMIQHQHPPPPRRRRLLLLEDEDAAAAGGGGVVVV*Y*YSSSS*CWCLFLF";
+// default codon string
+char_t const* const CODON_STRING = "KNKNTTTTRSRSIIMIQHQHPPPPRRRRLLLLEDEDAAAAGGGGVVVV*Y*YSSSS*CWCLFLF";
 
-static char_t const IUPAC_BASE[4] =
+char_t const IUPAC_BASE[4] =
 {
   'A',
   'C',
@@ -39,75 +22,179 @@ static char_t const IUPAC_BASE[4] =
   'T'
 }; // IUPAC_BASE
 
-char_t codon_table[64] = {'\0'};
-std::multimap<char_t const, unsigned int const> codon_map;
+// bitstrings with ASCII index: for each acid (as ASCII value) which
+// codons are coding for it (64 bits: 1 is coding)
+static uint64_t acid_map[128]   = {0x0};
+// for each codon what is the corresponding acid (as ASCII value)
+static   char_t codon_table[64] = {'\0'};
 
-unsigned int frame_shift(char_t const reference, char_t const sample_1, char_t const sample_2)
+void print_codon(FILE*stream, unsigned int const index)
 {
-  std::pair<std::multimap<char_t const, unsigned int const>::const_iterator, std::multimap<char_t const, unsigned int const>::const_iterator> const range_1 = codon_map.equal_range(sample_1);
-  std::pair<std::multimap<char_t const, unsigned int const>::const_iterator, std::multimap<char_t const, unsigned int const>::const_iterator> const range_2 = codon_map.equal_range(sample_2);
-
-  unsigned int shift = FRAME_SHIFT_0;
-  for (std::multimap<char_t const, unsigned int const>::const_iterator it_1 = range_1.first; it_1 != range_1.second; ++it_1)
-  {
-    for (std::multimap<char_t const, unsigned int const>::const_iterator it_2 = range_2.first; it_2 != range_2.second; ++it_2)
-    {
-      const unsigned int codon_1 = ((it_1->second << 0x2) | (it_2->second >> 0x4)) & 0x3f;
-      const unsigned int codon_2 = ((it_1->second << 0x4) | (it_2->second >> 0x2)) & 0x3f;
-      if (reference == codon_table[codon_1])
-      {
-        shift |= FRAME_SHIFT_1;
-      } // if
-      if (reference == codon_table[codon_2])
-      {
-        shift |= FRAME_SHIFT_2;
-      } // if
-      if (shift == (FRAME_SHIFT_1 | FRAME_SHIFT_2))
-      {
-        return shift;
-      } // if
-      printf("%d %d -> %d %d\n", it_1->second, it_2->second, codon_1, codon_2);
-    } // for
-  } // for
-  return shift;
-} // frame_shift
-
-void print_codon(unsigned int const index)
-{
-  printf("%c%c%c", IUPAC_BASE[index >> 0x4], IUPAC_BASE[(index >> 0x2) & 0x3], IUPAC_BASE[index & 0x3]);
+  fprintf(stream, "%c%c%c", IUPAC_BASE[index >> 0x4],
+                            IUPAC_BASE[(index >> 0x2) & 0x3],
+                            IUPAC_BASE[index & 0x3]);
+  return;
 } // print_codon
 
-unsigned int reverse_complement(unsigned int const index)
+void print_mapping(FILE* stream)
 {
-  return (~((index >> 0x4) | (((index >> 0x2) & 0x3) << 2) | ((index & 0x3) << 0x4)) & 0x3f);
-} // reverse_complement
-
-unsigned int frame_shift_reverse(char_t const reference, char_t const sample_1)
-{
-  std::pair<std::multimap<char_t const, unsigned int const>::const_iterator, std::multimap<char_t const, unsigned int const>::const_iterator> const range_1 = codon_map.equal_range(sample_1);
-
-  unsigned int shift = FRAME_SHIFT_0;
-  for (std::multimap<char_t const, unsigned int const>::const_iterator it_1 = range_1.first; it_1 != range_1.second; ++it_1)
+  for (unsigned int i = 0; i < 128; ++i)
   {
-    if (reference == codon_table[reverse_complement(it_1->second)])
+    if (acid_map[i] != 0x0)
     {
-      shift |= FRAME_SHIFT_REVERSE_IDEM;
+      fprintf(stream, "%c: ", static_cast<char_t>(i));
+      for (unsigned int j = 0; j < 64; ++j)
+      {
+        if (((acid_map[i] >> j) & 0x1) == 0x1)
+        {
+          print_codon(stream, j);
+          fprintf(stream, " (%d) ", j);
+        } // if
+      } // for
+      fprintf(stream, "\n");
+    } // if
+  } // for
+  for (unsigned int i = 0; i < 64; ++i)
+  {
+    print_codon(stream, i);
+    fprintf(stream, " (%d): %c\n", i, codon_table[i]);
+  } // for
+  return;
+} // print_mapping
+
+// calculate all possible forwards frame shifts: find the sample codon
+// in the combination of the two reference condons
+unsigned int frame_shift_forward(char_t const reference_1,
+                                 char_t const reference_2,
+                                 char_t const sample)
+{
+  unsigned int shift = FRAME_SHIFT_NONE;
+  for (unsigned int i = 0; i < 64; ++i)
+  {
+    // i-th bit set: so i-th codon is coding for this
+    // acid (reference_1)
+    if (((acid_map[static_cast<unsigned int>(reference_1)] >> i) & 0x1) == 0x1)
+    {
+      for (unsigned int j = 0; j < 64; ++j)
+      {
+        // j-th bit set: so j-th codon is coding for this
+        // acid (reference_2)
+        if (((acid_map[static_cast<unsigned int>(reference_2)] >> j) & 0x1) == 0x1)
+        {
+          // calculate the two frame shifted codons with the reference
+          // codons.
+          // codon_1 last two bases of reference_1 concat with first
+          // base of reference_2
+          unsigned int const codon_1 = ((i & 0xf) << 0x2) | (j >> 0x4);
+          // codon_2 last base of reference_1 concat with first two
+          // bases of reference_2
+          unsigned int const codon_2 = ((i & 0x3) << 0x4) | ((j & 0x3c) >> 0x2);
+
+          for (unsigned int k = 0; k < 64; ++k)
+          {
+            // k-th bit set: so k-th codon is coding for this
+            // acid (sample)
+            if (((acid_map[static_cast<unsigned int>(sample)] >> k) & 0x1) == 0x1)
+            {
+              if (codon_1 == k)
+              {
+                shift |= FRAME_SHIFT_2;
+              } // if
+              if (codon_2 == k)
+              {
+                shift |= FRAME_SHIFT_1;
+              } // if
+              if (shift == (FRAME_SHIFT_1 | FRAME_SHIFT_2))
+              {
+                //return shift;
+              } // if
+            } // if
+          } // for
+        } // if
+      } // for
+    } // if
+  } // for
+  return shift;
+} // frame_shift_forward
+
+// calculate all possible reverse frame shifts: find the sample codon
+// in the combination of the (two) reference condon(s)
+unsigned int frame_shift_reverse(char_t const reference_1,
+                                 char_t const reference_2,
+                                 char_t const sample)
+{
+  unsigned int shift = FRAME_SHIFT_NONE;
+  for (unsigned int i = 0; i < 64; ++i)
+  {
+    // i-th bit set: so i-th codon is coding for this
+    // acid (reference_1)
+    if (((acid_map[static_cast<unsigned int>(reference_1)] >> i) & 0x1) == 0x1)
+    {
+      // reverse complement codon
+      unsigned int const codon_0 = ((i >> 0x4) | (i & 0xc) | ((i & 0x3) << 0x4)) ^ 0x3f;
+      for (unsigned int j = 0; j < 64; ++j)
+      {
+        // j-th bit set: so j-th codon is coding for this
+        // acid (reference_2)
+        if (((acid_map[static_cast<unsigned int>(reference_2)] >> j) & 0x1) == 0x1)
+        {
+          unsigned int const codon_1 = ((i >> 0x4) | (i & 0xc) | ((j & 0x3) << 0x4)) ^ 0x3f;
+          unsigned int const codon_2 = ((i >> 0x4) | ((j & 0x30) >> 0x2) | ((j & 0x3) << 0x4)) ^ 0x3f;
+          for (unsigned int k = 0; k < 64; ++k)
+          {
+            // k-th bit set: so k-th codon is coding for this
+            // acid (sample)
+            if (((acid_map[static_cast<unsigned int>(sample)] >> k) & 0x1) == 0x1)
+            {
+              print_codon(stdout, codon_0);
+              printf(" ");
+              print_codon(stdout, codon_1);
+              printf(" ");
+              print_codon(stdout, codon_2);
+              printf(" -- ");
+              print_codon(stdout, k);
+              printf("\n");
+              if (codon_0 == k)
+              {
+                shift |= FRAME_SHIFT_REVERSE;
+              } // if
+              if (codon_1 == k)
+              {
+                shift |= FRAME_SHIFT_REVERSE_2;
+              } // if
+              if (codon_2 == k)
+              {
+                shift |= FRAME_SHIFT_REVERSE_1;
+              } // if
+              if (shift == (FRAME_SHIFT_REVERSE | FRAME_SHIFT_REVERSE_1 | FRAME_SHIFT_REVERSE_2))
+              {
+                //return shift;
+              } // if
+            } // if
+          } // for
+        } // if
+      } // for
     } // if
   } // for
   return shift;
 } // frame_shift_reverse
 
-
+// entry point
 int main(int, char* [])
 {
+  // initialize acid_map and codon_map: assume CODON_STRING holds at
+  // least 64 ASCII characters (from the lower 127)
   for (unsigned int i = 0; i < 64; ++i)
   {
-    codon_table[i] = codon_string[i];
-    codon_map.insert(std::pair<char_t const, unsigned int const>(codon_table[i], i));
+    // update bitstring: set i-th bit
+    acid_map[CODON_STRING[i] & 0x7f] |= (0x1ll << i);
+    // update codon table
+    codon_table[i] = CODON_STRING[i];
   } // for
 
-  unsigned int const shift = frame_shift_reverse('D', 'V');
-  printf("%d\n", shift);
+  printf("frame shift (forward) = %d\n", frame_shift_forward('D', 'Y', 'L'));
+  printf("frame shift (reverse) = %d\n", frame_shift_reverse('L', 'S', 'Q'));
+
   return 0;
 } // main
 
