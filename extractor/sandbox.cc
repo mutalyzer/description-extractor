@@ -100,21 +100,129 @@ uint8_t frame_shift(char_t const reference_1, char_t const reference_2, char_t c
   return frame_shift_map[reference_1 & 0x7f][reference_2 & 0x7f][sample & 0x7f];
 } // frame_shift
 
+size_t lcs_frame_shift(char_t const* const reference,
+                       size_t const        reference_start,
+                       size_t const        reference_end,
+                       char_t const* const sample,
+                       size_t const        sample_start,
+                       size_t const        sample_end)
+{
+  size_t const reference_length = reference_end - reference_start;
+  size_t const sample_length = sample_end - sample_start;
+
+  size_t lcs[2][reference_length][5];
+  for (size_t i = 0; i < reference_length; ++i)
+  {
+    lcs[0][i][0] = 0;
+    lcs[0][i][1] = 0;
+    lcs[0][i][2] = 0;
+    lcs[0][i][3] = 0;
+    lcs[0][i][4] = 0;
+    lcs[1][i][0] = 0;
+    lcs[1][i][1] = 0;
+    lcs[1][i][2] = 0;
+    lcs[1][i][3] = 0;
+    lcs[1][i][4] = 0;
+  } // for
+
+  size_t length[5] = {0};
+  for (size_t i = 0; i < sample_length; ++i)
+  {
+    for (size_t j = 0; j < reference_length - 1; ++j)
+    {
+      uint8_t const shift_forward = frame_shift(reference[reference_start + j], reference[reference_start + j + 1], sample[sample_start + i]);
+      uint8_t const shift_reverse = frame_shift(reference[reference_end - j - 2], reference[reference_end - j - 1], sample[sample_start + i]);
+      if (i == 0 || j == 0)
+      {
+        if ((shift_forward & FRAME_SHIFT_1) == FRAME_SHIFT_1)
+        {
+          lcs[i % 2][j][0] = 1;
+        } // if
+        if ((shift_forward & FRAME_SHIFT_2) == FRAME_SHIFT_2)
+        {
+          lcs[i % 2][j][1] = 1;
+        } // if
+        if ((shift_reverse & FRAME_SHIFT_REVERSE) == FRAME_SHIFT_REVERSE)
+        {
+          lcs[i % 2][j][2] = 1;
+        } // if
+        if ((shift_reverse & FRAME_SHIFT_REVERSE_1) == FRAME_SHIFT_REVERSE_1)
+        {
+          lcs[i % 2][j][3] = 1;
+        } // if
+        if ((shift_reverse & FRAME_SHIFT_REVERSE_2) == FRAME_SHIFT_REVERSE_2)
+        {
+          lcs[i % 2][j][4] = 1;
+        } // if
+      } // if
+      else
+      {
+        if ((shift_forward & FRAME_SHIFT_1) == FRAME_SHIFT_1)
+        {
+          lcs[i % 2][j][0] = lcs[(i + 1) % 2][j - 1][0] + 1;
+        } // if
+        if ((shift_forward & FRAME_SHIFT_2) == FRAME_SHIFT_2)
+        {
+          lcs[i % 2][j][1] = lcs[(i + 1) % 2][j - 1][1] + 1;
+        } // if
+        if ((shift_reverse & FRAME_SHIFT_REVERSE) == FRAME_SHIFT_REVERSE)
+        {
+          lcs[i % 2][j][2] = lcs[(i + 1) % 2][j - 1][2] + 1;
+        } // if
+        if ((shift_reverse & FRAME_SHIFT_REVERSE_1) == FRAME_SHIFT_REVERSE_1)
+        {
+          lcs[i % 2][j][3] = lcs[(i + 1) % 2][j - 1][3] + 1;
+        } // if
+        if ((shift_reverse & FRAME_SHIFT_REVERSE_2) == FRAME_SHIFT_REVERSE_2)
+        {
+          lcs[i % 2][j][4] = lcs[(i + 1) % 2][j - 1][4] + 1;
+        } // if
+      } // else
+      if (lcs[i % 2][j][0] > length[0])
+      {
+        length[0] = lcs[i % 2][j][0];
+      } // if
+      if (lcs[i % 2][j][1] > length[1])
+      {
+        length[1] = lcs[i % 2][j][1];
+      } // if
+      if (lcs[i % 2][j][2] > length[2])
+      {
+        length[2] = lcs[i % 2][j][2];
+      } // if
+      if (lcs[i % 2][j][3] > length[3])
+      {
+        length[3] = lcs[i % 2][j][3];
+      } // if
+      if (lcs[i % 2][j][4] > length[4])
+      {
+        length[4] = lcs[i % 2][j][4];
+      } // if
+    } // for
+    uint8_t const shift_reverse = frame_shift(reference[reference_end - 1], reference[reference_end - 1], sample[sample_start + i]);
+    if ((shift_reverse & FRAME_SHIFT_REVERSE) == FRAME_SHIFT_REVERSE)
+    {
+      lcs[i % 2][reference_end - 1][2] = lcs[(i + 1) % 2][reference_end - 2][2] + 1;
+    } // if
+    if (lcs[i % 2][reference_end - 1][2] > length[2])
+    {
+      length[2] = lcs[i % 2][reference_end - 1][2];
+    } // if
+  } // for
+  printf("fs1: %ld  fs2: %ld  fs_r: %ld  fs_r1: %ld  fs_r2: %ld\n", length[0], length[1], length[2], length[3], length[4]);
+  return 0;
+} // lcs_frame_shift
+
 int main(int, char* [])
 {
   initialize_frame_shift_map(CODON_STRING);
 
   char_t const* const reference = "MDYSL";
-  //char_t const* const sample    = "MALFP";
-  char_t const* const sample      = "MLFPW";
+  char_t const* const sample    = "MRE*S";
   size_t const start = 1;
   size_t const end   = 5;
 
-  
-  for (size_t i = start; i < end - 1; ++i)
-  {
-    printf("%c %c vs %c: %d\n", reference[i], reference[i + 1], sample[i], frame_shift(reference[i], reference[i + 1], sample[i]));
-  } // for
+  lcs_frame_shift(reference, start, end, sample, start, end);
 
 
   return 0;
