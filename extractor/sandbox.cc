@@ -138,22 +138,14 @@ unsigned int frame_shift_reverse(char_t const reference_1,
         // acid (reference_2)
         if (((acid_map[static_cast<unsigned int>(reference_2)] >> j) & 0x1) == 0x1)
         {
-          unsigned int const codon_1 = ((i >> 0x4) | (i & 0xc) | ((j & 0x3) << 0x4)) ^ 0x3f;
-          unsigned int const codon_2 = ((i >> 0x4) | ((j & 0x30) >> 0x2) | ((j & 0x3) << 0x4)) ^ 0x3f;
+          unsigned int const codon_1 = (((i & 0xc) >> 0x2) | ((i & 0x3) << 0x2) | (j & 0x30)) ^ 0x3f;
+          unsigned int const codon_2 = ((i & 0x3) | ((j & 0x30) >> 0x2) | ((j & 0xc) << 0x2)) ^ 0x3f;
           for (unsigned int k = 0; k < 64; ++k)
           {
             // k-th bit set: so k-th codon is coding for this
             // acid (sample)
             if (((acid_map[static_cast<unsigned int>(sample)] >> k) & 0x1) == 0x1)
             {
-              print_codon(stdout, codon_0);
-              printf(" ");
-              print_codon(stdout, codon_1);
-              printf(" ");
-              print_codon(stdout, codon_2);
-              printf(" -- ");
-              print_codon(stdout, k);
-              printf("\n");
               if (codon_0 == k)
               {
                 shift |= FRAME_SHIFT_REVERSE;
@@ -192,8 +184,8 @@ int main(int, char* [])
     codon_table[i] = CODON_STRING[i];
   } // for
 
-  printf("frame shift (forward) = %d\n", frame_shift_forward('D', 'Y', 'L'));
-  printf("frame shift (reverse) = %d\n", frame_shift_reverse('L', 'S', 'Q'));
+//  printf("frame shift (forward) = %d\n", frame_shift_forward('D', 'Y', 'L'));
+  printf("frame shift (reverse) = %d\n", frame_shift_reverse('D', 'Y', 'S'));
 
   return 0;
 } // main
