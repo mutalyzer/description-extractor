@@ -1,6 +1,8 @@
 #include <cstddef>
 #include <cstdio>
 
+#include <vector>
+
 typedef char char_t;
 
 typedef unsigned char       uint8_t;
@@ -17,7 +19,30 @@ char_t const* const CODON_STRING = "KNKNTTTTRSRSIIMIQHQHPPPPRRRRLLLLEDEDAAAAGGGG
 
 static uint8_t frame_shift_map[128][128][128] = {{{FRAME_SHIFT_NONE}}};
 
-uint8_t calculate_frame_shift(uint64_t const acid_map[], size_t const reference_1, size_t const reference_2, size_t const sample)
+struct FS_Substring
+{
+  size_t  reference_index;
+  size_t  sample_index;
+  size_t  length;
+  uint8_t type;
+
+  inline FS_Substring(size_t const  reference_index,
+                      size_t const  sample_index,
+                      size_t const  length,
+                      uint8_t const type):
+         reference_index(reference_index),
+         sample_index(sample_index),
+         length(length),
+         type(type) { }
+
+  inline FS_Substring(void): length(0) { }
+}; // FS_Substring
+
+
+uint8_t calculate_frame_shift(uint64_t const acid_map[],
+                              size_t const   reference_1,
+                              size_t const   reference_2,
+                              size_t const   sample)
 {
   uint8_t shift = FRAME_SHIFT_NONE;
   for (size_t i = 0; i < 64; ++i)
@@ -87,7 +112,7 @@ void initialize_frame_shift_map(char_t const* const codon_string)
             {
               frame_shift_map[i][j][k] = calculate_frame_shift(acid_map, i, j, k);
             } // if
-          } // if
+          } // for
         } // if
       } // for
     } // if
@@ -95,17 +120,20 @@ void initialize_frame_shift_map(char_t const* const codon_string)
   return;
 } // initialize_frame_shift_map
 
-uint8_t frame_shift(char_t const reference_1, char_t const reference_2, char_t const sample)
+uint8_t frame_shift(char_t const reference_1,
+                    char_t const reference_2,
+                    char_t const sample)
 {
   return frame_shift_map[reference_1 & 0x7f][reference_2 & 0x7f][sample & 0x7f];
 } // frame_shift
 
-size_t lcs_frame_shift(char_t const* const reference,
-                       size_t const        reference_start,
-                       size_t const        reference_end,
-                       char_t const* const sample,
-                       size_t const        sample_start,
-                       size_t const        sample_end)
+size_t lcs_frame_shift(std::vector<FS_Substring> &substring,
+                       char_t const* const        reference,
+                       size_t const               reference_start,
+                       size_t const               reference_end,
+                       char_t const* const        sample,
+                       size_t const               sample_start,
+                       size_t const               sample_end)
 {
   size_t const reference_length = reference_end - reference_start;
   size_t const sample_length = sample_end - sample_start;
@@ -125,105 +153,132 @@ size_t lcs_frame_shift(char_t const* const reference,
     lcs[1][i][4] = 0;
   } // for
 
-  size_t length[5] = {0};
+  FS_Substring fs_substring[5];
   for (size_t i = 0; i < sample_length; ++i)
   {
-    for (size_t j = 0; j < reference_length - 1; ++j)
-    {
-      uint8_t const shift_forward = frame_shift(reference[reference_start + j], reference[reference_start + j + 1], sample[sample_start + i]);
-      uint8_t const shift_reverse = frame_shift(reference[reference_end - j - 2], reference[reference_end - j - 1], sample[sample_start + i]);
-      if (i == 0 || j == 0)
-      {
-        if ((shift_forward & FRAME_SHIFT_1) == FRAME_SHIFT_1)
-        {
-          lcs[i % 2][j][0] = 1;
-        } // if
-        if ((shift_forward & FRAME_SHIFT_2) == FRAME_SHIFT_2)
-        {
-          lcs[i % 2][j][1] = 1;
-        } // if
-        if ((shift_reverse & FRAME_SHIFT_REVERSE) == FRAME_SHIFT_REVERSE)
-        {
-          lcs[i % 2][j][2] = 1;
-        } // if
-        if ((shift_reverse & FRAME_SHIFT_REVERSE_1) == FRAME_SHIFT_REVERSE_1)
-        {
-          lcs[i % 2][j][3] = 1;
-        } // if
-        if ((shift_reverse & FRAME_SHIFT_REVERSE_2) == FRAME_SHIFT_REVERSE_2)
-        {
-          lcs[i % 2][j][4] = 1;
-        } // if
-      } // if
-      else
-      {
-        if ((shift_forward & FRAME_SHIFT_1) == FRAME_SHIFT_1)
-        {
-          lcs[i % 2][j][0] = lcs[(i + 1) % 2][j - 1][0] + 1;
-        } // if
-        if ((shift_forward & FRAME_SHIFT_2) == FRAME_SHIFT_2)
-        {
-          lcs[i % 2][j][1] = lcs[(i + 1) % 2][j - 1][1] + 1;
-        } // if
-        if ((shift_reverse & FRAME_SHIFT_REVERSE) == FRAME_SHIFT_REVERSE)
-        {
-          lcs[i % 2][j][2] = lcs[(i + 1) % 2][j - 1][2] + 1;
-        } // if
-        if ((shift_reverse & FRAME_SHIFT_REVERSE_1) == FRAME_SHIFT_REVERSE_1)
-        {
-          lcs[i % 2][j][3] = lcs[(i + 1) % 2][j - 1][3] + 1;
-        } // if
-        if ((shift_reverse & FRAME_SHIFT_REVERSE_2) == FRAME_SHIFT_REVERSE_2)
-        {
-          lcs[i % 2][j][4] = lcs[(i + 1) % 2][j - 1][4] + 1;
-        } // if
-      } // else
-      if (lcs[i % 2][j][0] > length[0])
-      {
-        length[0] = lcs[i % 2][j][0];
-      } // if
-      if (lcs[i % 2][j][1] > length[1])
-      {
-        length[1] = lcs[i % 2][j][1];
-      } // if
-      if (lcs[i % 2][j][2] > length[2])
-      {
-        length[2] = lcs[i % 2][j][2];
-      } // if
-      if (lcs[i % 2][j][3] > length[3])
-      {
-        length[3] = lcs[i % 2][j][3];
-      } // if
-      if (lcs[i % 2][j][4] > length[4])
-      {
-        length[4] = lcs[i % 2][j][4];
-      } // if
-    } // for
-    uint8_t const shift_reverse = frame_shift(reference[reference_end - 1], reference[reference_end - 1], sample[sample_start + i]);
+    uint8_t const shift_reverse = frame_shift(reference[reference_end - 1], reference[reference_end - 2], sample[sample_start + i]);
     if ((shift_reverse & FRAME_SHIFT_REVERSE) == FRAME_SHIFT_REVERSE)
     {
-      lcs[i % 2][reference_end - 1][2] = lcs[(i + 1) % 2][reference_end - 2][2] + 1;
+      lcs[i % 2][0][2] = 1;
+      fs_substring[2] = FS_Substring(reference_start, sample_start + i, lcs[i % 2][0][2], FRAME_SHIFT_REVERSE);
     } // if
-    if (lcs[i % 2][reference_end - 1][2] > length[2])
+    for (size_t j = 1; j < reference_length; ++j)
     {
-      length[2] = lcs[i % 2][reference_end - 1][2];
-    } // if
+      uint8_t const shift_forward = frame_shift(reference[reference_start + j - 1], reference[reference_start + j], sample[sample_start + i]);
+      uint8_t const shift_reverse = frame_shift(reference[reference_end - j - 1], reference[reference_end - j], sample[sample_start + i]);
+      if ((shift_forward & FRAME_SHIFT_1) == FRAME_SHIFT_1)
+      {
+        lcs[i % 2][j][0] = lcs[(i + 1) % 2][j - 1][0] + 1;
+      } // if
+      if ((shift_forward & FRAME_SHIFT_2) == FRAME_SHIFT_2)
+      {
+        lcs[i % 2][j][1] = lcs[(i + 1) % 2][j - 1][1] + 1;
+      } // if
+      if ((shift_reverse & FRAME_SHIFT_REVERSE) == FRAME_SHIFT_REVERSE)
+      {
+        lcs[i % 2][j][2] = lcs[(i + 1) % 2][j - 1][2] + 1;
+      } // if
+      if ((shift_reverse & FRAME_SHIFT_REVERSE_1) == FRAME_SHIFT_REVERSE_1)
+      {
+        lcs[i % 2][j][3] = lcs[(i + 1) % 2][j - 1][3] + 1;
+      } // if
+      if ((shift_reverse & FRAME_SHIFT_REVERSE_2) == FRAME_SHIFT_REVERSE_2)
+      {
+        lcs[i % 2][j][4] = lcs[(i + 1) % 2][j - 1][4] + 1;
+      } // if
+      if (lcs[i % 2][j][0] > fs_substring[0].length)
+      {
+        fs_substring[0] = FS_Substring(reference_start + j - lcs[i % 2][j][0], sample_start + i - lcs[i % 2][j][0] + 1, lcs[i % 2][j][0], FRAME_SHIFT_1);
+      } // if
+      if (lcs[i % 2][j][1] > fs_substring[1].length)
+      {
+        fs_substring[1] = FS_Substring(reference_start + j - lcs[i % 2][j][1], sample_start + i - lcs[i % 2][j][1] + 1, lcs[i % 2][j][1], FRAME_SHIFT_2);
+      } // if
+      if (lcs[i % 2][j][2] > fs_substring[2].length)
+      {
+        fs_substring[2] = FS_Substring(reference_start + j - lcs[i % 2][j][2], sample_start + i - lcs[i % 2][j][2], lcs[i % 2][j][2], FRAME_SHIFT_REVERSE);
+      } // if
+      if (lcs[i % 2][j][3] > fs_substring[3].length)
+      {
+        fs_substring[3] = FS_Substring(reference_start + j - lcs[i % 2][j][3], sample_start + i - lcs[i % 2][j][3] + 1, lcs[i % 2][j][3], FRAME_SHIFT_REVERSE_1);
+      } // if
+      if (lcs[i % 2][j][4] > fs_substring[4].length)
+      {
+        fs_substring[4] = FS_Substring(reference_start + j - lcs[i % 2][j][4], sample_start + i - lcs[i % 2][j][4] + 1, lcs[i % 2][j][4], FRAME_SHIFT_REVERSE_2);
+      } // if
+    } // for
   } // for
-  printf("fs1: %ld  fs2: %ld  fs_r: %ld  fs_r1: %ld  fs_r2: %ld\n", length[0], length[1], length[2], length[3], length[4]);
+  substring = std::vector<FS_Substring>(1, fs_substring[0]);
+  substring.push_back(fs_substring[1]);
+  substring.push_back(fs_substring[2]);
+  substring.push_back(fs_substring[3]);
+  substring.push_back(fs_substring[4]);
   return 0;
 } // lcs_frame_shift
+
+FS_Substring maximize_frame_shift(std::vector<FS_Substring> const &substring)
+{
+  FS_Substring fs_substring;
+  size_t max_length = 0;
+  for (size_t i = 0; i < 5; ++i)
+  {
+    if (substring[i].length > max_length)
+    {
+      max_length = substring[i].length;
+      fs_substring = substring[i];
+    } // if
+    else if (substring[i].length == max_length)
+    {
+      if ((fs_substring.type == FRAME_SHIFT_1 && substring[i].type == FRAME_SHIFT_2) ||
+          (fs_substring.type == FRAME_SHIFT_2 && substring[i].type == FRAME_SHIFT_1) ||
+          (fs_substring.type == FRAME_SHIFT_REVERSE_1 && substring[i].type == FRAME_SHIFT_REVERSE_2) ||
+          (fs_substring.type == FRAME_SHIFT_REVERSE_2 && substring[i].type == FRAME_SHIFT_REVERSE_1))
+      {
+        fs_substring.type |= substring[i].type;
+      } // if
+    } // if
+  } // for
+  return fs_substring;
+} // maximize_frame_shift
 
 int main(int, char* [])
 {
   initialize_frame_shift_map(CODON_STRING);
 
   char_t const* const reference = "MDYSL";
-  char_t const* const sample    = "MRE*S";
   size_t const start = 1;
   size_t const end   = 5;
 
-  lcs_frame_shift(reference, start, end, sample, start, end);
+  std::vector<FS_Substring> substring;
+  FS_Substring fs_lcs;
 
+  lcs_frame_shift(substring, reference, start, end, "MALFP", start, end);
+  fs_lcs = maximize_frame_shift(substring);
+  printf("fs_lcs: %d @ %ld, %ld length = %ld\n", fs_lcs.type, fs_lcs.reference_index, fs_lcs.sample_index, fs_lcs.length);
+  lcs_frame_shift(substring, reference, start, end, "MATIP", start, end);
+  fs_lcs = maximize_frame_shift(substring);
+  printf("fs_lcs: %d @ %ld, %ld length = %ld\n", fs_lcs.type, fs_lcs.reference_index, fs_lcs.sample_index, fs_lcs.length);
+  lcs_frame_shift(substring, reference, start, end, "MTIPW", start, end);
+  fs_lcs = maximize_frame_shift(substring);
+  printf("fs_lcs: %d @ %ld, %ld length = %ld\n", fs_lcs.type, fs_lcs.reference_index, fs_lcs.sample_index, fs_lcs.length);
+  lcs_frame_shift(substring, reference, start, end, "MLFPG", start, end);
+  fs_lcs = maximize_frame_shift(substring);
+  printf("fs_lcs: %d @ %ld, %ld length = %ld\n", fs_lcs.type, fs_lcs.reference_index, fs_lcs.sample_index, fs_lcs.length);
+  lcs_frame_shift(substring, reference, start, end, "MQGIV", start, end);
+  fs_lcs = maximize_frame_shift(substring);
+  printf("fs_lcs: %d @ %ld, %ld length = %ld\n", fs_lcs.type, fs_lcs.reference_index, fs_lcs.sample_index, fs_lcs.length);
+  lcs_frame_shift(substring, reference, start, end, "MAGNS", start, end);
+  fs_lcs = maximize_frame_shift(substring);
+  printf("fs_lcs: %d @ %ld, %ld length = %ld\n", fs_lcs.type, fs_lcs.reference_index, fs_lcs.sample_index, fs_lcs.length);
+  lcs_frame_shift(substring, reference, start, end, "MDRE*", start, end);
+  fs_lcs = maximize_frame_shift(substring);
+  printf("fs_lcs: %d @ %ld, %ld length = %ld\n", fs_lcs.type, fs_lcs.reference_index, fs_lcs.sample_index, fs_lcs.length);
+  lcs_frame_shift(substring, reference, start, end, "MRE*S", start, end);
+  fs_lcs = maximize_frame_shift(substring);
+  printf("fs_lcs: %d @ %ld, %ld length = %ld\n", fs_lcs.type, fs_lcs.reference_index, fs_lcs.sample_index, fs_lcs.length);
+  lcs_frame_shift(substring, reference, start, end, "MGNSP", start, end);
+  fs_lcs = maximize_frame_shift(substring);
+  printf("fs_lcs: %d @ %ld, %ld length = %ld\n", fs_lcs.type, fs_lcs.reference_index, fs_lcs.sample_index, fs_lcs.length);
 
   return 0;
 } // main
