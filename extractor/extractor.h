@@ -42,6 +42,11 @@ static char const* const VERSION = "2.2.0";
 typedef char char_t;
 
 
+// Integer types of fixed bit width used for frame shift calculation.
+typedef unsigned char       uint8_t;
+typedef unsigned long long uint64_t;
+
+
 // *******************************************************************
 // Variant Extraction
 //   These functions are used to extract variants (regions of change)
@@ -73,8 +78,19 @@ static unsigned int const SUBSTITUTION        = 0x04;
 static unsigned int const TRANSPOSITION_OPEN  = 0x08;
 static unsigned int const TRANSPOSITION_CLOSE = 0x10;
 static unsigned int const FRAME_SHIFT         = 0x20;
-static unsigned int const FRAME_SHIFT_1       = 0x01;
-static unsigned int const FRAME_SHIFT_2       = 0x02;
+
+
+// These constants describe the actual frame shift type. The constants
+// are coded as bitfields and can be appopriately combined in case of
+// a compound frame shift, e.g., FRAME_SHIFT_1 | FRAME_SHIFT_2.
+// When used within a Variant structure these constants should be
+// combined with the FRAME_SHIFT constant.
+static uint8_t const FRAME_SHIFT_NONE      = 0x00;
+static uint8_t const FRAME_SHIFT_1         = 0x01;
+static uint8_t const FRAME_SHIFT_2         = 0x02;
+static uint8_t const FRAME_SHIFT_REVERSE   = 0x04;
+static uint8_t const FRAME_SHIFT_REVERSE_1 = 0x08;
+static uint8_t const FRAME_SHIFT_REVERSE_2 = 0x10;
 
 
 // These constants are used in calculating the weight of the generated
@@ -110,9 +126,10 @@ static double const TRANSPOSITION_CUT_OFF =   0.1;
 extern size_t global_reference_length;
 
 
-// Codon to amino acid table assuming the order of A, C, G, T, thus:
-// codon_table[0] = AAA, ..., codon_table[63] = TTT.
-extern char_t codon_table[64];
+// The actual frame shift map indexed on the lower 127 ASCII
+// characters. This map should be precalculated given a codon string
+// by the initialize_frame_shift_map function.
+extern uint8_t frame_shift_map[128][128][128];
 
 
 // *******************************************************************
@@ -316,6 +333,30 @@ size_t extractor_protein(std::vector<Variant> &variant,
                          size_t const          sample_start,
                          size_t const          sample_end);
 
+// *******************************************************************
+// extractor_frame_shift function
+//   This function extracts the frame shift annotation between the
+//   reference and the sample protein string by recursively calling
+//   itself on prefixes and suffixes of a longest common substring,
+//   calculated by the LCS_frame_shift algorithm (these strings are
+//   very short).
+//
+//   @arg annotation: vector of variants (contains annotation)
+//   @arg reference: reference string
+//   @arg reference_start: starting position in the reference string
+//   @arg reference_end: ending position in the reference string used
+//   @arg sample: sample string
+//   @arg sample_start: starting position in the sample string
+//   @arg sample_end: ending position in the sample string
+// *******************************************************************
+void extractor_frame_shift(std::vector<Variant> &annotation,
+                           char_t const* const   reference,
+                           size_t const          reference_start,
+                           size_t const          reference_end,
+                           char_t const* const   sample,
+                           size_t const          sample_start,
+                           size_t const          sample_end);
+
 
 // *******************************************************************
 // Longest Common Substring (LCS) calculation
@@ -335,24 +376,39 @@ size_t extractor_protein(std::vector<Variant> &variant,
 //   @member length: length of the substring
 //   @member reverse_complement: indicates a reverse complement
 //                               substring (only for DNA/RNA)
+//   @member type: (in union with @member reverse_complement)
+//                 indicates the type of frame shift/
 // *******************************************************************
 struct Substring
 {
-  size_t reference_index;
-  size_t sample_index;
-  size_t length;
-  bool   reverse_complement;
+  size_t  reference_index;
+  size_t  sample_index;
+  size_t  length;
+  union
+  {
+    bool    reverse_complement;
+    uint8_t type;
+  }; // union
 
-  inline Substring(size_t const reference_index,
-                   size_t const sample_index,
-                   size_t const length,
-                   bool const   reverse_complement = false):
+  inline Substring(size_t const  reference_index,
+                   size_t const  sample_index,
+                   size_t const  length,
+                   bool const    reverse_complement = false):
          reference_index(reference_index),
          sample_index(sample_index),
          length(length),
          reverse_complement(reverse_complement) { }
 
-  inline Substring(void) { }
+  inline Substring(size_t const  reference_index,
+                   size_t const  sample_index,
+                   size_t const  length,
+                   uint8_t const type):
+         reference_index(reference_index),
+         sample_index(sample_index),
+         length(length),
+         type(type) { }
+
+  inline Substring(void): length(0) { }
 }; // Substring
 
 // *******************************************************************
@@ -559,43 +615,68 @@ char_t const* IUPAC_complement(char_t const* const string,
 // *******************************************************************
 
 // *******************************************************************
+// initialize_frame_shift_map function
+//   Precalculates the frame_shift_map based on a given codon string.
+//
+//   @arg codon_string: gives the amino acid symbols in codon order:
+//                      0 AAA, ... 63 TTT.
+// *******************************************************************
+void initialize_frame_shift_map(char_t const* const codon_string);
+
+// *******************************************************************
+// calculate_frame_shift function
+//   Used to precalculate the frame_shift_map. It computes for all
+//   combinations of two reference amino acids the corresponding DNA
+//   sequence and the (partial) overlap between all possible DNA
+//   sequences of the sample amico acid.
+//
+//   @arg acid_map: maps amino acids (coded as the lower 127 ASCII
+//                  characters) to DNA codons
+//   @arg reference_1: first reference amino acid
+//   @arg reference_2: second reference amino acid
+//   @arg sample: sample amino acid
+//   @return: frame shift
+// *******************************************************************
+uint8_t calculate_frame_shift(uint64_t const acid_map[],
+                              size_t const   reference_1,
+                              size_t const   reference_2,
+                              size_t const   sample);
+
+// *******************************************************************
 // frame_shift function
 //   This function calculates the frame shift A reference amino acid
 //   is checked against two possible partial overlaps between every
 //   combination of two sample (observed) amino acids. Possible
-//   results are: 0 (no frame shift), 1, 2, or 3 (both frame shifts
-//   are possible).
+//   results are defines as FRAME_SHIFT constants.
 //
-//   @arg reference: reference amino acid
-//   @arg sample_1: first sample amino acid
-//   @arg sample_2: second sample amino acid
+//   @arg reference_1: first reference amino acid
+//   @arg reference_2: second reference amino acid
+//   @arg sample: sample amino acid
 //   @return: frame shift
 // *******************************************************************
-unsigned int frame_shift(char_t const reference,
-                         char_t const sample_1,
-                         char_t const sample_2);
+uint8_t frame_shift(char_t const reference_1,
+                    char_t const reference_2,
+                    char_t const sample);
 
 // *******************************************************************
-// annotate_frame_shift function
-//   This function calculates frame shift annotations for
-//   deletions/insertions.
+// LCS_frame_shift function
+//   This function calculates the frame shift LCS.
 //
-//   @arg variant: vector of variants
+//   @arg substring: vector of substrings
 //   @arg reference: reference string
 //   @arg reference_start: starting position in the reference string
 //   @arg reference_end: ending position in the reference string
 //   @arg sample: sample string
 //   @arg sample_start: starting position in the sample string
 //   @arg sample_end: ending position in the sample string
-//   @return: number of frame shift variants
 // *******************************************************************
-size_t annotate_frame_shift(std::vector<Variant> &variant,
-                            char_t const* const   reference,
-                            size_t const          reference_start,
-                            size_t const          reference_end,
-                            char_t const* const   sample,
-                            size_t const          sample_start,
-                            size_t const          sample_end);
+void LCS_frame_shift(std::vector<Substring> &substring,
+                     char_t const* const     reference,
+                     size_t const            reference_start,
+                     size_t const            reference_end,
+                     char_t const* const     sample,
+                     size_t const            sample_start,
+                     size_t const            sample_end);
 
 
 #if defined(__debug__)

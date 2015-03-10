@@ -18,8 +18,6 @@
 
 #include "extractor.h"
 
-#include <map>
-
 namespace mutalyzer
 {
 
@@ -32,12 +30,11 @@ size_t weight_position = 1;
 // This seems necessary to compute transpositions.
 size_t global_reference_length = 0;
 
-// Codon to amino acid table assuming the order of A, C, G, T, thus:
-// codon_table[0] = AAA, ..., codon_table[63] = TTT.
-char_t codon_table[64] = {'\0'};
+// The actual frame shift map indexed on the lower 127 ASCII
+// characters. This map should be precalculated given a codon string
+// by the initialize_frame_shift_map function.
+uint8_t frame_shift_map[128][128][128] = {{{FRAME_SHIFT_NONE}}};
 
-// Reverse codon table: amino acids are mapped to their codons.
-static std::multimap<char_t const, unsigned int const> codon_map;
 
 // Only used to interface to Python: calls the C++ extract function.
 Variant_List extract(char_t const* const reference,
@@ -121,16 +118,7 @@ size_t extract(std::vector<Variant> &variant,
   size_t weight;
   if (type == TYPE_PROTEIN)
   {
-    // Build the codon tables.
-    for (unsigned int i = 0; i < 64; ++i)
-    {
-      if (codon_string == 0 || codon_string[i] == '\0')
-      {
-        break;
-      } // if
-      codon_table[i] = codon_string[i];
-      codon_map.insert(std::pair<char_t const, unsigned int const>(codon_table[i], i));
-    } // for
+    initialize_frame_shift_map(codon_string);
 
     weight = extractor_protein(variant, reference, prefix, reference_length - suffix, sample, prefix, sample_length - suffix);
   } // if
@@ -152,71 +140,13 @@ size_t extract(std::vector<Variant> &variant,
     {
       if (it->type == SUBSTITUTION)
       {
-        annotate_frame_inversion(annotation, reference, it->reference_start, it->reference_end, sample, it->sample_start, it->sample_end);
-
-        //annotate_frame_shift(annotation, reference, it->reference_start, it->reference_end, sample, it->sample_start, it->sample_end);
+        extractor_frame_shift(annotation, reference, it->reference_start, it->reference_end, sample, it->sample_start, it->sample_end);
       } // if
     } // for
 
     if (annotation.size() > 0)
     {
-      // Construct tables for calculating frame shift probabilities.
-      std::map<std::pair<char_t const, char_t const> const, size_t> fs_1;
-      std::map<std::pair<char_t const, char_t const> const, size_t> fs_2;
-      for (std::multimap<char_t const, unsigned int const>::const_iterator it_1 = codon_map.begin(); it_1 != codon_map.end(); ++it_1)
-      {
-        for (std::multimap<char_t const, unsigned int const>::const_iterator it_2 = codon_map.begin(); it_2 != codon_map.end(); ++it_2)
-        {
-          for (std::multimap<char_t const, unsigned int const>::const_iterator it_3 = codon_map.begin(); it_3 != codon_map.end(); ++it_3)
-          {
-            unsigned int const shift = frame_shift(it_3->first, it_1->first, it_2->first);
-            if ((shift & FRAME_SHIFT_1) == FRAME_SHIFT_1)
-            {
-              ++fs_1[std::pair<char_t const, char_t const>(it_1->first, it_2->first)];
-            } // if
-            if ((shift & FRAME_SHIFT_2) == FRAME_SHIFT_2)
-            {
-              ++fs_2[std::pair<char_t const, char_t const>(it_1->first, it_2->first)];
-            } // if
-            char_t const key = it_3->first;
-            while (it_3 != codon_map.end() && key == it_3->first)
-            {
-              ++it_3;
-            } // while
-            --it_3;
-          } // for
-          char_t const key = it_2->first;
-          while (it_2 != codon_map.end() && key == it_2->first)
-          {
-            ++it_2;
-          } // while
-          --it_2;
-        } // for
-        char_t const key = it_1->first;
-        while (it_1 != codon_map.end() && key == it_1->first)
-        {
-          ++it_1;
-        } // while
-        --it_1;
-      } // for
-
-      // Calculate frame shift probabilities for all annotations.
-      for (std::vector<Variant>::iterator it = annotation.begin(); it != annotation.end(); ++it)
-      {
-        size_t const length = it->reference_end - it->reference_start;
-        it->weight = 0;
-        for (size_t i = 0; i < length; ++i)
-        {
-          if ((it->type & FRAME_SHIFT_1) == FRAME_SHIFT_1)
-          {
-            it->weight += fs_1[std::pair<char_t const, char_t const>(sample[it->sample_start + i], sample[it->sample_start + i + 1])];
-          } // if
-          if ((it->type & FRAME_SHIFT_2) == FRAME_SHIFT_2)
-          {
-            it->weight += fs_2[std::pair<char_t const, char_t const>(sample[it->sample_start + i], sample[it->sample_start + i + 1])];
-          } // if
-        } // for
-      } // for
+      // TODO: calculate the frame shift probabilities.
 
       // Add the annotations to the end of the variant list.
       variant.insert(variant.end(), annotation.begin(), annotation.end());
@@ -810,6 +740,87 @@ size_t extractor_protein(std::vector<Variant> &variant,
   return weight;
 } // extractor_protein
 
+void extractor_frame_shift(std::vector<Variant> &annotation,
+                           char_t const* const   reference,
+                           size_t const          reference_start,
+                           size_t const          reference_end,
+                           char_t const* const   sample,
+                           size_t const          sample_start,
+                           size_t const          sample_end)
+{
+  size_t const reference_length = reference_end - reference_start;
+  size_t const sample_length = sample_end - sample_start;
+
+
+#if defined(__debug__)
+  fputs("Extraction (frame shift)\n", stderr);
+  fprintf(stderr, "  reference %ld--%ld:  ", reference_start, reference_end);
+  Dprint_truncated(reference, reference_start, reference_end);
+  fprintf(stderr, " (%ld)\n", reference_length);
+  fprintf(stderr, "  sample %ld--%ld:     ", sample_start, sample_end);
+  Dprint_truncated(sample, sample_start, sample_end);
+  fprintf(stderr, " (%ld)\n", sample_length);
+#endif
+
+
+  // First the base cases to end the recursion.
+  if (reference_length <= 0 && sample_length <= 0)
+  {
+    return;
+  } // if
+
+
+  // Calculate the frame shift LCS of the two strings.
+  std::vector<Substring> substring;
+  LCS_frame_shift(substring, reference, reference_start, reference_end, sample, sample_start, sample_end);
+
+
+  // Pick the ``best fitting'' frame shift LCS, i.e., pushed as far to
+  // the start of the reference string as possible. Also update in
+  // case of compound frame shifts.
+  Substring lcs(0, 0, 0, FRAME_SHIFT_NONE);
+  for (size_t i = 0; i < 5; ++i)
+  {
+    if (substring[i].length > lcs.length ||
+        (substring[i].length == lcs.length && substring[i].reference_index < lcs.reference_index))
+    {
+      lcs = substring[i];
+    } // if
+    // Update compound frame shifts, e.g.,
+    // FRAME_SHIFT_1 | FRAME_SHIFT_2
+    else if (substring[i].length == lcs.length &&
+             substring[i].reference_index == lcs.reference_index &&
+             substring[i].sample_index == lcs.sample_index)
+    {
+      lcs.type |= substring[i].type;
+    } // if
+  } // for
+
+
+  // No LCS found: no frame shift annotation.
+  if (lcs.length <= 0)
+  {
+    return;
+  } // if
+
+
+  // Recursively apply this function to the prefixes of the strings.
+  std::vector<Variant> prefix;
+  extractor_frame_shift(prefix, reference, reference_start, lcs.reference_index, sample, sample_start, lcs.sample_index);
+
+
+  // Recursively apply this function to the suffixes of the strings.
+  std::vector<Variant> suffix;
+  extractor_frame_shift(suffix, reference, lcs.reference_index + lcs.length, reference_end, sample, lcs.sample_index + lcs.length, sample_end);
+
+
+  // Add all variants (in order) to the annotation vector.
+  annotation.insert(annotation.end(), prefix.begin(), prefix.end());
+  annotation.push_back(Variant(lcs.reference_index, lcs.reference_index + lcs.length, lcs.sample_index, lcs.sample_index + lcs.length, FRAME_SHIFT | lcs.type));
+  annotation.insert(annotation.end(), suffix.begin(), suffix.end());
+
+  return;
+} // extractor_frame_shift
 
 // This function calculates the LCS using the LCS_k function by
 // choosing an initial k and reducing it if necessary until the
@@ -1306,115 +1317,185 @@ char_t const* IUPAC_complement(char_t const* const string,
   return complement;
 } // IUPAC_complement
 
+void initialize_frame_shift_map(char_t const* const codon_string)
+{
+  uint64_t acid_map[128] = {0x0};
+  for (size_t i = 0; i < 64; ++i)
+  {
+    acid_map[codon_string[i] & 0x7f] |= (0x1ll << i);
+  } // for
+  for (size_t i = 0; i < 128; ++i)
+  {
+    if (acid_map[i] != 0x0)
+    {
+      for (size_t j = 0; j < 128; ++j)
+      {
+        if (acid_map[j] != 0x0)
+        {
+          for (size_t k = 0; k < 128; ++k)
+          {
+            if (acid_map[k] != 0x0)
+            {
+              frame_shift_map[i][j][k] = calculate_frame_shift(acid_map, i, j, k);
+            } // if
+          } // for
+        } // if
+      } // for
+    } // if
+  } // for
+  return;
+} // initialize_frame_shift_map
+
+uint8_t calculate_frame_shift(uint64_t const acid_map[],
+                              size_t const   reference_1,
+                              size_t const   reference_2,
+                              size_t const   sample)
+{
+  uint8_t shift = FRAME_SHIFT_NONE;
+  for (size_t i = 0; i < 64; ++i)
+  {
+    if (((acid_map[reference_1] >> i) & 0x1) == 0x1)
+    {
+      size_t const codon_reverse = ((i >> 0x4) | (i & 0xc) | ((i & 0x3) << 0x4)) ^ 0x3f;
+      for (size_t j = 0; j < 64; ++j)
+      {
+        if (((acid_map[reference_2] >> j) & 0x1) == 0x1)
+        {
+          size_t const codon_1 = ((i & 0x3) << 0x4) | ((j & 0x3c) >> 0x2);
+          size_t const codon_2 = ((i & 0xf) << 0x2) | (j >> 0x4);
+          size_t const codon_reverse_1 = (((i & 0xc) >> 0x2) | ((i & 0x3) << 0x2) | (j & 0x30)) ^ 0x3f;
+          size_t const codon_reverse_2 = ((i & 0x3) | ((j & 0x30) >> 0x2) | ((j & 0xc) << 0x2)) ^ 0x3f;
+          for (size_t k = 0; k < 64; ++k)
+          {
+            if (((acid_map[sample] >> k) & 0x1) == 0x1)
+            {
+              if (codon_1 == k)
+              {
+                shift |= FRAME_SHIFT_1;
+              } // if
+              if (codon_2 == k)
+              {
+                shift |= FRAME_SHIFT_2;
+              } // if
+              if (codon_reverse == k)
+              {
+                shift |= FRAME_SHIFT_REVERSE;
+              } // if
+              if (codon_reverse_1 == k)
+              {
+                shift |= FRAME_SHIFT_REVERSE_1;
+              } // if
+              if (codon_reverse_2 == k)
+              {
+                shift |= FRAME_SHIFT_REVERSE_2;
+              } // if
+            } // if
+          } // for
+        } // if
+      } // for
+    } // if
+  } // for
+  return shift;
+} // calculate_frame_shift
+
 // This function calculates the frame shift. A reference amino acid is
 // checked against two possible partial overlaps between every
 // combination of two sample (observed) amino acids.
-unsigned int frame_shift(char_t const reference, char_t const sample_1, char_t const sample_2)
+uint8_t frame_shift(char_t const reference_1,
+                    char_t const reference_2,
+                    char_t const sample)
 {
-  std::pair<std::multimap<char_t const, unsigned int const>::const_iterator, std::multimap<char_t const, unsigned int const>::const_iterator> const range_1 = codon_map.equal_range(sample_1);
-  std::pair<std::multimap<char_t const, unsigned int const>::const_iterator, std::multimap<char_t const, unsigned int const>::const_iterator> const range_2 = codon_map.equal_range(sample_2);
+  return frame_shift_map[reference_1 & 0x7f][reference_2 & 0x7f][sample & 0x7f];
+} // frame_shift
 
-  unsigned int shift = 0x0;
-  for (std::multimap<char_t const, unsigned int const>::const_iterator it_1 = range_1.first; it_1 != range_1.second; ++it_1)
+void LCS_frame_shift(std::vector<Substring> &substring,
+                     char_t const* const     reference,
+                     size_t const            reference_start,
+                     size_t const            reference_end,
+                     char_t const* const     sample,
+                     size_t const            sample_start,
+                     size_t const            sample_end)
+{
+  size_t const reference_length = reference_end - reference_start;
+  size_t const sample_length = sample_end - sample_start;
+
+  size_t lcs[2][reference_length][5];
+  for (size_t i = 0; i < reference_length; ++i)
   {
-    for (std::multimap<char_t const, unsigned int const>::const_iterator it_2 = range_2.first; it_2 != range_2.second; ++it_2)
+    lcs[0][i][0] = 0;
+    lcs[0][i][1] = 0;
+    lcs[0][i][2] = 0;
+    lcs[0][i][3] = 0;
+    lcs[0][i][4] = 0;
+    lcs[1][i][0] = 0;
+    lcs[1][i][1] = 0;
+    lcs[1][i][2] = 0;
+    lcs[1][i][3] = 0;
+    lcs[1][i][4] = 0;
+  } // for
+
+  Substring fs_substring[5];
+  for (size_t i = 0; i < sample_length; ++i)
+  {
+    uint8_t const shift_reverse = frame_shift(reference[reference_end - 1], reference[reference_end - 2], sample[sample_start + i]);
+    if ((shift_reverse & FRAME_SHIFT_REVERSE) == FRAME_SHIFT_REVERSE)
     {
-      const unsigned int codon_1 = ((it_1->second << 0x2) | (it_2->second >> 0x4)) & 0x3f;
-      const unsigned int codon_2 = ((it_1->second << 0x4) | (it_2->second >> 0x2)) & 0x3f;
-      if (reference == codon_table[codon_1])
+      lcs[i % 2][0][2] = 1;
+      fs_substring[2] = Substring(reference_start, sample_start + i, lcs[i % 2][0][2], FRAME_SHIFT_REVERSE);
+    } // if
+    for (size_t j = 1; j < reference_length; ++j)
+    {
+      uint8_t const shift_forward = frame_shift(reference[reference_start + j - 1], reference[reference_start + j], sample[sample_start + i]);
+      uint8_t const shift_reverse = frame_shift(reference[reference_end - j - 1], reference[reference_end - j], sample[sample_start + i]);
+      if ((shift_forward & FRAME_SHIFT_1) == FRAME_SHIFT_1)
       {
-        shift |= FRAME_SHIFT_1;
-        if (shift == (FRAME_SHIFT_1 | FRAME_SHIFT_2))
-        {
-          return shift;
-        } // if
+        lcs[i % 2][j][0] = lcs[(i + 1) % 2][j - 1][0] + 1;
       } // if
-      if (reference == codon_table[codon_2])
+      if ((shift_forward & FRAME_SHIFT_2) == FRAME_SHIFT_2)
       {
-        shift |= FRAME_SHIFT_2;
-        if (shift == (FRAME_SHIFT_1 | FRAME_SHIFT_2))
-        {
-          return shift;
-        } // if
+        lcs[i % 2][j][1] = lcs[(i + 1) % 2][j - 1][1] + 1;
+      } // if
+      if ((shift_reverse & FRAME_SHIFT_REVERSE) == FRAME_SHIFT_REVERSE)
+      {
+        lcs[i % 2][j][2] = lcs[(i + 1) % 2][j - 1][2] + 1;
+      } // if
+      if ((shift_reverse & FRAME_SHIFT_REVERSE_1) == FRAME_SHIFT_REVERSE_1)
+      {
+        lcs[i % 2][j][3] = lcs[(i + 1) % 2][j - 1][3] + 1;
+      } // if
+      if ((shift_reverse & FRAME_SHIFT_REVERSE_2) == FRAME_SHIFT_REVERSE_2)
+      {
+        lcs[i % 2][j][4] = lcs[(i + 1) % 2][j - 1][4] + 1;
+      } // if
+      if (lcs[i % 2][j][0] > fs_substring[0].length)
+      {
+        fs_substring[0] = Substring(reference_start + j - lcs[i % 2][j][0], sample_start + i - lcs[i % 2][j][0] + 1, lcs[i % 2][j][0], FRAME_SHIFT_1);
+      } // if
+      if (lcs[i % 2][j][1] > fs_substring[1].length)
+      {
+        fs_substring[1] = Substring(reference_start + j - lcs[i % 2][j][1], sample_start + i - lcs[i % 2][j][1] + 1, lcs[i % 2][j][1], FRAME_SHIFT_2);
+      } // if
+      if (lcs[i % 2][j][2] > fs_substring[2].length)
+      {
+        fs_substring[2] = Substring(reference_start + j - lcs[i % 2][j][2], sample_start + i - lcs[i % 2][j][2], lcs[i % 2][j][2], FRAME_SHIFT_REVERSE);
+      } // if
+      if (lcs[i % 2][j][3] > fs_substring[3].length)
+      {
+        fs_substring[3] = Substring(reference_start + j - lcs[i % 2][j][3], sample_start + i - lcs[i % 2][j][3] + 1, lcs[i % 2][j][3], FRAME_SHIFT_REVERSE_1);
+      } // if
+      if (lcs[i % 2][j][4] > fs_substring[4].length)
+      {
+        fs_substring[4] = Substring(reference_start + j - lcs[i % 2][j][4], sample_start + i - lcs[i % 2][j][4] + 1, lcs[i % 2][j][4], FRAME_SHIFT_REVERSE_2);
       } // if
     } // for
   } // for
-  return shift;
-} // frame_shift
-
-// This function calculates frame shift annotations for
-// deletions/insertions.
-size_t annotate_frame_shift(std::vector<Variant> &variant,
-                            char_t const* const   reference,
-                            size_t const          reference_start,
-                            size_t const          reference_end,
-                            char_t const* const   sample,
-                            size_t const          sample_start,
-                            size_t const          sample_end)
-{
-  size_t const reference_length = reference_end - reference_start;
-  size_t const sample_length = sample_end - sample_start;
-  size_t const length = (reference_length <= sample_length ? reference_length : sample_length) - 1;
-
-
-#if defined(__debug__)
-  fprintf(stderr, "Frame shift detection (%ld)\n", length);
-#endif
-
-
-  size_t start = 0;
-  unsigned int frame = 0x0;
-  for (size_t i = 0; i < length; ++i)
-  {
-    unsigned int const shift = frame_shift(reference[reference_start + i + 1], sample[sample_start + i], sample[sample_start + i + 1]);
-    if ((frame == 0x0 && shift != 0x0) || (frame & shift) != frame)
-    {
-      if (i - start > 0)
-      {
-        variant.push_back(Variant(reference_start + start, reference_start + i, sample_start + start, sample_start + i, FRAME_SHIFT | frame));
-      } // if
-      frame = shift;
-      start = i;
-    } // if
-    else
-    {
-      frame &= shift;
-    } // else
-
-
-#if defined(__debug__)
-  fprintf(stderr, "  %c%c --- %c: %d  %ld\n", sample[sample_start + i], sample[sample_start + i + 1], reference[reference_start + i + 1], frame, i - start);
-#endif
-
-
-  } // for
-  if (length - start > 1)
-  {
-    variant.push_back(Variant(reference_start + start, reference_start + length, sample_start + start, sample_start + length, FRAME_SHIFT | frame));
-  } // if
-  return variant.size();
-} // annotate_frame_shift
-
-size_t annotate_frame_inversion(std::vector<Variant> &variant,
-                                char_t const* const   reference,
-                                size_t const          reference_start,
-                                size_t const          reference_end,
-                                char_t const* const   sample,
-                                size_t const          sample_start,
-                                size_t const          sample_end)
-{
-  size_t const reference_length = reference_end - reference_start;
-  size_t const sample_length = sample_end - sample_start;
-  size_t const length = (reference_length <= sample_length ? reference_length : sample_length) - 1;
-
-
-#if defined(__debug__)
-  fprintf(stderr, "Frame inversion detection (%ld)\n", length);
-#endif
-
-
-  return 0;
-} // annotate_frame_inversion
+  substring = std::vector<Substring>(1, fs_substring[0]);
+  substring.push_back(fs_substring[1]);
+  substring.push_back(fs_substring[2]);
+  substring.push_back(fs_substring[3]);
+  substring.push_back(fs_substring[4]);
+  return;
+} // LCS_frame_shift
 
 
 #if defined(__debug__)

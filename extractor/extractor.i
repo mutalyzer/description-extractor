@@ -8,8 +8,8 @@
 // FILE INFORMATION:
 //   File:     extractor.i (SWIG interface file)
 //   Author:   Jonathan K. Vis
-//   Revision: 2.1.8
-//   Date:     2015/01/12
+//   Revision: 2.2.0
+//   Date:     2015/03/10
 // *******************************************************************
 // DESCRIPTION:
 //   Defines the SWIG interface for the Extractor library for use in
@@ -32,7 +32,7 @@ namespace mutalyzer
 {
 
 // Version string for run-time identification.
-static char const* const VERSION = "2.1.8";
+static char const* const VERSION = "2.2.0";
 
 // The character type used for all strings. For now it should just be
 // a char.
@@ -55,14 +55,19 @@ static int const TYPE_OTHER   = 2;
 // be appropriately combined, e.g., IDENTITY | TRANSPOSITION_OPEN for
 // describing a real transposition. Note that some combinations do NOT
 // make sense, e.g., SUBSTITUION | REVERSE_COMPLEMENT.
-static unsigned int const IDENTITY            = 0x01;
-static unsigned int const REVERSE_COMPLEMENT  = 0x02;
-static unsigned int const SUBSTITUTION        = 0x04;
-static unsigned int const TRANSPOSITION_OPEN  = 0x08;
-static unsigned int const TRANSPOSITION_CLOSE = 0x10;
-static unsigned int const FRAME_SHIFT         = 0x20;
-static unsigned int const FRAME_SHIFT_1       = 0x01;
-static unsigned int const FRAME_SHIFT_2       = 0x02;
+static unsigned int const IDENTITY              = 0x01;
+static unsigned int const REVERSE_COMPLEMENT    = 0x02;
+static unsigned int const SUBSTITUTION          = 0x04;
+static unsigned int const TRANSPOSITION_OPEN    = 0x08;
+static unsigned int const TRANSPOSITION_CLOSE   = 0x10;
+static unsigned int const FRAME_SHIFT           = 0x20;
+
+static unsigned int const FRAME_SHIFT_NONE      = 0x00;
+static unsigned int const FRAME_SHIFT_1         = 0x01;
+static unsigned int const FRAME_SHIFT_2         = 0x02;
+static unsigned int const FRAME_SHIFT_REVERSE   = 0x04;
+static unsigned int const FRAME_SHIFT_REVERSE_1 = 0x08;
+static unsigned int const FRAME_SHIFT_REVERSE_2 = 0x10;
 
 // These constants are used in calculating the weight of the generated
 // description and consequently used to end the description process
