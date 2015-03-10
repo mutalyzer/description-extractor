@@ -804,6 +804,17 @@ void extractor_frame_shift(std::vector<Variant> &annotation,
   } // if
 
 
+#if defined(__debug__)
+  fprintf(stderr, "  LCS type = %d\n", lcs.type);
+  fprintf(stderr, "    %ld--%ld: ", lcs.reference_index, lcs.reference_index + lcs.length);
+  Dprint_truncated(reference, lcs.reference_index, lcs.reference_index + lcs.length);
+  fprintf(stderr, " (%ld)\n    %ld--%ld: ", lcs.length, lcs.sample_index, lcs.sample_index + lcs.length);
+  Dprint_truncated(sample, lcs.sample_index, lcs.sample_index + lcs.length);
+  fprintf(stderr, " (%ld)", lcs.length);
+  fputs("\n", stderr);
+#endif
+
+
   // Recursively apply this function to the prefixes of the strings.
   std::vector<Variant> prefix;
   extractor_frame_shift(prefix, reference, reference_start, lcs.reference_index, sample, sample_start, lcs.sample_index);
@@ -1477,7 +1488,7 @@ void LCS_frame_shift(std::vector<Substring> &substring,
       } // if
       if (lcs[i % 2][j][2] > fs_substring[2].length)
       {
-        fs_substring[2] = Substring(reference_start + j - lcs[i % 2][j][2], sample_start + i - lcs[i % 2][j][2], lcs[i % 2][j][2], FRAME_SHIFT_REVERSE);
+        fs_substring[2] = Substring(reference_start + j - lcs[i % 2][j][2] + 1, sample_start + i - lcs[i % 2][j][2] + 1, lcs[i % 2][j][2], FRAME_SHIFT_REVERSE);
       } // if
       if (lcs[i % 2][j][3] > fs_substring[3].length)
       {
