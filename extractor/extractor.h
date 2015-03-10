@@ -8,8 +8,8 @@
 // FILE INFORMATION:
 //   File:     extractor.h (implemented in extractor.cc)
 //   Author:   Jonathan K. Vis
-//   Revision: 2.1.9
-//   Date:     2015/02/16
+//   Revision: 2.2.0
+//   Date:     2015/03/10
 // *******************************************************************
 // DESCRIPTION:
 //   This library can be used to generate HGVS variant descriptions as
@@ -34,7 +34,7 @@ namespace mutalyzer
 {
 
 // Version string for run-time identification.
-static char const* const VERSION = "2.1.9";
+static char const* const VERSION = "2.2.0";
 
 
 // The character type used for all strings. For now it should just be
@@ -202,7 +202,7 @@ Variant_List extract(char_t const* const reference,
                      size_t const        reference_length,
                      char_t const* const sample,
                      size_t const        sample_length,
-                     int const           type = TYPE_DNA,
+                     int const           type         = TYPE_DNA,
                      char_t const* const codon_string = 0);
 
 // *******************************************************************
@@ -230,7 +230,7 @@ size_t extract(std::vector<Variant> &variant,
                size_t const          reference_length,
                char_t const* const   sample,
                size_t const          sample_length,
-               int const             type = TYPE_DNA,
+               int const             type         = TYPE_DNA,
                char_t const* const   codon_string = 0);
 
 // *******************************************************************
@@ -596,14 +596,6 @@ size_t annotate_frame_shift(std::vector<Variant> &variant,
                             char_t const* const   sample,
                             size_t const          sample_start,
                             size_t const          sample_end);
-
-size_t annotate_frame_inversion(std::vector<Variant> &variant,
-                                char_t const* const   reference,
-                                size_t const          reference_start,
-                                size_t const          reference_end,
-                                char_t const* const   sample,
-                                size_t const          sample_start,
-                                size_t const          sample_end);
 
 
 #if defined(__debug__)
