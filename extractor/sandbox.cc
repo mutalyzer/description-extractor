@@ -21,6 +21,7 @@ static uint8_t const FRAME_SHIFT_REVERSE_2 = 0x10;
 char_t const* const CODON_STRING = "KNKNTTTTRSRSIIMIQHQHPPPPRRRRLLLLEDEDAAAAGGGGVVVV*Y*YSSSS*CWCLFLF";
 
 static uint8_t frame_shift_map[128][128][128] = {{{FRAME_SHIFT_NONE}}};
+static uint8_t frame_shift_count[128][128][5] = {{{0}}};
 
 struct Variant
 {
@@ -156,9 +157,31 @@ void initialize_frame_shift_map(char_t const* const codon_string)
           {
             if (acid_map[k] != 0x0)
             {
-              frame_shift_map[i][j][k] = calculate_frame_shift(acid_map, i, j, k);
+              uint8_t const shift = calculate_frame_shift(acid_map, i, j, k);
+              frame_shift_map[i][j][k] = shift;
+              if ((shift & FRAME_SHIFT_1) == FRAME_SHIFT_1)
+              {
+                ++frame_shift_count[i][j][0];
+              } // if
+              if ((shift & FRAME_SHIFT_2) == FRAME_SHIFT_2)
+              {
+                ++frame_shift_count[i][j][1];
+              } // if
+              if ((shift & FRAME_SHIFT_REVERSE) == FRAME_SHIFT_REVERSE)
+              {
+                ++frame_shift_count[i][j][2];
+              } // if
+              if ((shift & FRAME_SHIFT_REVERSE_1) == FRAME_SHIFT_REVERSE_1)
+              {
+                ++frame_shift_count[i][j][3];
+              } // if
+              if ((shift & FRAME_SHIFT_REVERSE_2) == FRAME_SHIFT_REVERSE_2)
+              {
+                ++frame_shift_count[i][j][4];
+              } // if
             } // if
           } // for
+          printf("%c%c: %d %d %d %d %d\n", static_cast<char_t>(i), static_cast<char_t>(j), frame_shift_count[i][j][0], frame_shift_count[i][j][1], frame_shift_count[i][j][2], frame_shift_count[i][j][3], frame_shift_count[i][j][4]);
         } // if
       } // for
     } // if
@@ -173,13 +196,13 @@ uint8_t frame_shift(char_t const reference_1,
   return frame_shift_map[reference_1 & 0x7f][reference_2 & 0x7f][sample & 0x7f];
 } // frame_shift
 
-size_t lcs_frame_shift(std::vector<Substring> &substring,
-                       char_t const* const     reference,
-                       size_t const            reference_start,
-                       size_t const            reference_end,
-                       char_t const* const     sample,
-                       size_t const            sample_start,
-                       size_t const            sample_end)
+void LCS_frame_shift(std::vector<Substring> &substring,
+                     char_t const* const     reference,
+                     size_t const            reference_start,
+                     size_t const            reference_end,
+                     char_t const* const     sample,
+                     size_t const            sample_start,
+                     size_t const            sample_end)
 {
   size_t const reference_length = reference_end - reference_start;
   size_t const sample_length = sample_end - sample_start;
@@ -259,16 +282,16 @@ size_t lcs_frame_shift(std::vector<Substring> &substring,
   substring.push_back(fs_substring[2]);
   substring.push_back(fs_substring[3]);
   substring.push_back(fs_substring[4]);
-  return 0;
-} // lcs_frame_shift
+  return;
+} // LCS_frame_shift
 
-size_t extractor_frame_shift(std::vector<Variant> &annotation,
-                             char_t const* const   reference,
-                             size_t const          reference_start,
-                             size_t const          reference_end,
-                             char_t const* const   sample,
-                             size_t const          sample_start,
-                             size_t const          sample_end)
+void extractor_frame_shift(std::vector<Variant> &annotation,
+                           char_t const* const   reference,
+                           size_t const          reference_start,
+                           size_t const          reference_end,
+                           char_t const* const   sample,
+                           size_t const          sample_start,
+                           size_t const          sample_end)
 {
   size_t const reference_length = reference_end - reference_start;
   size_t const sample_length = sample_end - sample_start;
@@ -276,13 +299,13 @@ size_t extractor_frame_shift(std::vector<Variant> &annotation,
   // First the base cases to end the recursion.
   if (reference_length <= 0 && sample_length <= 0)
   {
-    return 0;
+    return;
   } // if
 
 
   // Calculate the frame shift LCS of the two strings.
   std::vector<Substring> substring;
-  lcs_frame_shift(substring, reference, reference_start, reference_end, sample, sample_start, sample_end);
+  LCS_frame_shift(substring, reference, reference_start, reference_end, sample, sample_start, sample_end);
 
 
   // Pick the ``best fitting'' frame shift LCS, i.e., pushed as far to
@@ -310,8 +333,42 @@ size_t extractor_frame_shift(std::vector<Variant> &annotation,
   // No LCS found: no frame shift annotation.
   if (lcs.length <= 0)
   {
-    return 0;
+    return;
   } // if
+
+  fprintf(stderr, "  LCS type = %d\n", lcs.type);
+  fprintf(stderr, "    %ld--%ld: ", lcs.reference_index, lcs.reference_index + lcs.length);
+  fprintf(stderr, " (%ld)\n    %ld--%ld: ", lcs.length, lcs.sample_index, lcs.sample_index + lcs.length);
+  fprintf(stderr, " (%ld)", lcs.length);
+  fputs("\n", stderr);
+
+
+  size_t weight = 1;
+  for (size_t i = 0; i < lcs.length; ++i)
+  {
+    size_t weight_compound = 0;
+    if ((lcs.type & FRAME_SHIFT_1) == FRAME_SHIFT_1)
+    {
+      weight_compound += frame_shift_count[reference[lcs.reference_index + i] & 0x7f][reference[lcs.reference_index + i + 1] & 0x7f][0];
+    } // if
+    if ((lcs.type & FRAME_SHIFT_2) == FRAME_SHIFT_2)
+    {
+      weight_compound += frame_shift_count[reference[lcs.reference_index + i] & 0x7f][reference[lcs.reference_index + i + 1] & 0x7f][1];
+    } // if
+    if ((lcs.type & FRAME_SHIFT_REVERSE) == FRAME_SHIFT_REVERSE)
+    {
+      weight_compound += frame_shift_count[reference[lcs.reference_index + i] & 0x7f][reference[lcs.reference_index + i + 1] & 0x7f][2];
+    } // if
+    if ((lcs.type & FRAME_SHIFT_REVERSE_1) == FRAME_SHIFT_REVERSE_1)
+    {
+      weight_compound += frame_shift_count[reference[lcs.reference_index + i] & 0x7f][reference[lcs.reference_index + i + 1] & 0x7f][3];
+    } // if
+    if ((lcs.type & FRAME_SHIFT_REVERSE_2) == FRAME_SHIFT_REVERSE_2)
+    {
+      weight_compound += frame_shift_count[reference[lcs.reference_index + i] & 0x7f][reference[lcs.reference_index + i + 1] & 0x7f][4];
+    } // if
+    weight *= weight_compound;
+  } // for
 
 
   // Recursively apply this function to the prefixes of the strings.
@@ -326,10 +383,10 @@ size_t extractor_frame_shift(std::vector<Variant> &annotation,
 
   // Add all variants (in order) to the annotation vector.
   annotation.insert(annotation.end(), prefix.begin(), prefix.end());
-  annotation.push_back(Variant(lcs.reference_index, lcs.reference_index + lcs.length, lcs.sample_index, lcs.sample_index + lcs.length, FRAME_SHIFT | lcs.type));
+  annotation.push_back(Variant(lcs.reference_index, lcs.reference_index + lcs.length, lcs.sample_index, lcs.sample_index + lcs.length, FRAME_SHIFT | lcs.type, weight));
   annotation.insert(annotation.end(), suffix.begin(), suffix.end());
 
-  return 0;
+  return;
 } // extractor_frame_shift
 
 int main(int, char* [])

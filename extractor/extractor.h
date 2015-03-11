@@ -8,8 +8,8 @@
 // FILE INFORMATION:
 //   File:     extractor.h (implemented in extractor.cc)
 //   Author:   Jonathan K. Vis
-//   Revision: 2.2.0
-//   Date:     2015/03/10
+//   Revision: 2.2.1
+//   Date:     2015/03/11
 // *******************************************************************
 // DESCRIPTION:
 //   This library can be used to generate HGVS variant descriptions as
@@ -34,7 +34,7 @@ namespace mutalyzer
 {
 
 // Version string for run-time identification.
-static char const* const VERSION = "2.2.0";
+static char const* const VERSION = "2.2.1";
 
 
 // The character type used for all strings. For now it should just be
@@ -126,11 +126,15 @@ static double const TRANSPOSITION_CUT_OFF =   0.1;
 extern size_t global_reference_length;
 
 
-// The actual frame shift map indexed on the lower 127 ASCII
+// The actual frame shift map indexed by the lower 127 ASCII
 // characters. This map should be precalculated given a codon string
 // by the initialize_frame_shift_map function.
 extern uint8_t frame_shift_map[128][128][128];
 
+// A frequency count of all possible frame shifts (5) for all
+// combinations of two amino acids (indexed by the lower 127 ASCII
+// characters). Used to calculate the frame shift probability.
+extern uint8_t frame_shift_count[128][128][5];
 
 // *******************************************************************
 // Variant structure
@@ -498,6 +502,26 @@ size_t LCS_k(std::vector<Substring> &substring,
              size_t const            sample_end,
              size_t const            k);
 
+// *******************************************************************
+// LCS_frame_shift function
+//   This function calculates the frame shift LCS.
+//
+//   @arg substring: vector of substrings
+//   @arg reference: reference string
+//   @arg reference_start: starting position in the reference string
+//   @arg reference_end: ending position in the reference string
+//   @arg sample: sample string
+//   @arg sample_start: starting position in the sample string
+//   @arg sample_end: ending position in the sample string
+// *******************************************************************
+void LCS_frame_shift(std::vector<Substring> &substring,
+                     char_t const* const     reference,
+                     size_t const            reference_start,
+                     size_t const            reference_end,
+                     char_t const* const     sample,
+                     size_t const            sample_start,
+                     size_t const            sample_end);
+
 
 // *******************************************************************
 // General string matching functions
@@ -657,26 +681,6 @@ uint8_t calculate_frame_shift(uint64_t const acid_map[],
 uint8_t frame_shift(char_t const reference_1,
                     char_t const reference_2,
                     char_t const sample);
-
-// *******************************************************************
-// LCS_frame_shift function
-//   This function calculates the frame shift LCS.
-//
-//   @arg substring: vector of substrings
-//   @arg reference: reference string
-//   @arg reference_start: starting position in the reference string
-//   @arg reference_end: ending position in the reference string
-//   @arg sample: sample string
-//   @arg sample_start: starting position in the sample string
-//   @arg sample_end: ending position in the sample string
-// *******************************************************************
-void LCS_frame_shift(std::vector<Substring> &substring,
-                     char_t const* const     reference,
-                     size_t const            reference_start,
-                     size_t const            reference_end,
-                     char_t const* const     sample,
-                     size_t const            sample_start,
-                     size_t const            sample_end);
 
 
 #if defined(__debug__)

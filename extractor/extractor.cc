@@ -8,8 +8,8 @@
 // FILE INFORMATION:
 //   File:     extractor.cc (depends on extractor.h)
 //   Author:   Jonathan K. Vis
-//   Revision: 2.2.0
-//   Date:     2015/03/10
+//   Revision: 2.2.1
+//   Date:     2015/03/11
 // *******************************************************************
 // DESCRIPTION:
 //   This library can be used to generete HGVS variant descriptions as
@@ -35,6 +35,10 @@ size_t global_reference_length = 0;
 // by the initialize_frame_shift_map function.
 uint8_t frame_shift_map[128][128][128] = {{{FRAME_SHIFT_NONE}}};
 
+// A frequency count of all possible frame shifts (5) for all
+// combinations of two amino acids (indexed by the lower 127 ASCII
+// characters). Used to calculate the frame shift probability.
+uint8_t frame_shift_count[128][128][5] = {{{0}}};
 
 // Only used to interface to Python: calls the C++ extract function.
 Variant_List extract(char_t const* const reference,
@@ -144,13 +148,8 @@ size_t extract(std::vector<Variant> &variant,
       } // if
     } // for
 
-    if (annotation.size() > 0)
-    {
-      // TODO: calculate the frame shift probabilities.
-
-      // Add the annotations to the end of the variant list.
-      variant.insert(variant.end(), annotation.begin(), annotation.end());
-    } // if
+    // Add the annotations to the end of the variant list.
+    variant.insert(variant.end(), annotation.begin(), annotation.end());
   } // if
 
   // Do NOT forget to clean up the complement string.
@@ -815,6 +814,39 @@ void extractor_frame_shift(std::vector<Variant> &annotation,
 #endif
 
 
+  // Calculate the frame shift probability.
+  size_t weight = 1;
+  for (size_t i = 0; i < lcs.length; ++i)
+  {
+    size_t weight_compound = 0;
+    if ((lcs.type & FRAME_SHIFT_1) == FRAME_SHIFT_1)
+    {
+      weight_compound += frame_shift_count[reference[lcs.reference_index + i] & 0x7f][reference[lcs.reference_index + i + 1] & 0x7f][0];
+    } // if
+    if ((lcs.type & FRAME_SHIFT_2) == FRAME_SHIFT_2)
+    {
+      weight_compound += frame_shift_count[reference[lcs.reference_index + i] & 0x7f][reference[lcs.reference_index + i + 1] & 0x7f][1];
+    } // if
+    if ((lcs.type & FRAME_SHIFT_REVERSE) == FRAME_SHIFT_REVERSE)
+    {
+      weight_compound += frame_shift_count[reference[lcs.reference_index + i] & 0x7f][reference[lcs.reference_index + i + 1] & 0x7f][2];
+    } // if
+    if ((lcs.type & FRAME_SHIFT_REVERSE_1) == FRAME_SHIFT_REVERSE_1)
+    {
+      weight_compound += frame_shift_count[reference[lcs.reference_index + i] & 0x7f][reference[lcs.reference_index + i + 1] & 0x7f][3];
+    } // if
+    if ((lcs.type & FRAME_SHIFT_REVERSE_2) == FRAME_SHIFT_REVERSE_2)
+    {
+      weight_compound += frame_shift_count[reference[lcs.reference_index + i] & 0x7f][reference[lcs.reference_index + i + 1] & 0x7f][4];
+    } // if
+
+    // This is actually only the numerator. The denominator is
+    // implicitly given by the number of different amino acids to the
+    // power of the length of the frame shift LCS.
+    weight *= weight_compound;
+  } // for
+
+
   // Recursively apply this function to the prefixes of the strings.
   std::vector<Variant> prefix;
   extractor_frame_shift(prefix, reference, reference_start, lcs.reference_index, sample, sample_start, lcs.sample_index);
@@ -827,7 +859,7 @@ void extractor_frame_shift(std::vector<Variant> &annotation,
 
   // Add all variants (in order) to the annotation vector.
   annotation.insert(annotation.end(), prefix.begin(), prefix.end());
-  annotation.push_back(Variant(lcs.reference_index, lcs.reference_index + lcs.length, lcs.sample_index, lcs.sample_index + lcs.length, FRAME_SHIFT | lcs.type));
+  annotation.push_back(Variant(lcs.reference_index, lcs.reference_index + lcs.length, lcs.sample_index, lcs.sample_index + lcs.length, FRAME_SHIFT | lcs.type, weight));
   annotation.insert(annotation.end(), suffix.begin(), suffix.end());
 
   return;
@@ -1221,6 +1253,110 @@ size_t LCS_k(std::vector<Substring> &substring,
   return length;
 } // LCS_k
 
+// This function calculates the frame shift LCS. The five possible
+// frame shift LCSs are calculated separately. Picking the longest
+// ``best'' fitting one is the reponsibility of the caller.
+// This function is a version of the LCS_1 function (not suitable for
+// very large strings).
+void LCS_frame_shift(std::vector<Substring> &substring,
+                     char_t const* const     reference,
+                     size_t const            reference_start,
+                     size_t const            reference_end,
+                     char_t const* const     sample,
+                     size_t const            sample_start,
+                     size_t const            sample_end)
+{
+  size_t const reference_length = reference_end - reference_start;
+  size_t const sample_length = sample_end - sample_start;
+
+  // Initialize LCS array to zero.
+  size_t lcs[2][reference_length][5];
+  for (size_t i = 0; i < reference_length; ++i)
+  {
+    lcs[0][i][0] = 0;
+    lcs[0][i][1] = 0;
+    lcs[0][i][2] = 0;
+    lcs[0][i][3] = 0;
+    lcs[0][i][4] = 0;
+    lcs[1][i][0] = 0;
+    lcs[1][i][1] = 0;
+    lcs[1][i][2] = 0;
+    lcs[1][i][3] = 0;
+    lcs[1][i][4] = 0;
+  } // for
+
+  Substring fs_substring[5];
+
+  // Filling the LCS matrix (actually only the current and the
+  // previous row).
+  for (size_t i = 0; i < sample_length; ++i)
+  {
+    // The first ``in frame'' reverse complement frame shift.
+    uint8_t const shift_reverse = frame_shift(reference[reference_end - 1], reference[reference_end - 2], sample[sample_start + i]);
+    if ((shift_reverse & FRAME_SHIFT_REVERSE) == FRAME_SHIFT_REVERSE)
+    {
+      lcs[i % 2][0][2] = 1;
+      fs_substring[2] = Substring(reference_start, sample_start + i, lcs[i % 2][0][2], FRAME_SHIFT_REVERSE);
+
+    } // if
+    for (size_t j = 1; j < reference_length; ++j)
+    {
+      // Calculate frame shifts in both directions.
+      uint8_t const shift_forward = frame_shift(reference[reference_start + j - 1], reference[reference_start + j], sample[sample_start + i]);
+      uint8_t const shift_reverse = frame_shift(reference[reference_end - j - 1], reference[reference_end - j], sample[sample_start + i]);
+      if ((shift_forward & FRAME_SHIFT_1) == FRAME_SHIFT_1)
+      {
+        lcs[i % 2][j][0] = lcs[(i + 1) % 2][j - 1][0] + 1;
+      } // if
+      if ((shift_forward & FRAME_SHIFT_2) == FRAME_SHIFT_2)
+      {
+        lcs[i % 2][j][1] = lcs[(i + 1) % 2][j - 1][1] + 1;
+      } // if
+      if ((shift_reverse & FRAME_SHIFT_REVERSE) == FRAME_SHIFT_REVERSE)
+      {
+        lcs[i % 2][j][2] = lcs[(i + 1) % 2][j - 1][2] + 1;
+      } // if
+      if ((shift_reverse & FRAME_SHIFT_REVERSE_1) == FRAME_SHIFT_REVERSE_1)
+      {
+        lcs[i % 2][j][3] = lcs[(i + 1) % 2][j - 1][3] + 1;
+      } // if
+      if ((shift_reverse & FRAME_SHIFT_REVERSE_2) == FRAME_SHIFT_REVERSE_2)
+      {
+        lcs[i % 2][j][4] = lcs[(i + 1) % 2][j - 1][4] + 1;
+      } // if
+
+      // Update the best solution for each frame shift.
+      if (lcs[i % 2][j][0] > fs_substring[0].length)
+      {
+        fs_substring[0] = Substring(reference_start + j - lcs[i % 2][j][0], sample_start + i - lcs[i % 2][j][0] + 1, lcs[i % 2][j][0], FRAME_SHIFT_1);
+      } // if
+      if (lcs[i % 2][j][1] > fs_substring[1].length)
+      {
+        fs_substring[1] = Substring(reference_start + j - lcs[i % 2][j][1], sample_start + i - lcs[i % 2][j][1] + 1, lcs[i % 2][j][1], FRAME_SHIFT_2);
+      } // if
+      if (lcs[i % 2][j][2] > fs_substring[2].length)
+      {
+        fs_substring[2] = Substring(reference_start + j - lcs[i % 2][j][2] + 1, sample_start + i - lcs[i % 2][j][2] + 1, lcs[i % 2][j][2], FRAME_SHIFT_REVERSE);
+      } // if
+      if (lcs[i % 2][j][3] > fs_substring[3].length)
+      {
+        fs_substring[3] = Substring(reference_start + j - lcs[i % 2][j][3], sample_start + i - lcs[i % 2][j][3] + 1, lcs[i % 2][j][3], FRAME_SHIFT_REVERSE_1);
+      } // if
+      if (lcs[i % 2][j][4] > fs_substring[4].length)
+      {
+        fs_substring[4] = Substring(reference_start + j - lcs[i % 2][j][4], sample_start + i - lcs[i % 2][j][4] + 1, lcs[i % 2][j][4], FRAME_SHIFT_REVERSE_2);
+      } // if
+    } // for
+  } // for
+
+  substring = std::vector<Substring>(1, fs_substring[0]);
+  substring.push_back(fs_substring[1]);
+  substring.push_back(fs_substring[2]);
+  substring.push_back(fs_substring[3]);
+  substring.push_back(fs_substring[4]);
+  return;
+} // LCS_frame_shift
+
 // This function is more or less equivalent to C's strncmp, but it
 // returns true iff both strings are the same.
 bool string_match(char_t const* const string_1,
@@ -1328,6 +1464,8 @@ char_t const* IUPAC_complement(char_t const* const string,
   return complement;
 } // IUPAC_complement
 
+// This function precalculates the frame_shift_map and frequency count
+// based on a given codon string.
 void initialize_frame_shift_map(char_t const* const codon_string)
 {
   uint64_t acid_map[128] = {0x0};
@@ -1347,7 +1485,30 @@ void initialize_frame_shift_map(char_t const* const codon_string)
           {
             if (acid_map[k] != 0x0)
             {
-              frame_shift_map[i][j][k] = calculate_frame_shift(acid_map, i, j, k);
+              uint8_t const shift = calculate_frame_shift(acid_map, i, j, k);
+              frame_shift_map[i][j][k] = shift;
+
+              // Calculate frame shift frequencies.
+              if ((shift & FRAME_SHIFT_1) == FRAME_SHIFT_1)
+              {
+                ++frame_shift_count[i][j][0];
+              } // if
+              if ((shift & FRAME_SHIFT_2) == FRAME_SHIFT_2)
+              {
+                ++frame_shift_count[i][j][1];
+              } // if
+              if ((shift & FRAME_SHIFT_REVERSE) == FRAME_SHIFT_REVERSE)
+              {
+                ++frame_shift_count[i][j][2];
+              } // if
+              if ((shift & FRAME_SHIFT_REVERSE_1) == FRAME_SHIFT_REVERSE_1)
+              {
+                ++frame_shift_count[i][j][3];
+              } // if
+              if ((shift & FRAME_SHIFT_REVERSE_2) == FRAME_SHIFT_REVERSE_2)
+              {
+                ++frame_shift_count[i][j][4];
+              } // if
             } // if
           } // for
         } // if
@@ -1357,6 +1518,10 @@ void initialize_frame_shift_map(char_t const* const codon_string)
   return;
 } // initialize_frame_shift_map
 
+// Used to precalculate the frame_shift_map. It computes for all
+// combinations of two reference amino acids the corresponding DNA
+// sequence and the (partial) overlap between all possible DNA
+// sequences of the sample amico acid.
 uint8_t calculate_frame_shift(uint64_t const acid_map[],
                               size_t const   reference_1,
                               size_t const   reference_2,
@@ -1418,95 +1583,6 @@ uint8_t frame_shift(char_t const reference_1,
 {
   return frame_shift_map[reference_1 & 0x7f][reference_2 & 0x7f][sample & 0x7f];
 } // frame_shift
-
-void LCS_frame_shift(std::vector<Substring> &substring,
-                     char_t const* const     reference,
-                     size_t const            reference_start,
-                     size_t const            reference_end,
-                     char_t const* const     sample,
-                     size_t const            sample_start,
-                     size_t const            sample_end)
-{
-  size_t const reference_length = reference_end - reference_start;
-  size_t const sample_length = sample_end - sample_start;
-
-  size_t lcs[2][reference_length][5];
-  for (size_t i = 0; i < reference_length; ++i)
-  {
-    lcs[0][i][0] = 0;
-    lcs[0][i][1] = 0;
-    lcs[0][i][2] = 0;
-    lcs[0][i][3] = 0;
-    lcs[0][i][4] = 0;
-    lcs[1][i][0] = 0;
-    lcs[1][i][1] = 0;
-    lcs[1][i][2] = 0;
-    lcs[1][i][3] = 0;
-    lcs[1][i][4] = 0;
-  } // for
-
-  Substring fs_substring[5];
-  for (size_t i = 0; i < sample_length; ++i)
-  {
-    uint8_t const shift_reverse = frame_shift(reference[reference_end - 1], reference[reference_end - 2], sample[sample_start + i]);
-    if ((shift_reverse & FRAME_SHIFT_REVERSE) == FRAME_SHIFT_REVERSE)
-    {
-      lcs[i % 2][0][2] = 1;
-      fs_substring[2] = Substring(reference_start, sample_start + i, lcs[i % 2][0][2], FRAME_SHIFT_REVERSE);
-    } // if
-    for (size_t j = 1; j < reference_length; ++j)
-    {
-      uint8_t const shift_forward = frame_shift(reference[reference_start + j - 1], reference[reference_start + j], sample[sample_start + i]);
-      uint8_t const shift_reverse = frame_shift(reference[reference_end - j - 1], reference[reference_end - j], sample[sample_start + i]);
-      if ((shift_forward & FRAME_SHIFT_1) == FRAME_SHIFT_1)
-      {
-        lcs[i % 2][j][0] = lcs[(i + 1) % 2][j - 1][0] + 1;
-      } // if
-      if ((shift_forward & FRAME_SHIFT_2) == FRAME_SHIFT_2)
-      {
-        lcs[i % 2][j][1] = lcs[(i + 1) % 2][j - 1][1] + 1;
-      } // if
-      if ((shift_reverse & FRAME_SHIFT_REVERSE) == FRAME_SHIFT_REVERSE)
-      {
-        lcs[i % 2][j][2] = lcs[(i + 1) % 2][j - 1][2] + 1;
-      } // if
-      if ((shift_reverse & FRAME_SHIFT_REVERSE_1) == FRAME_SHIFT_REVERSE_1)
-      {
-        lcs[i % 2][j][3] = lcs[(i + 1) % 2][j - 1][3] + 1;
-      } // if
-      if ((shift_reverse & FRAME_SHIFT_REVERSE_2) == FRAME_SHIFT_REVERSE_2)
-      {
-        lcs[i % 2][j][4] = lcs[(i + 1) % 2][j - 1][4] + 1;
-      } // if
-      if (lcs[i % 2][j][0] > fs_substring[0].length)
-      {
-        fs_substring[0] = Substring(reference_start + j - lcs[i % 2][j][0], sample_start + i - lcs[i % 2][j][0] + 1, lcs[i % 2][j][0], FRAME_SHIFT_1);
-      } // if
-      if (lcs[i % 2][j][1] > fs_substring[1].length)
-      {
-        fs_substring[1] = Substring(reference_start + j - lcs[i % 2][j][1], sample_start + i - lcs[i % 2][j][1] + 1, lcs[i % 2][j][1], FRAME_SHIFT_2);
-      } // if
-      if (lcs[i % 2][j][2] > fs_substring[2].length)
-      {
-        fs_substring[2] = Substring(reference_start + j - lcs[i % 2][j][2] + 1, sample_start + i - lcs[i % 2][j][2] + 1, lcs[i % 2][j][2], FRAME_SHIFT_REVERSE);
-      } // if
-      if (lcs[i % 2][j][3] > fs_substring[3].length)
-      {
-        fs_substring[3] = Substring(reference_start + j - lcs[i % 2][j][3], sample_start + i - lcs[i % 2][j][3] + 1, lcs[i % 2][j][3], FRAME_SHIFT_REVERSE_1);
-      } // if
-      if (lcs[i % 2][j][4] > fs_substring[4].length)
-      {
-        fs_substring[4] = Substring(reference_start + j - lcs[i % 2][j][4], sample_start + i - lcs[i % 2][j][4] + 1, lcs[i % 2][j][4], FRAME_SHIFT_REVERSE_2);
-      } // if
-    } // for
-  } // for
-  substring = std::vector<Substring>(1, fs_substring[0]);
-  substring.push_back(fs_substring[1]);
-  substring.push_back(fs_substring[2]);
-  substring.push_back(fs_substring[3]);
-  substring.push_back(fs_substring[4]);
-  return;
-} // LCS_frame_shift
 
 
 #if defined(__debug__)
