@@ -8,6 +8,34 @@ typedef char char_t;
 typedef unsigned char       uint8_t;
 typedef unsigned long long uint64_t;
 
+static char_t const IUPAC_ALPHA[16] =
+{
+  '\0', // 0x00
+  'A',  // 0x01
+  'C',  // 0x02
+  'M',  // 0x03  A | C
+  'G',  // 0x04
+  'R',  // 0x05  A | G
+  'S',  // 0x06  C | G
+  'V',  // 0x07  A | C | G
+  'T',  // 0x08
+  'W',  // 0x09  A | T
+  'Y',  // 0x0a  C | T
+  'H',  // 0x0b  A | C | T
+  'K',  // 0x0c  G | T
+  'D',  // 0x0d  A | G | T
+  'B',  // 0x0e  C | G | T
+  'N',  // 0x0f  A | C | G | T
+}; // IUPAC_ALPHA
+
+static char_t const IUPAC_BASE[4] =
+{
+  'A',
+  'C',
+  'G',
+  'T'
+}; // IUPAC_BASE
+
 static unsigned int const IDENTITY            = 0x01;
 static unsigned int const FRAME_SHIFT         = 0x20;
 
@@ -22,6 +50,8 @@ char_t const* const CODON_STRING = "KNKNTTTTRSRSIIMIQHQHPPPPRRRRLLLLEDEDAAAAGGGG
 
 static uint8_t frame_shift_map[128][128][128] = {{{FRAME_SHIFT_NONE}}};
 static uint8_t frame_shift_count[128][128][5] = {{{0}}};
+
+static uint64_t acid_map[128] = {0x0};
 
 struct Variant
 {
@@ -86,8 +116,7 @@ struct Substring
   inline Substring(void): length(0) { }
 }; // Substring
 
-uint8_t calculate_frame_shift(uint64_t const acid_map[],
-                              size_t const   reference_1,
+uint8_t calculate_frame_shift(size_t const   reference_1,
                               size_t const   reference_2,
                               size_t const   sample)
 {
@@ -140,7 +169,6 @@ uint8_t calculate_frame_shift(uint64_t const acid_map[],
 
 void initialize_frame_shift_map(char_t const* const codon_string)
 {
-  uint64_t acid_map[128] = {0x0};
   for (size_t i = 0; i < 64; ++i)
   {
     acid_map[codon_string[i] & 0x7f] |= (0x1ll << i);
@@ -157,7 +185,7 @@ void initialize_frame_shift_map(char_t const* const codon_string)
           {
             if (acid_map[k] != 0x0)
             {
-              uint8_t const shift = calculate_frame_shift(acid_map, i, j, k);
+              uint8_t const shift = calculate_frame_shift(i, j, k);
               frame_shift_map[i][j][k] = shift;
               if ((shift & FRAME_SHIFT_1) == FRAME_SHIFT_1)
               {
@@ -181,7 +209,7 @@ void initialize_frame_shift_map(char_t const* const codon_string)
               } // if
             } // if
           } // for
-          printf("%c%c: %d %d %d %d %d\n", static_cast<char_t>(i), static_cast<char_t>(j), frame_shift_count[i][j][0], frame_shift_count[i][j][1], frame_shift_count[i][j][2], frame_shift_count[i][j][3], frame_shift_count[i][j][4]);
+          //printf("%c%c: %d %d %d %d %d\n", static_cast<char_t>(i), static_cast<char_t>(j), frame_shift_count[i][j][0], frame_shift_count[i][j][1], frame_shift_count[i][j][2], frame_shift_count[i][j][3], frame_shift_count[i][j][4]);
         } // if
       } // for
     } // if
@@ -369,6 +397,67 @@ void extractor_frame_shift(std::vector<Variant> &annotation,
     } // if
     weight *= weight_compound;
   } // for
+
+
+  // DNA reconstruction
+  size_t reference_base[lcs.length][3];
+  size_t sample_base[lcs.length][3];
+  for (size_t p = 0; p < lcs.length; ++p)
+  {
+    reference_base[p][0] = 0x0;
+    reference_base[p][1] = 0x0;
+    reference_base[p][2] = 0x0;
+    sample_base[p][0] = 0x0;
+    sample_base[p][1] = 0x0;
+    sample_base[p][2] = 0x0;
+    for (size_t i = 0; i < 64; ++i)
+    {
+      if (((acid_map[reference[lcs.reference_index + p] & 0x7f] >> i) & 0x1) == 0x1)
+      {
+        size_t codon[5] = {0x0};
+        codon[2] = ((i >> 0x4) | (i & 0xc) | ((i & 0x3) << 0x4)) ^ 0x3f;
+        for (size_t j = 0; j < 64; ++j)
+        {
+          if (((acid_map[reference[lcs.reference_index + p + 1] & 0x7f] >> j) & 0x1) == 0x1)
+          {
+            codon[0] = ((i & 0x3) << 0x4) | ((j & 0x3c) >> 0x2);
+            codon[1] = ((i & 0xf) << 0x2) | (j >> 0x4);
+            codon[3] = (((i & 0xc) >> 0x2) | ((i & 0x3) << 0x2) | (j & 0x30)) ^ 0x3f;
+            codon[4] = ((i & 0x3) | ((j & 0x30) >> 0x2) | ((j & 0xc) << 0x2)) ^ 0x3f;
+            for (size_t k = 0; k < 64; ++k)
+            {
+              if (((acid_map[sample[lcs.sample_index + p] & 0x7f] >> k) & 0x1) == 0x1)
+              {
+                for (size_t c = 0; c < 5; ++c)
+                {
+                  if (codon[c] == k && (lcs.type & (0x1 << c)) == (0x1 << c))
+                  {
+                    reference_base[p][0] |= 0x1 << (i >> 4);
+                    reference_base[p][1] |= 0x1 << ((i >> 2) & 0x3);
+                    reference_base[p][2] |= 0x1 << (i & 0x3);
+                    sample_base[p][0] |= 0x1 << (codon[c] >> 4);
+                    sample_base[p][1] |= 0x1 << ((codon[c] >> 2) & 0x3);
+                    sample_base[p][2] |= 0x1 << (codon[c] & 0x3);
+                  } // if
+                } // for
+              } // if
+            } // for
+          } // if
+        } // for
+      } // if
+    } // for
+  } // for
+
+  for (size_t i = 0; i < lcs.length; ++i)
+  {
+    printf("%c%c%c ", IUPAC_ALPHA[reference_base[i][0]], IUPAC_ALPHA[reference_base[i][1]], IUPAC_ALPHA[reference_base[i][2]]);
+  } // for
+  printf("\n");
+  for (size_t i = 0; i < lcs.length; ++i)
+  {
+    printf("%c%c%c ", IUPAC_ALPHA[sample_base[i][0]], IUPAC_ALPHA[sample_base[i][1]], IUPAC_ALPHA[sample_base[i][2]]);
+  } // for
+  printf("\n");
 
 
   // Recursively apply this function to the prefixes of the strings.
