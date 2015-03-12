@@ -10,7 +10,7 @@ typedef unsigned long long uint64_t;
 
 static char_t const IUPAC_ALPHA[16] =
 {
-  '\0', // 0x00
+  'x',  // 0x00
   'A',  // 0x01
   'C',  // 0x02
   'M',  // 0x03  A | C
@@ -209,7 +209,6 @@ void initialize_frame_shift_map(char_t const* const codon_string)
               } // if
             } // if
           } // for
-          //printf("%c%c: %d %d %d %d %d\n", static_cast<char_t>(i), static_cast<char_t>(j), frame_shift_count[i][j][0], frame_shift_count[i][j][1], frame_shift_count[i][j][2], frame_shift_count[i][j][3], frame_shift_count[i][j][4]);
         } // if
       } // for
     } // if
@@ -313,6 +312,64 @@ void LCS_frame_shift(std::vector<Substring> &substring,
   return;
 } // LCS_frame_shift
 
+void backtranslation(size_t              reference_DNA[],
+                     size_t              sample_DNA[],
+                     char_t const* const reference,
+                     size_t const        reference_start,
+                     char_t const* const sample,
+                     size_t const        sample_start,
+                     size_t const        length,
+                     uint8_t const       type)
+{
+  for (size_t p = 0; p < length; ++p)
+  {
+    reference_DNA[p * 3] = 0x0;
+    reference_DNA[p * 3 + 1] = 0x0;
+    reference_DNA[p * 3 + 2] = 0x0;
+    sample_DNA[p * 3] = 0x0;
+    sample_DNA[p * 3 + 1] = 0x0;
+    sample_DNA[p * 3 + 2] = 0x0;
+    for (size_t i = 0; i < 64; ++i)
+    {
+      if (((acid_map[reference[reference_start + p] & 0x7f] >> i) & 0x1) == 0x1)
+      {
+        size_t codon[5] = {0x0};
+        codon[2] = ((i >> 0x4) | (i & 0xc) | ((i & 0x3) << 0x4)) ^ 0x3f;
+        for (size_t j = 0; j < 64; ++j)
+        {
+          if (((acid_map[reference[reference_start + p + 1] & 0x7f] >> j) & 0x1) == 0x1)
+          {
+            codon[0] = ((i & 0x3) << 0x4) | ((j & 0x3c) >> 0x2);
+            codon[1] = ((i & 0xf) << 0x2) | (j >> 0x4);
+            codon[3] = (((i & 0xc) >> 0x2) | ((i & 0x3) << 0x2) | (j & 0x30)) ^ 0x3f;
+            codon[4] = ((i & 0x3) | ((j & 0x30) >> 0x2) | ((j & 0xc) << 0x2)) ^ 0x3f;
+            for (size_t k = 0; k < 64; ++k)
+            {
+              if (((acid_map[sample[sample_start + p] & 0x7f] >> k) & 0x1) == 0x1)
+              {
+                for (size_t c = 0; c < 5; ++c)
+                {
+                  if (codon[c] == k && (type & (0x1 << c)) == (0x1 << c))
+                  {
+                    reference_DNA[p * 3] |= 0x1 << (i >> 4);
+                    reference_DNA[p * 3 + 1] |= 0x1 << ((i >> 2) & 0x3);
+                    reference_DNA[p * 3 + 2] |= 0x1 << (i & 0x3);
+                    sample_DNA[p * 3] |= 0x1 << (codon[c] >> 4);
+                    sample_DNA[p * 3 + 1] |= 0x1 << ((codon[c] >> 2) & 0x3);
+                    sample_DNA[p * 3 + 2] |= 0x1 << (codon[c] & 0x3);
+                  } // if
+                } // for
+              } // if
+            } // for
+          } // if
+        } // for
+      } // if
+    } // for
+    
+  } // for
+  return;
+} // backtranslation
+
 void extractor_frame_shift(std::vector<Variant> &annotation,
                            char_t const* const   reference,
                            size_t const          reference_start,
@@ -400,62 +457,17 @@ void extractor_frame_shift(std::vector<Variant> &annotation,
 
 
   // DNA reconstruction
-  size_t reference_base[lcs.length][3];
-  size_t sample_base[lcs.length][3];
-  for (size_t p = 0; p < lcs.length; ++p)
-  {
-    reference_base[p][0] = 0x0;
-    reference_base[p][1] = 0x0;
-    reference_base[p][2] = 0x0;
-    sample_base[p][0] = 0x0;
-    sample_base[p][1] = 0x0;
-    sample_base[p][2] = 0x0;
-    for (size_t i = 0; i < 64; ++i)
-    {
-      if (((acid_map[reference[lcs.reference_index + p] & 0x7f] >> i) & 0x1) == 0x1)
-      {
-        size_t codon[5] = {0x0};
-        codon[2] = ((i >> 0x4) | (i & 0xc) | ((i & 0x3) << 0x4)) ^ 0x3f;
-        for (size_t j = 0; j < 64; ++j)
-        {
-          if (((acid_map[reference[lcs.reference_index + p + 1] & 0x7f] >> j) & 0x1) == 0x1)
-          {
-            codon[0] = ((i & 0x3) << 0x4) | ((j & 0x3c) >> 0x2);
-            codon[1] = ((i & 0xf) << 0x2) | (j >> 0x4);
-            codon[3] = (((i & 0xc) >> 0x2) | ((i & 0x3) << 0x2) | (j & 0x30)) ^ 0x3f;
-            codon[4] = ((i & 0x3) | ((j & 0x30) >> 0x2) | ((j & 0xc) << 0x2)) ^ 0x3f;
-            for (size_t k = 0; k < 64; ++k)
-            {
-              if (((acid_map[sample[lcs.sample_index + p] & 0x7f] >> k) & 0x1) == 0x1)
-              {
-                for (size_t c = 0; c < 5; ++c)
-                {
-                  if (codon[c] == k && (lcs.type & (0x1 << c)) == (0x1 << c))
-                  {
-                    reference_base[p][0] |= 0x1 << (i >> 4);
-                    reference_base[p][1] |= 0x1 << ((i >> 2) & 0x3);
-                    reference_base[p][2] |= 0x1 << (i & 0x3);
-                    sample_base[p][0] |= 0x1 << (codon[c] >> 4);
-                    sample_base[p][1] |= 0x1 << ((codon[c] >> 2) & 0x3);
-                    sample_base[p][2] |= 0x1 << (codon[c] & 0x3);
-                  } // if
-                } // for
-              } // if
-            } // for
-          } // if
-        } // for
-      } // if
-    } // for
-  } // for
-
+  size_t reference_DNA[lcs.length * 3];
+  size_t sample_DNA[lcs.length * 3];
+  backtranslation(reference_DNA, sample_DNA, reference, lcs.reference_index, sample, lcs.sample_index, lcs.length, lcs.type);
   for (size_t i = 0; i < lcs.length; ++i)
   {
-    printf("%c%c%c ", IUPAC_ALPHA[reference_base[i][0]], IUPAC_ALPHA[reference_base[i][1]], IUPAC_ALPHA[reference_base[i][2]]);
+    printf("%c%c%c ", IUPAC_ALPHA[reference_DNA[i * 3]], IUPAC_ALPHA[reference_DNA[i * 3 + 1]], IUPAC_ALPHA[reference_DNA[i * 3 + 2]]);
   } // for
   printf("\n");
   for (size_t i = 0; i < lcs.length; ++i)
   {
-    printf("%c%c%c ", IUPAC_ALPHA[sample_base[i][0]], IUPAC_ALPHA[sample_base[i][1]], IUPAC_ALPHA[sample_base[i][2]]);
+    printf("%c%c%c ", IUPAC_ALPHA[sample_DNA[i * 3]], IUPAC_ALPHA[sample_DNA[i * 3 + 1]], IUPAC_ALPHA[sample_DNA[i * 3 + 2]]);
   } // for
   printf("\n");
 
