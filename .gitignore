@@ -1,0 +1,7 @@
+_extractor.so
+build/
+dist/
+extractor.egg-info/
+extractor/extractor.py
+extractor/extractor_wrap.cpp
+.tox/
