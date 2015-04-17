@@ -30,3 +30,11 @@ Todo
 
 Todo
 
+# Testing
+
+There are some unit tests for the Python interface. After installing the
+Python package, run them using [http://pytest.org/](pytest):
+
+    pip install pytest
+    python setup.py develop
+    py.test
