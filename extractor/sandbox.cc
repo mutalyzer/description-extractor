@@ -25,7 +25,7 @@ static char_t const IUPAC_ALPHA[16] =
   'K',  // 0x0c  G | T
   'D',  // 0x0d  A | G | T
   'B',  // 0x0e  C | G | T
-  'N',  // 0x0f  A | C | G | T
+  'N'   // 0x0f  A | C | G | T
 }; // IUPAC_ALPHA
 
 static char_t const IUPAC_BASE[4] =
@@ -365,7 +365,6 @@ void backtranslation(size_t              reference_DNA[],
         } // for
       } // if
     } // for
-    
   } // for
   return;
 } // backtranslation
