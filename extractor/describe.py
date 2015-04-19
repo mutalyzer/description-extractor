@@ -50,9 +50,9 @@ AMBIGUOUS_RNA_COMPLEMENT = {
 
 
 def _make_translation_table(complement_mapping):
-    before = complement_mapping.keys()
+    before = list(complement_mapping.keys())
     before += [b.lower() for b in before]
-    after = complement_mapping.values()
+    after = list(complement_mapping.values())
     after += [b.lower() for b in after]
     return {ord(k): v for k, v in zip(before, after)}
 
@@ -332,14 +332,14 @@ def describe_protein(s1, s2):
     longest_fs_r = max(find_fs(s2, s1, fs1), find_fs(s2, s1, fs2))
 
     if longest_fs_f > longest_fs_r:
-        print s1[:longest_fs_f[1]], s1[longest_fs_f[1]:]
-        print s2[:len(s2) - longest_fs_f[0]], s2[len(s2) - longest_fs_f[0]:]
+        #print s1[:longest_fs_f[1]], s1[longest_fs_f[1]:]
+        #print s2[:len(s2) - longest_fs_f[0]], s2[len(s2) - longest_fs_f[0]:]
         s1_part = s1[:longest_fs_f[1]]
         s2_part = s2[:len(s2) - longest_fs_f[0]]
         term = longest_fs_f[0]
     else:
-        print s1[:len(s1) - longest_fs_r[0]], s1[len(s1) - longest_fs_r[0]:]
-        print s2[:longest_fs_r[1]], s2[longest_fs_r[1]:]
+        #print s1[:len(s1) - longest_fs_r[0]], s1[len(s1) - longest_fs_r[0]:]
+        #print s2[:longest_fs_r[1]], s2[longest_fs_r[1]:]
         s1_part = s1[:len(s1) - longest_fs_r[0]]
         s2_part = s2[:longest_fs_r[1]]
         term = len(s2) - longest_fs_r[1]
