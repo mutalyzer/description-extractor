@@ -1,0 +1,2 @@
+biopython==1.64
+pytest==2.6.3
