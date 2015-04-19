@@ -59,6 +59,8 @@ def _make_translation_table(complement_mapping):
 
 _dna_complement_table = _make_translation_table(AMBIGUOUS_DNA_COMPLEMENT)
 _rna_complement_table = _make_translation_table(AMBIGUOUS_RNA_COMPLEMENT)
+
+
 def reverse_complement(sequence):
     """
     Reverse complement of a sequence represented as unicode string.

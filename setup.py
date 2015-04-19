@@ -26,12 +26,6 @@ if sys.version_info < (2, 6):
 # Todo: How does this play with pip freeze requirement files?
 requires = []
 
-# Python 2.6 does not include the argparse module.
-try:
-    import argparse
-except ImportError:
-    requires.append('argparse')
-
 import extractor as distmeta
 
 setup(
