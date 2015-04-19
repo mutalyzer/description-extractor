@@ -4,4 +4,9 @@ dist/
 extractor.egg-info/
 extractor/extractor.py
 extractor/extractor_wrap.cpp
+extractor/extractor_wrap.cxx
+extractor/_extractor.so
+extractor/*.pyc
+extractor/*.o
+tests/__pycache__/
 .tox/
