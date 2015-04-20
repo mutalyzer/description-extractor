@@ -16,21 +16,34 @@ computation time and its resulting descriptions are relatively small.
 Additional applications include updating of gene variant database
 contents and reference sequence liftovers.
 
-# Installation
+## Installation
 
-## C++ Library only
+### C++ Library only
 
-Run `make`
+Run `make`.
 
-## Within Mutalyzer
+Optionally set the `__debug__` flag to trace the algorithm.
+
+For direct use within a C/C++ environment just
+`#include "extractor.h"` and add `extractor.cc` to your project's
+source files.
+
+### Within Mutalyzer
 
 Todo
 
-# Examples
+## Examples
 
-Todo
+```
+Variant_List extract(char_t const* const reference,
+                     size_t const        reference_length,
+                     char_t const* const sample,
+                     size_t const        sample_length,
+                     int const           type = TYPE_DNA,
+                     char_t const* const codon_string = 0)
+```
 
-# Testing
+## Testing
 
 There are some unit tests for the Python interface. After installing the
 Python package, run them using [http://pytest.org/](pytest):
@@ -44,3 +57,4 @@ the tests on all supported versions of Python:
 
     pip install tox
     tox
+
