@@ -3,13 +3,11 @@ Tests for the mutalyzer.describe module.
 """
 
 
-from __future__ import unicode_literals
+from __future__ import (absolute_import, division, print_function,
+                        unicode_literals)
 
-#import logging; logging.basicConfig()
-import os
-
-import extractor
-from extractor import describe
+from extractor import describe_dna
+from extractor.util import str
 
 
 class TestDescribe:
@@ -22,7 +20,7 @@ class TestDescribe:
         """
         reference = 'ACGTCGATTCGCTAGCTTCGGGGGATAGATAGAGATATAGAGAT'
 
-        result = describe.describe_dna(reference, sample)
+        result = describe_dna(reference, sample)
         assert result[0].type == expected[0]
         assert result[0].start == expected[1]
         assert result[0].end == expected[2]
@@ -30,47 +28,47 @@ class TestDescribe:
         assert result[0].sample_end == expected[4]
         assert result[0].deleted[0].sequence == expected[5]
         assert result[0].inserted[0].sequence == expected[6]
-        assert unicode(result[0]) == expected[7]
+        assert str(result[0]) == expected[7]
 
 
     def test1(self):
         """
         Test 1.
         """
-        result = describe.describe_dna(
+        result = describe_dna(
             'ATGATGATCAGATACAGTGTGATACAGGTAGTTAGACAA',
             'ATGATTTGATCAGATACATGTGATACCGGTAGTTAGGACAA')
-        assert unicode(result) == '[5_6insTT;17del;26A>C;35dup]'
+        assert str(result) == '[5_6insTT;17del;26A>C;35dup]'
 
 
     def test2(self):
         """
         Test 2.
         """
-        result = describe.describe_dna(
+        result = describe_dna(
             'TAAGCACCAGGAGTCCATGAAGAAGATGGCTCCTGCCATGGAATCCCCTACTCTACTGTG',
             'TAAGCACCAGGAGTCCATGAAGAAGCTGGATCCTCCCATGGAATCCCCTACTCTACTGTG')
-        assert unicode(result) == '[26A>C;30C>A;35G>C]'
+        assert str(result) == '[26A>C;30C>A;35G>C]'
 
 
     def test3(self):
         """
         Test 3.
         """
-        result = describe.describe_dna(
+        result = describe_dna(
             'TAAGCACCAGGAGTCCATGAAGAAGATGGCTCCTGCCATGGAATCCCCTACTCTA',
             'TAAGCACCAGGAGTCCATGAAGAAGCCATGTCCTGCCATGGAATCCCCTACTCTA')
-        assert unicode(result) == '[26_29inv;30C>G]'
+        assert str(result) == '[26_29inv;30C>G]'
 
 
     def test4(self):
         """
         Test 4.
         """
-        result = describe.describe_dna(
+        result = describe_dna(
             'TAAGCACCAGGAGTCCATGAAGAAGATGGCTCCTGCCATGGAATCCCCTACTCTA',
             'TAAGCACCAGGAGTCCATGAAGAAGCCATGTCCTGCCATGAATCCCCTACTCTA')
-        assert unicode(result) == '[26_29inv;30C>G;41del]'
+        assert str(result) == '[26_29inv;30C>G;41del]'
 
 
     def test5(self):

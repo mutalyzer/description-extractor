@@ -4,12 +4,13 @@ other.
 """
 
 
-from __future__ import unicode_literals
+from __future__ import (absolute_import, division, print_function,
+                        unicode_literals)
 
 import math
 
 from .variant import ISeq, ISeqList, DNAVar, ProteinVar, Allele
-from . import extractor
+from . import extractor, util
 
 
 # Taken from BioPython.
@@ -272,14 +273,17 @@ def describe_dna(s1, s2):
     description = Allele()
     in_transposition = 0
 
-    extracted = extractor.extract(s1.encode('utf-8'), len(s1),
-        s2.encode('utf-8'), len(s2), 0)
+    s1_swig = util.swig_str(s1)
+    s2_swig = util.swig_str(s2)
+    extracted = extractor.extract(s1_swig[0], s1_swig[1],
+                                  s2_swig[0], s2_swig[1], 0)
+
     for variant in extracted.variants:
-       # print (variant.type, variant.reference_start,
+       # print(variant.type, variant.reference_start,
        #     variant.reference_end, variant.sample_start,
        #     variant.sample_end, variant.transposition_start,
        #     variant.transposition_end)
-       # print (variant.type & extractor.TRANSPOSITION_OPEN, variant.type &
+       # print(variant.type & extractor.TRANSPOSITION_OPEN, variant.type &
        #     extractor.TRANSPOSITION_CLOSE)
 
         if variant.type & extractor.TRANSPOSITION_OPEN:
