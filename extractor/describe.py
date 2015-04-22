@@ -55,7 +55,7 @@ def _make_translation_table(complement_mapping):
     before += [b.lower() for b in before]
     after = list(complement_mapping.values())
     after += [b.lower() for b in after]
-    return {ord(k): v for k, v in zip(before, after)}
+    return dict((ord(k), v) for k, v in zip(before, after))
 
 
 _dna_complement_table = _make_translation_table(AMBIGUOUS_DNA_COMPLEMENT)

@@ -43,7 +43,7 @@ class HGVSList(object):
 
     def __str__(self):
         if len(self.items) > 1:
-            return '[{}]'.format(';'.join(map(str, self.items)))
+            return '[{0}]'.format(';'.join(map(str, self.items)))
         return str(self.items[0])
 
 
@@ -101,7 +101,7 @@ class ISeq(object):
             return ''
 
         inverted = 'inv' if self.reverse else ''
-        return '{}_{}{}'.format(self.start, self.end, inverted)
+        return '{0}_{1}{2}'.format(self.start, self.end, inverted)
 
 
     def __bool__(self):
@@ -175,19 +175,19 @@ class DNAVar(object):
         if self.type == 'none':
             return '='
 
-        description = '{}'.format(self.start)
+        description = str(self.start)
 
         if self.start != self.end:
-            description += '_{}'.format(self.end)
+            description += '_{0}'.format(self.end)
 
         if self.type != 'subst':
-            description += '{}'.format(self.type)
+            description += str(self.type)
 
             if self.type in ('ins', 'delins'):
-                return description + '{}'.format(self.inserted)
+                return description + str(self.inserted)
             return description
 
-        return description + '{}>{}'.format(self.deleted, self.inserted)
+        return description + '{0}>{1}'.format(self.deleted, self.inserted)
 
 
     def weight(self):
@@ -257,19 +257,19 @@ class ProteinVar(object):
             if self.type == 'ext':
                 description += '*'
             else:
-                description += '{}'.format(seq3(self.start_aa))
+                description += seq3(self.start_aa)
         else:
-            description += '{}'.format(seq3(self.deleted))
-        description += '{}'.format(self.start)
+            description += seq3(self.deleted)
+        description += str(self.start)
         if self.end:
-            description += '_{}{}'.format(seq3(self.end_aa), self.end)
+            description += '_{0}{1}'.format(seq3(self.end_aa), self.end)
         if self.type not in ('subst', 'stop', 'ext', 'fs'): # fs is not a type
             description += self.type
         if self.inserted:
-            description += '{}'.format(seq3(self.inserted))
+            description += seq3(self.inserted)
 
         if self.type == 'stop':
             return description + '*'
         if self.term:
-            return description + 'fs*{}'.format(self.term)
+            return description + 'fs*{0}'.format(self.term)
         return description

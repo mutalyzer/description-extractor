@@ -21,8 +21,8 @@ import sys
 from setuptools import setup
 from distutils.core import Extension
 
-if sys.version_info < (2, 7):
-    raise Exception('extractor requires Python 2.7 or higher.')
+if sys.version_info < (2, 6):
+    raise Exception('extractor requires Python 2.6 or higher.')
 
 # Todo: How does this play with pip freeze requirement files?
 requires = []
