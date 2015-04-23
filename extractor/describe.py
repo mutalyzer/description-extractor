@@ -317,41 +317,5 @@ def describe_dna(s1, s2):
 
 
 def describe_protein(s1, s2):
-    """
-    Give an allele description of the change from {s1} to {s2}.
-
-    :arg unicode s1: Sequence 1.
-    :arg unicode s2: Sequence 2.
-
-    :returns list(RawVar): A list of RawVar objects, representing the allele.
-    """
-    description = Allele()
-
-    fs1, fs2 = make_fs_tables(1)
-    longest_fs_f = max(find_fs(s1, s2, fs1), find_fs(s1, s2, fs2))
-    longest_fs_r = max(find_fs(s2, s1, fs1), find_fs(s2, s1, fs2))
-
-    if longest_fs_f > longest_fs_r:
-        #print s1[:longest_fs_f[1]], s1[longest_fs_f[1]:]
-        #print s2[:len(s2) - longest_fs_f[0]], s2[len(s2) - longest_fs_f[0]:]
-        s1_part = s1[:longest_fs_f[1]]
-        s2_part = s2[:len(s2) - longest_fs_f[0]]
-        term = longest_fs_f[0]
-    else:
-        #print s1[:len(s1) - longest_fs_r[0]], s1[len(s1) - longest_fs_r[0]:]
-        #print s2[:longest_fs_r[1]], s2[longest_fs_r[1]:]
-        s1_part = s1[:len(s1) - longest_fs_r[0]]
-        s2_part = s2[:longest_fs_r[1]]
-        term = len(s2) - longest_fs_r[1]
-
-    s1_part = s1
-    s2_part = s2
-    for variant in extractor.extract(s1_part.encode('utf-8'), len(s1_part),
-            s2_part.encode('utf-8'), len(s2_part), 1):
-        description.append(var_to_rawvar(s1, s2, variant,
-            container=ProteinVar))
-
-    if description:
-        description[-1].term = term + 2
-
-    return description
+    # Placeholder for the interface of the protein extraction.
+    pass
