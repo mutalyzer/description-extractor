@@ -152,4 +152,3 @@ Variant_List extract(char_t const* const reference,
 } // mutalyzer
 
 #include "extractor.h"
-

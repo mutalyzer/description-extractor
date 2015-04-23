@@ -13,8 +13,11 @@ class TestExtractor:
     def _test_dna(self, s1, s2, expected_variants):
         s1_swig = util.swig_str(s1)
         s2_swig = util.swig_str(s2)
-        extracted = extractor.extract(s1_swig[0], s1_swig[1], s2_swig[0], s2_swig[1], 0)
+        extracted = extractor.extract(s1_swig[0], s1_swig[1],
+                                      s2_swig[0], s2_swig[1], extractor.TYPE_DNA)
+
         assert len(extracted.variants) == len(expected_variants)
+
         for variant, expected_variant in zip(extracted.variants, expected_variants):
             for attribute, expected_value in expected_variant.items():
                 assert getattr(variant, attribute) == expected_value
