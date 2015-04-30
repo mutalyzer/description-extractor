@@ -276,7 +276,7 @@ def describe_dna(s1, s2):
     s1_swig = util.swig_str(s1)
     s2_swig = util.swig_str(s2)
     extracted = extractor.extract(s1_swig[0], s1_swig[1],
-                                  s2_swig[0], s2_swig[1], 0)
+                                  s2_swig[0], s2_swig[1], extractor.TYPE_DNA)
 
     for variant in extracted.variants:
        # print(variant.type, variant.reference_start,
