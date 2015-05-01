@@ -21,7 +21,7 @@ __version_info__ = tuple(extractor.VERSION.split('.'))
 __version__ = extractor.VERSION
 __author__ = 'LUMC, Jonathan K. Vis'
 __contact__ = 'jvis@liacs.nl'
-__homepage__ = 'https://github.com/LUMC/extractor'
+__homepage__ = 'https://github.com/mutalyzer/description-extractor'
 
 
 describe_dna = describe.describe_dna

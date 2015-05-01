@@ -1,7 +1,7 @@
 _extractor.so
 build/
 dist/
-extractor.egg-info/
+description_extractor.egg-info/
 extractor/extractor.py
 extractor/extractor_wrap.cpp
 extractor/extractor_wrap.cxx

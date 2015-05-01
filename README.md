@@ -1,4 +1,4 @@
-# Extractor
+# HGVS variant description extractor
 
 Unambiguous sequence variant descriptions are important in reporting
 the outcome of clinical diagnostic DNA tests. The standard
@@ -16,9 +16,27 @@ computation time and its resulting descriptions are relatively small.
 Additional applications include updating of gene variant database
 contents and reference sequence liftovers.
 
+    >>> from extractor import describe_dna
+    >>> print describe_dna('TAACAATGGAAC', 'TAAACAATTGAA')
+    [3dup;8G>T;12del]
+
+
+## Implementation
+
+The core algorithm is implemented in C++ with a Python wrapper providing a
+developer friendly interface.
+
+
 ## Installation
 
-### C++ Library only
+### Python package
+
+You need [SWIG](http://www.swig.org/) installed. Then:
+
+    pip install description-extractor
+
+
+### C++ library only
 
 Run `make`.
 
@@ -28,33 +46,18 @@ For direct use within a C/C++ environment just
 `#include "extractor.h"` and add `extractor.cc` to your project's
 source files.
 
-### Within Mutalyzer
-
-Todo
-
-## Examples
-
-```
-Variant_List extract(char_t const* const reference,
-                     size_t const        reference_length,
-                     char_t const* const sample,
-                     size_t const        sample_length,
-                     int const           type = TYPE_DNA,
-                     char_t const* const codon_string = 0)
-```
 
 ## Testing
 
 There are some unit tests for the Python interface. After installing the
-Python package, run them using [http://pytest.org/](pytest):
+Python package, run them using [pytest](http://pytest.org/):
 
     pip install pytest
     python setup.py develop
     py.test
 
-Alternatively, use [https://tox.readthedocs.org/](tox) to automatically run
+Alternatively, use [tox](https://tox.readthedocs.org/) to automatically run
 the tests on all supported versions of Python:
 
     pip install tox
     tox
-

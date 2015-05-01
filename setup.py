@@ -24,9 +24,6 @@ from distutils.core import Extension
 if sys.version_info < (2, 6):
     raise Exception('extractor requires Python 2.6 or higher.')
 
-# Todo: How does this play with pip freeze requirement files?
-requires = []
-
 # This is quite the hack, but we don't want to import our package from here
 # since that's recipe for disaster (it might have some uninstalled
 # dependencies, or we might import another already installed version).
@@ -42,7 +39,8 @@ for line in open(os.path.join('extractor', '__init__.py')):
 # The __version__ value is actually defined in extractor.h.
 for line in open(os.path.join('extractor', 'extractor.h')):
     if ' VERSION = ' in line:
-        version = line.split('=')[-1].strip('\'"; ')
+        version = line.split('=')[-1].replace(';', '').replace('"', '') \
+                                     .replace("'", '').strip()
         distmeta['__version__'] = version
         distmeta['__version_info__'] = tuple(version.split('.'))
         break
@@ -54,12 +52,11 @@ except IOError:
     long_description = 'See ' + distmeta['__homepage__']
 
 setup(
-    name='extractor',
+    name='description-extractor',
     ext_modules=[Extension('_extractor', ['extractor/extractor.i',
         'extractor/extractor.cc'], swig_opts=['-c++'])],
-    py_modules=['extractor.extractor'],
     version=distmeta['__version__'],
-    description='Extract a list of differences between two sequences',
+    description='HGVS variant description extractor',
     long_description=long_description,
     author=distmeta['__author__'],
     author_email=distmeta['__contact__'],
@@ -67,11 +64,6 @@ setup(
     license='MIT License',
     platforms=['any'],
     packages=['extractor'],
-    install_requires=requires,
-    entry_points = {
-        'console_scripts': [
-        ]
-    },
     classifiers = [
         'Development Status :: 3 - Alpha',
         'Intended Audience :: Science/Research',
