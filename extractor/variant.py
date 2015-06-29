@@ -18,6 +18,13 @@ WEIGHTS = {
     'inv': extractor.WEIGHT_INVERSION,
     'delins': extractor.WEIGHT_DELETION_INSERTION
 }
+FS = {
+    '-1': extractor.FRAME_SHIFT_1,
+    '-2': extractor.FRAME_SHIFT_2,
+    'inv': extractor.FRAME_SHIFT_REVERSE,
+    'inv-1': extractor.FRAME_SHIFT_REVERSE_1,
+    'inv-2': extractor.FRAME_SHIFT_REVERSE_1,
+}
 
 
 @python_2_unicode_compatible
@@ -61,6 +68,14 @@ class HGVSList(object):
 
 class Allele(HGVSList):
     pass
+
+
+class ProteinAllele(HGVSList):
+    def nhgvs(self):
+        if len(self.items) > 1:
+            return '[{0}]'.format(';'.join(map(lambda x: x.nhgvs(),
+                self.items)))
+        return self.items[0].nhgvs()
 
 
 class ISeqList(HGVSList):
@@ -209,13 +224,14 @@ class ProteinVar(object):
     Container for a protein variant.
 
     """
-    #NOTE: This is experimental code. It is not used at the moment.
-    def __init__(self, start=0, end=0, sample_start=0, sample_end=0,
-            type='none', deleted=ISeqList([ISeq()]),
-            inserted=ISeqList([ISeq()]), shift=0, term=0):
+    def __init__(self, s1='', s2='', start=0, end=0, sample_start=0,
+            sample_end=0, type='none', deleted=ISeqList([ISeq()]),
+            inserted=ISeqList([ISeq()]), shift=0, term=0, weight_position=1):
         """
         Initialise the class with the appropriate values.
 
+        :arg unicode s1: Reference sequence.
+        :arg unicode s2: Sample sequence.
         :arg int start: Start position.
         :arg int end: End position.
         :arg int sample_start: Start position.
@@ -230,19 +246,30 @@ class ProteinVar(object):
         self.end = end
         self.sample_start = sample_start
         self.sample_end = sample_end
+        self.start_aa = s1[start - 1]
+        self.end_aa = s1[end - 1]
+        self.sample_start_aa = s2[sample_start - 1]
+        self.sample_end_aa = s2[sample_end - 1]
         self.type = type
         self.deleted = deleted
         self.inserted = inserted
         self.shift = shift
         self.term = term
+        self.is_frame_shift = False
+        self.frame_shift_annotation = ''
+
+
+    def set_frame_shift(self, flags):
+        """
+        """
+        for fs_type in FS:
+            if FS[fs_type] & flags:
+                self.frame_shift_annotation = fs_type
 
 
     def __str__(self):
         """
         Give the HGVS description of the raw variant stored in this class.
-
-        Note that this function relies on the absence of values to make the
-        correct description. The method used in the DNAVar is better.
 
         :returns unicode: The HGVS description of the raw variant stored in
             this class.
@@ -252,24 +279,41 @@ class ProteinVar(object):
         if self.type == 'none':
             return '='
 
-        description = ''
-        if not self.deleted:
-            if self.type == 'ext':
-                description += '*'
-            else:
-                description += seq3(self.start_aa)
-        else:
-            description += seq3(self.deleted)
-        description += str(self.start)
-        if self.end:
-            description += '_{0}{1}'.format(seq3(self.end_aa), self.end)
-        if self.type not in ('subst', 'stop', 'ext', 'fs'): # fs is not a type
-            description += self.type
-        if self.inserted:
-            description += seq3(self.inserted)
+        description = '{}{}'.format(seq3(self.start_aa), self.start)
+        if self.is_frame_shift:
+            return description + '{}fs*{}'.format(
+                seq3(self.inserted[0].sequence[0]), self.end - self.start + 2)
+        if self.start != self.end:
+            description += '_{}{}'.format(seq3(self.end_aa), self.end)
 
-        if self.type == 'stop':
-            return description + '*'
-        if self.term:
-            return description + 'fs*{0}'.format(self.term)
-        return description
+        if self.type != 'subst':
+            description += self.type
+
+            if self.type in ('ins', 'delins'):
+                return description + seq3(self.inserted)
+            return description
+        return description + seq3(self.inserted)
+
+
+    def nhgvs(self):
+        """
+        """
+        if self.type == 'unknown':
+            return '?'
+        if self.type == 'none':
+            return '='
+
+        description = str(self.start)
+        if self.start != self.end:
+            description += '_{}'.format(self.end)
+
+        if self.type != 'subst':
+            description += self.type
+
+            if self.type in ('ins', 'delins'):
+                if self.frame_shift_annotation:
+                    return (description + str(self.inserted) +
+                        '(fs{})'.format(self.frame_shift_annotation))
+                return description + str(self.inserted)
+            return description
+        return description + '{}>{}'.format(self.deleted, self.inserted)

@@ -20,7 +20,7 @@ TARGET=_extractor.so
 DEBUG=debug.cc
 
 CXX=g++
-CFLAGS=-c -fpic -Wall -Wextra -O3 -D__debug__
+CFLAGS=-c -fpic -Wall -Wextra -O3 #-D__debug__
 LDFLAGS=-Wall -O3 -shared
 
 SWIG=swig

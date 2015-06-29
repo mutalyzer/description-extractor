@@ -9,7 +9,7 @@ from __future__ import (absolute_import, division, print_function,
 
 import math
 
-from .variant import ISeq, ISeqList, DNAVar, ProteinVar, Allele
+from .variant import ISeq, ISeqList, DNAVar, ProteinVar, Allele, ProteinAllele
 from . import extractor, util
 
 
@@ -153,22 +153,19 @@ def palinsnoop(s):
     return -1
 
 
-def var_to_rawvar(s1, s2, var, seq_list=[], container=DNAVar,
-        weight_position=1):
+def var_to_dna_var(s1, s2, var, seq_list=[], weight_position=1):
     """
-    Convert a variant from the extractor module to one of the RawVar
-    subclasses.
+    Convert a variant from the extractor module to a DNAVar.
 
     :arg unicode s1: Reference sequence.
     :arg unicode s2: Sample sequence.
     :arg str var: Variant from the extractor module.
     :arg str seq_list: Container for an inserted sequence.
-    :arg str container: Destination container.
     :arg str weight_position: Weight of a position.
     """
     # Unknown.
     if s1 == '?' or s2 == '?':
-        return [container(type='unknown', weight_position=weight_position)]
+        return [DNAVar(type='unknown', weight_position=weight_position)]
 
     # Insertion / Duplication.
     if var.reference_start == var.reference_end:
@@ -186,7 +183,7 @@ def var_to_rawvar(s1, s2, var, seq_list=[], container=DNAVar,
                 s2[var.sample_start:var.sample_end]):
             # NOTE: We may want to omit the inserted / deleted sequence and
             # use the ranges instead.
-            return container(start=var.reference_start - ins_length + 1,
+            return DNAVar(start=var.reference_start - ins_length + 1,
                 end=var.reference_end, type='dup', shift=shift,
                 sample_start=var.sample_start + 1, sample_end=var.sample_end,
                 inserted=ISeqList([ISeq(sequence=s2[
@@ -194,7 +191,7 @@ def var_to_rawvar(s1, s2, var, seq_list=[], container=DNAVar,
                     weight_position=weight_position)]),
                 weight_position=weight_position)
 
-        return container(start=var.reference_start,
+        return DNAVar(start=var.reference_start,
             end=var.reference_start + 1,
             inserted=seq_list or
             ISeqList([ISeq(sequence=s2[var.sample_start:var.sample_end],
@@ -210,7 +207,7 @@ def var_to_rawvar(s1, s2, var, seq_list=[], container=DNAVar,
         var.reference_start += shift3
         var.reference_end += shift3
 
-        return container(start=var.reference_start + 1,
+        return DNAVar(start=var.reference_start + 1,
             end=var.reference_end, type='del', shift=shift,
             sample_start=var.sample_start, sample_end=var.sample_end + 1,
             deleted=ISeqList([ISeq(sequence=s1[
@@ -221,7 +218,7 @@ def var_to_rawvar(s1, s2, var, seq_list=[], container=DNAVar,
     # Substitution.
     if (var.reference_start + 1 == var.reference_end and
             var.sample_start + 1 == var.sample_end):
-        return container(start=var.reference_start + 1,
+        return DNAVar(start=var.reference_start + 1,
             end=var.reference_end, sample_start=var.sample_start + 1,
             sample_end=var.sample_end, type='subst',
             deleted=ISeqList([ISeq(sequence=s1[var.reference_start],
@@ -238,7 +235,7 @@ def var_to_rawvar(s1, s2, var, seq_list=[], container=DNAVar,
             var.reference_end -= trim
             var.sample_end -= trim
 
-        return container(start=var.reference_start + 1,
+        return DNAVar(start=var.reference_start + 1,
             end=var.reference_end, type='inv',
             sample_start=var.sample_start + 1, sample_end=var.sample_end,
             deleted=ISeqList([ISeq(sequence=s1[
@@ -250,7 +247,94 @@ def var_to_rawvar(s1, s2, var, seq_list=[], container=DNAVar,
             weight_position=weight_position)
 
     # InDel.
-    return container(start=var.reference_start + 1,
+    return DNAVar(start=var.reference_start + 1,
+        end=var.reference_end, deleted=ISeqList([ISeq(sequence=s1[
+                var.reference_start:var.reference_end],
+                weight_position=weight_position)]),
+        inserted=seq_list or
+        ISeqList([ISeq(sequence=s2[var.sample_start:var.sample_end],
+            weight_position=weight_position)]),
+        type='delins', sample_start=var.sample_start + 1,
+        sample_end=var.sample_end, weight_position=weight_position)
+
+
+def var_to_protein_var(s1, s2, var, seq_list=[], weight_position=1):
+    """
+    Convert a variant from the extractor module to a ProteinVar.
+
+    :arg unicode s1: Reference sequence.
+    :arg unicode s2: Sample sequence.
+    :arg str var: Variant from the extractor module.
+    :arg str seq_list: Container for an inserted sequence.
+    :arg str weight_position: Weight of a position.
+    """
+    # Unknown.
+    if s1 == '?' or s2 == '?':
+        return [ProteinVar(type='unknown', weight_position=weight_position)]
+
+    # Insertion / Duplication.
+    if var.reference_start == var.reference_end:
+        ins_length = var.sample_end - var.sample_start
+        shift5, shift3 = roll(s2, var.sample_start + 1, var.sample_end)
+        shift = shift5 + shift3
+
+        var.reference_start += shift3
+        var.reference_end += shift3
+        var.sample_start += shift3
+        var.sample_end += shift3
+
+        if (var.sample_start - ins_length >= 0 and
+                s1[var.reference_start - ins_length:var.reference_start] ==
+                s2[var.sample_start:var.sample_end]):
+            # NOTE: We may want to omit the inserted / deleted sequence and
+            # use the ranges instead.
+            return ProteinVar(s1=s1, s2=s2,
+                start=var.reference_start - ins_length + 1,
+                end=var.reference_end, type='dup', shift=shift,
+                sample_start=var.sample_start + 1, sample_end=var.sample_end,
+                inserted=ISeqList([ISeq(sequence=s2[
+                var.sample_start:var.sample_end],
+                    weight_position=weight_position)]),
+                weight_position=weight_position)
+
+        return ProteinVar(s1=s1, s2=s2, start=var.reference_start,
+            end=var.reference_start + 1,
+            inserted=seq_list or
+            ISeqList([ISeq(sequence=s2[var.sample_start:var.sample_end],
+                weight_position=weight_position)]),
+            type='ins', shift=shift, sample_start=var.sample_start + 1,
+            sample_end=var.sample_end, weight_position=weight_position)
+
+    # Deletion.
+    if var.sample_start == var.sample_end:
+        shift5, shift3 = roll(s1, var.reference_start + 1, var.reference_end)
+        shift = shift5 + shift3
+
+        var.reference_start += shift3
+        var.reference_end += shift3
+
+        return ProteinVar(s1=s1, s2=s2, start=var.reference_start + 1,
+            end=var.reference_end, type='del', shift=shift,
+            sample_start=var.sample_start, sample_end=var.sample_end + 1,
+            deleted=ISeqList([ISeq(sequence=s1[
+                var.reference_start:var.reference_end],
+                weight_position=weight_position)]),
+            weight_position=weight_position)
+
+    # Substitution.
+    if (var.reference_start + 1 == var.reference_end and
+            var.sample_start + 1 == var.sample_end):
+        return ProteinVar(s1=s1, s2=s2, start=var.reference_start + 1,
+            end=var.reference_end, sample_start=var.sample_start + 1,
+            sample_end=var.sample_end, type='subst',
+            deleted=ISeqList([ISeq(sequence=s1[var.reference_start],
+                weight_position=weight_position)]),
+            inserted=ISeqList([ISeq(sequence=s2[var.sample_start],
+                weight_position=weight_position)]),
+            weight_position=weight_position)
+
+    # InDel.
+    return ProteinVar(s1=s1, s2=s2, start=var.reference_start + 1,
         end=var.reference_end, deleted=ISeqList([ISeq(sequence=s1[
                 var.reference_start:var.reference_end],
                 weight_position=weight_position)]),
@@ -279,12 +363,12 @@ def describe_dna(s1, s2):
                                   s2_swig[0], s2_swig[1], extractor.TYPE_DNA)
 
     for variant in extracted.variants:
-       # print(variant.type, variant.reference_start,
-       #     variant.reference_end, variant.sample_start,
-       #     variant.sample_end, variant.transposition_start,
-       #     variant.transposition_end)
-       # print(variant.type & extractor.TRANSPOSITION_OPEN, variant.type &
-       #     extractor.TRANSPOSITION_CLOSE)
+        #print(variant.type, variant.reference_start,
+        #    variant.reference_end, variant.sample_start,
+        #    variant.sample_end, variant.transposition_start,
+        #    variant.transposition_end)
+        #print(variant.type & extractor.TRANSPOSITION_OPEN, variant.type &
+        #    extractor.TRANSPOSITION_CLOSE)
 
         if variant.type & extractor.TRANSPOSITION_OPEN:
             if not in_transposition:
@@ -305,14 +389,14 @@ def describe_dna(s1, s2):
                     sequence=s2[variant.sample_start:variant.sample_end],
                     weight_position=extracted.weight_position))
         elif not (variant.type & extractor.IDENTITY):
-            description.append(var_to_rawvar(s1, s2, variant,
+            description.append(var_to_dna_var(s1, s2, variant,
                 weight_position=extracted.weight_position))
 
         if variant.type & extractor.TRANSPOSITION_CLOSE:
             in_transposition -= 1
 
             if not in_transposition:
-                description.append(var_to_rawvar(s1, s2, variant, seq_list,
+                description.append(var_to_dna_var(s1, s2, variant, seq_list,
                     weight_position=extracted.weight_position))
 
     if not description:
@@ -321,5 +405,38 @@ def describe_dna(s1, s2):
 
 
 def describe_protein(s1, s2):
-    # Placeholder for the interface of the protein extraction.
-    pass
+    """
+    """
+    codons = 'KNKNTTTTRSRSIIMIQHQHPPPPRRRRLLLLEDEDAAAAGGGGVVVV*Y*YSSSS*CWCLFLF'
+
+    description = ProteinAllele()
+
+    s1_swig = util.swig_str(s1)
+    s2_swig = util.swig_str(s2)
+    codons_swig = util.swig_str(codons)
+    extracted = extractor.extract(s1_swig[0], s1_swig[1],
+        s2_swig[0], s2_swig[1], extractor.TYPE_PROTEIN, codons_swig[0])
+
+    frame_shift_starts = {}
+    for variant in extracted.variants:
+        if variant.type & extractor.FRAME_SHIFT:
+            frame_shift_starts[variant.reference_start + 1] = variant.type
+            if (variant.type & extractor.FRAME_SHIFT_1 or
+                    variant.type & extractor.FRAME_SHIFT_2):
+                last_frame_shift = variant.reference_start + 1
+
+    for variant in extracted.variants:
+        if not variant.type & extractor.FRAME_SHIFT:
+            if not (variant.type & extractor.IDENTITY):
+                var = var_to_protein_var(s1, s2, variant,
+                    weight_position=extracted.weight_position)
+                if var.start in frame_shift_starts:
+                    var.set_frame_shift(frame_shift_starts[var.start])
+                description.append(var)
+
+    if description[-1].start == last_frame_shift:
+        description[-1].is_frame_shift = True
+
+    if not description:
+        return ProteinAllele([ProteinVar()])
+    return description
