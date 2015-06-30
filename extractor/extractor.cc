@@ -9,7 +9,7 @@
 //   File:     extractor.cc (depends on extractor.h)
 //   Author:   Jonathan K. Vis
 //   Revision: 2.2.1
-//   Date:     2015/03/11
+//   Date:     2015/06/30
 // *******************************************************************
 // DESCRIPTION:
 //   This library can be used to generete HGVS variant descriptions as
@@ -135,6 +135,7 @@ size_t extract(std::vector<Variant> &variant,
   {
     variant.push_back(Variant(reference_length - suffix, reference_length, sample_length - suffix, sample_length));
   } // if
+
 
   // Frame shift annotation starts here.
   if (type == TYPE_PROTEIN)
@@ -763,7 +764,7 @@ void extractor_frame_shift(std::vector<Variant> &annotation,
 
 
   // First the base cases to end the recursion.
-  if (reference_length <= 0 && sample_length <= 0)
+  if (reference_length <= 0 || sample_length <= 0)
   {
     return;
   } // if
