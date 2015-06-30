@@ -72,7 +72,7 @@ def seq3(seq, custom_map={'*': 'Ter'}, undef_code='Xaa'):
                      list(custom_map.items()))
     #We use a default of 'Xaa' for undefined letters
     #Note this will map '-' to 'Xaa' which may be undesirable!
-    return ''.join(threecode.get(aa, undef_code) for aa in seq)
+    return ''.join(threecode.get(aa, undef_code) for aa in str(seq))
 
 
 def swig_str(s, ascii_only=True):
