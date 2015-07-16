@@ -258,7 +258,6 @@ class ProteinVar(object):
         self.inserted = inserted
         self.shift = shift
         self.term = term
-        self.is_frame_shift = False
 
 
     def __str__(self):
@@ -268,15 +267,16 @@ class ProteinVar(object):
         :returns unicode: The HGVS description of the raw variant stored in
             this class.
         """
+        # TODO: ext*
         if self.type == 'unknown':
             return '?'
         if self.type == 'none':
             return '='
 
         description = '{}{}'.format(seq3(self.start_aa), self.start)
-        if self.is_frame_shift:
+        if self.term:
             return description + '{}fs*{}'.format(
-                seq3(self.inserted[0].sequence[0]), self.end - self.start + 2)
+                seq3(self.inserted[0].sequence[0]), self.term)
         if self.start != self.end:
             description += '_{}{}'.format(seq3(self.end_aa), self.end)
 

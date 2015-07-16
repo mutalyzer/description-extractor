@@ -408,7 +408,7 @@ def describe_dna(s1, s2):
 def describe_protein(s1, s2):
     """
     """
-    codons = 'KNKNTTTTRSRSIIMIQHQHPPPPRRRRLLLLEDEDAAAAGGGGVVVV*Y*YSSSS*CWCLFLF'
+    codons = util.codon_table_string(1)
 
     description = ProteinAllele()
     annotation = FrameShiftAnnotationList()
@@ -420,9 +420,7 @@ def describe_protein(s1, s2):
         s2_swig[0], s2_swig[1], extractor.TYPE_PROTEIN, codons_swig[0])
 
     for variant in extracted.variants:
-        if (variant.type & extractor.FRAME_SHIFT and 
-                (variant.type & extractor.FRAME_SHIFT_1 or variant.type &
-                extractor.FRAME_SHIFT_2)):
+        if variant.type & (extractor.FRAME_SHIFT_1 | extractor.FRAME_SHIFT_2):
             annotation.append(FrameShiftAnnotation(
                 start=variant.reference_start + 1,
                 end=variant.reference_end + 1,
@@ -430,16 +428,16 @@ def describe_protein(s1, s2):
                 sample_end=variant.sample_end + 1, type=variant.type))
 
     for variant in extracted.variants:
-        if (not variant.type & extractor.FRAME_SHIFT and not
-                variant.type & extractor.IDENTITY):
+        if not variant.type & (extractor.FRAME_SHIFT | extractor.IDENTITY):
             var = var_to_protein_var(s1, s2, variant,
                 weight_position=extracted.weight_position)
             description.append(var)
 
     if description[-1].type == 'delins':
         for frame_shift in annotation:
-            if frame_shift.start >= description[-1].start:
-                description[-1].is_frame_shift = True
+            if (frame_shift.start >= description[-1].start and # FIXME
+                    frame_shift.sample_end + 1 == len(s2)):
+                description[-1].term = len(s2) - frame_shift.sample_start + 1
 
     if not description:
         return (ProteinAllele([ProteinVar()]),
