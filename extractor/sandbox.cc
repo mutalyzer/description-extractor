@@ -51,7 +51,7 @@ char_t const* const CODON_STRING = "KNKNTTTTRSRSIIMIQHQHPPPPRRRRLLLLEDEDAAAAGGGG
 static uint8_t frame_shift_map[128][128][128] = {{{FRAME_SHIFT_NONE}}};
 static uint8_t frame_shift_count[128][128][5] = {{{0}}};
 
-static uint64_t acid_map[128] = {0x0};
+static uint64_t acid_map[128] = {0x0ull};
 
 struct Variant
 {
@@ -116,19 +116,27 @@ struct Substring
   inline Substring(void): length(0) { }
 }; // Substring
 
-uint8_t calculate_frame_shift(size_t const   reference_1,
-                              size_t const   reference_2,
-                              size_t const   sample)
+void print_codon(FILE* stream, size_t const index)
+{
+  fprintf(stream, "%c%c%c", IUPAC_BASE[index >> 0x4],
+                            IUPAC_BASE[(index >> 0x2) & 0x3],
+                            IUPAC_BASE[index & 0x3]);
+  return;
+} // print_codon
+
+uint8_t calculate_frame_shift(size_t const reference_1,
+                              size_t const reference_2,
+                              size_t const sample)
 {
   uint8_t shift = FRAME_SHIFT_NONE;
   for (size_t i = 0; i < 64; ++i)
   {
-    if (((acid_map[reference_1] >> i) & 0x1) == 0x1)
+    if (((acid_map[reference_1] >> i) & 0x1ull) == 0x1ull)
     {
       size_t const codon_reverse = ((i >> 0x4) | (i & 0xc) | ((i & 0x3) << 0x4)) ^ 0x3f;
       for (size_t j = 0; j < 64; ++j)
       {
-        if (((acid_map[reference_2] >> j) & 0x1) == 0x1)
+        if (((acid_map[reference_2] >> j) & 0x1ull) == 0x1ull)
         {
           size_t const codon_1 = ((i & 0x3) << 0x4) | ((j & 0x3c) >> 0x2);
           size_t const codon_2 = ((i & 0xf) << 0x2) | (j >> 0x4);
@@ -136,8 +144,9 @@ uint8_t calculate_frame_shift(size_t const   reference_1,
           size_t const codon_reverse_2 = ((i & 0x3) | ((j & 0x30) >> 0x2) | ((j & 0xc) << 0x2)) ^ 0x3f;
           for (size_t k = 0; k < 64; ++k)
           {
-            if (((acid_map[sample] >> k) & 0x1) == 0x1)
+            if (((acid_map[sample] >> k) & 0x1ull) == 0x1ull)
             {
+              shift = FRAME_SHIFT_NONE;
               if (codon_1 == k)
               {
                 shift |= FRAME_SHIFT_1;
@@ -158,6 +167,7 @@ uint8_t calculate_frame_shift(size_t const   reference_1,
               {
                 shift |= FRAME_SHIFT_REVERSE_2;
               } // if
+              //printf("0x%x\n", shift);
             } // if
           } // for
         } // if
@@ -171,19 +181,20 @@ void initialize_frame_shift_map(char_t const* const codon_string)
 {
   for (size_t i = 0; i < 64; ++i)
   {
-    acid_map[codon_string[i] & 0x7f] |= (0x1ll << i);
+    acid_map[codon_string[i] & 0x7f] |= (0x1ull << i);
   } // for
+
   for (size_t i = 0; i < 128; ++i)
   {
-    if (acid_map[i] != 0x0)
+    if (acid_map[i] != 0x0ull)
     {
       for (size_t j = 0; j < 128; ++j)
       {
-        if (acid_map[j] != 0x0)
+        if (acid_map[j] != 0x0ull)
         {
           for (size_t k = 0; k < 128; ++k)
           {
-            if (acid_map[k] != 0x0)
+            if (acid_map[k] != 0x0ull)
             {
               uint8_t const shift = calculate_frame_shift(i, j, k);
               frame_shift_map[i][j][k] = shift;
@@ -292,7 +303,7 @@ void LCS_frame_shift(std::vector<Substring> &substring,
       } // if
       if (lcs[i % 2][j][2] > fs_substring[2].length)
       {
-        fs_substring[2] = Substring(reference_start + j - lcs[i % 2][j][2], sample_start + i - lcs[i % 2][j][2], lcs[i % 2][j][2], FRAME_SHIFT_REVERSE);
+        fs_substring[2] = Substring(reference_start + j - lcs[i % 2][j][2] + 1, sample_start + i - lcs[i % 2][j][2], lcs[i % 2][j][2], FRAME_SHIFT_REVERSE);
       } // if
       if (lcs[i % 2][j][3] > fs_substring[3].length)
       {
@@ -381,7 +392,7 @@ void extractor_frame_shift(std::vector<Variant> &annotation,
   size_t const sample_length = sample_end - sample_start;
 
   // First the base cases to end the recursion.
-  if (reference_length <= 0 && sample_length <= 0)
+  if (reference_length <= 0 || sample_length <= 0)
   {
     return;
   } // if
@@ -494,7 +505,8 @@ int main(int, char* [])
   initialize_frame_shift_map(CODON_STRING);
 
   std::vector<Variant> annotation;
-  extractor_frame_shift(annotation, "MDYSLAAALTLHGH", 1, 11, "MTIPWRSPHFHGH", 1, 10);
+  extractor_frame_shift(annotation, "MLGNMNVFMAVLGIILFSGFLAAYFSHKWDD", 1, 32,
+                                    "MVGRYRFEFILIILILCALITARFYLS", 1, 28);
 
   // Printing the variants.
   fprintf(stdout, "Annotation (%ld):\n", annotation.size());

@@ -126,16 +126,6 @@ static double const TRANSPOSITION_CUT_OFF =   0.1;
 extern size_t global_reference_length;
 
 
-// The actual frame shift map indexed by the lower 127 ASCII
-// characters. This map should be precalculated given a codon string
-// by the initialize_frame_shift_map function.
-extern uint8_t frame_shift_map[128][128][128];
-
-// A frequency count of all possible frame shifts (5) for all
-// combinations of two amino acids (indexed by the lower 127 ASCII
-// characters). Used to calculate the frame shift probability.
-extern uint8_t frame_shift_count[128][128][5];
-
 // *******************************************************************
 // Variant structure
 //   This structure describes a variant (region of change).
@@ -654,17 +644,14 @@ void initialize_frame_shift_map(char_t const* const codon_string);
 //   sequence and the (partial) overlap between all possible DNA
 //   sequences of the sample amico acid.
 //
-//   @arg acid_map: maps amino acids (coded as the lower 127 ASCII
-//                  characters) to DNA codons
 //   @arg reference_1: first reference amino acid
 //   @arg reference_2: second reference amino acid
 //   @arg sample: sample amino acid
 //   @return: frame shift
 // *******************************************************************
-uint8_t calculate_frame_shift(uint64_t const acid_map[],
-                              size_t const   reference_1,
-                              size_t const   reference_2,
-                              size_t const   sample);
+uint8_t calculate_frame_shift(size_t const reference_1,
+                              size_t const reference_2,
+                              size_t const sample);
 
 // *******************************************************************
 // frame_shift function

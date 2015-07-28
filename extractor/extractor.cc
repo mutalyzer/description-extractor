@@ -8,8 +8,8 @@
 // FILE INFORMATION:
 //   File:     extractor.cc (depends on extractor.h)
 //   Author:   Jonathan K. Vis
-//   Revision: 2.2.1
-//   Date:     2015/06/30
+//   Revision: 2.2.2
+//   Date:     2015/07/27
 // *******************************************************************
 // DESCRIPTION:
 //   This library can be used to generete HGVS variant descriptions as
@@ -33,12 +33,14 @@ size_t global_reference_length = 0;
 // The actual frame shift map indexed on the lower 127 ASCII
 // characters. This map should be precalculated given a codon string
 // by the initialize_frame_shift_map function.
-uint8_t frame_shift_map[128][128][128] = {{{FRAME_SHIFT_NONE}}};
+static uint8_t frame_shift_map[128][128][128] = {{{FRAME_SHIFT_NONE}}};
 
 // A frequency count of all possible frame shifts (5) for all
 // combinations of two amino acids (indexed by the lower 127 ASCII
 // characters). Used to calculate the frame shift probability.
-uint8_t frame_shift_count[128][128][5] = {{{0}}};
+static uint8_t frame_shift_count[128][128][5] = {{{0}}};
+
+static uint64_t acid_map[128] = {0x0ull};
 
 // Only used to interface to Python: calls the C++ extract function.
 Variant_List extract(char_t const* const reference,
@@ -816,7 +818,7 @@ void extractor_frame_shift(std::vector<Variant> &annotation,
 
 
   // Calculate the frame shift probability.
-  size_t weight = 1;
+  size_t weight = 0;
   for (size_t i = 0; i < lcs.length; ++i)
   {
     size_t weight_compound = 0;
@@ -1298,8 +1300,8 @@ void LCS_frame_shift(std::vector<Substring> &substring,
     {
       lcs[i % 2][0][2] = 1;
       fs_substring[2] = Substring(reference_start, sample_start + i, lcs[i % 2][0][2], FRAME_SHIFT_REVERSE);
-
     } // if
+
     for (size_t j = 1; j < reference_length; ++j)
     {
       // Calculate frame shifts in both directions.
@@ -1469,24 +1471,23 @@ char_t const* IUPAC_complement(char_t const* const string,
 // based on a given codon string.
 void initialize_frame_shift_map(char_t const* const codon_string)
 {
-  uint64_t acid_map[128] = {0x0};
   for (size_t i = 0; i < 64; ++i)
   {
-    acid_map[codon_string[i] & 0x7f] |= (0x1ll << i);
+    acid_map[codon_string[i] & 0x7f] |= (0x1ull << i);
   } // for
   for (size_t i = 0; i < 128; ++i)
   {
-    if (acid_map[i] != 0x0)
+    if (acid_map[i] != 0x0ull)
     {
       for (size_t j = 0; j < 128; ++j)
       {
-        if (acid_map[j] != 0x0)
+        if (acid_map[j] != 0x0ull)
         {
           for (size_t k = 0; k < 128; ++k)
           {
-            if (acid_map[k] != 0x0)
+            if (acid_map[k] != 0x0ull)
             {
-              uint8_t const shift = calculate_frame_shift(acid_map, i, j, k);
+              uint8_t const shift = calculate_frame_shift(i, j, k);
               frame_shift_map[i][j][k] = shift;
 
               // Calculate frame shift frequencies.
@@ -1523,20 +1524,19 @@ void initialize_frame_shift_map(char_t const* const codon_string)
 // combinations of two reference amino acids the corresponding DNA
 // sequence and the (partial) overlap between all possible DNA
 // sequences of the sample amico acid.
-uint8_t calculate_frame_shift(uint64_t const acid_map[],
-                              size_t const   reference_1,
-                              size_t const   reference_2,
-                              size_t const   sample)
+uint8_t calculate_frame_shift(size_t const reference_1,
+                              size_t const reference_2,
+                              size_t const sample)
 {
   uint8_t shift = FRAME_SHIFT_NONE;
   for (size_t i = 0; i < 64; ++i)
   {
-    if (((acid_map[reference_1] >> i) & 0x1) == 0x1)
+    if (((acid_map[reference_1] >> i) & 0x1ull) == 0x1ull)
     {
       size_t const codon_reverse = ((i >> 0x4) | (i & 0xc) | ((i & 0x3) << 0x4)) ^ 0x3f;
       for (size_t j = 0; j < 64; ++j)
       {
-        if (((acid_map[reference_2] >> j) & 0x1) == 0x1)
+        if (((acid_map[reference_2] >> j) & 0x1ull) == 0x1ull)
         {
           size_t const codon_1 = ((i & 0x3) << 0x4) | ((j & 0x3c) >> 0x2);
           size_t const codon_2 = ((i & 0xf) << 0x2) | (j >> 0x4);
@@ -1544,8 +1544,9 @@ uint8_t calculate_frame_shift(uint64_t const acid_map[],
           size_t const codon_reverse_2 = ((i & 0x3) | ((j & 0x30) >> 0x2) | ((j & 0xc) << 0x2)) ^ 0x3f;
           for (size_t k = 0; k < 64; ++k)
           {
-            if (((acid_map[sample] >> k) & 0x1) == 0x1)
+            if (((acid_map[sample] >> k) & 0x1ull) == 0x1ull)
             {
+              shift = FRAME_SHIFT_NONE;
               if (codon_1 == k)
               {
                 shift |= FRAME_SHIFT_1;

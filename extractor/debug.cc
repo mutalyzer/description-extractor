@@ -23,6 +23,12 @@ using namespace mutalyzer;
 
 #include <cstdio>
 
+/*
+#include <iostream>
+#include <string>
+using namespace std;
+*/
+
 // Entry point.
 int main(int argc, char* argv[])
 {
@@ -66,13 +72,44 @@ int main(int argc, char* argv[])
   fclose(file);
 
 
+/*
+  string header[4305];
+  string protein[4305];
+
+  for (int i = 0; i < 4305; ++i)
+  {
+    getline(cin, header[i]);
+    getline(cin, protein[i]);
+  } // for
+
+  for (int i = 0; i < 10; ++i)
+  {
+    cerr << i << endl;
+    for (int j = i + 1; j < 10; ++j)
+    {
+      vector<Variant> variant;
+      extract(variant, protein[i].c_str(), protein[i].length(), protein[j].c_str(), protein[j].length(), TYPE_PROTEIN, "KNKNTTTTRSRSIIMIQHQHPPPPRRRRLLLLEDEDAAAAGGGGVVVV*Y*YSSSS*CWCLFLF");
+
+      fprintf(stdout, "%s %s\n", header[i].c_str(), header[j].c_str());
+      for (std::vector<Variant>::iterator it = variant.begin(); it != variant.end(); ++it)
+      {
+        if (it->type >= FRAME_SHIFT)
+        {
+          fprintf(stdout, "%ld--%ld, %ld--%ld, %d, %ld\n", it->reference_start, it->reference_end, it->sample_start, it->sample_end, it->type, it->weight);
+        } // if
+      } // for
+
+    } // for
+  } // for
+*/
+
   // The actual extraction.
   std::vector<Variant> variant;
-  size_t const weight = extract(variant, reference, reference_length, sample, sample_length, TYPE_PROTEIN, "KNKNTTTTRSRSIIMIQHQHPPPPRRRRLLLLEDEDAAAAGGGGVVVV*Y*YSSSS*CWCLFLF");
+  size_t const weight = extract(variant, reference, reference_length - 1, sample, sample_length - 1, TYPE_PROTEIN, "KNKNTTTTRSRSIIMIQHQHPPPPRRRRLLLLEDEDAAAAGGGGVVVV*Y*YSSSS*CWCLFLF");
 
 
   // Printing the variants.
-  fprintf(stdout, "\nVariants (%ld / %ld):\n", variant.size(), weight);
+  fprintf(stdout, "Variants (%ld / %ld):\n", variant.size(), weight);
   for (std::vector<Variant>::iterator it = variant.begin(); it != variant.end(); ++it)
   {
     //if (it->type != IDENTITY)
