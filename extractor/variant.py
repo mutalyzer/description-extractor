@@ -19,11 +19,11 @@ WEIGHTS = {
     'delins': extractor.WEIGHT_DELETION_INSERTION
 }
 FS = {
-    '-1': extractor.FRAME_SHIFT_1,
-    '-2': extractor.FRAME_SHIFT_2,
+    '+1': extractor.FRAME_SHIFT_1,
+    '+2': extractor.FRAME_SHIFT_2,
     'inv': extractor.FRAME_SHIFT_REVERSE,
-    'inv-1': extractor.FRAME_SHIFT_REVERSE_1,
-    'inv-2': extractor.FRAME_SHIFT_REVERSE_1,
+    'inv+1': extractor.FRAME_SHIFT_REVERSE_1,
+    'inv+2': extractor.FRAME_SHIFT_REVERSE_1,
 }
 
 
@@ -81,6 +81,9 @@ class ProteinAllele(HGVSList):
 class ISeqList(HGVSList):
     pass
 
+
+class FrameShiftAnnotationList(HGVSList):
+    pass
 
 @python_2_unicode_compatible
 class ISeq(object):
@@ -256,15 +259,6 @@ class ProteinVar(object):
         self.shift = shift
         self.term = term
         self.is_frame_shift = False
-        self.frame_shift_annotation = ''
-
-
-    def set_frame_shift(self, flags):
-        """
-        """
-        for fs_type in FS:
-            if FS[fs_type] & flags:
-                self.frame_shift_annotation = fs_type
 
 
     def __str__(self):
@@ -311,9 +305,37 @@ class ProteinVar(object):
             description += self.type
 
             if self.type in ('ins', 'delins'):
-                if self.frame_shift_annotation:
-                    return (description + str(self.inserted) +
-                        '(fs{})'.format(self.frame_shift_annotation))
                 return description + str(self.inserted)
             return description
         return description + '{}>{}'.format(self.deleted, self.inserted)
+
+
+@python_2_unicode_compatible
+class FrameShiftAnnotation(object):
+    """
+    Container for frame shift annotation.
+    """
+    def __init__(self, start=0, end=0, sample_start=0, sample_end=0,
+            type='none'):
+        """
+        Initialise the class with the appropriate values.
+
+        :arg int start: Start position.
+        :arg int end: End position.
+        :arg int sample_start: Start position.
+        :arg int sample_end: End position.
+        :arg unicode type: Frame shift type.
+        """
+        self.start = start
+        self.end = end
+        self.sample_start = sample_start
+        self.sample_end = sample_end
+        for fs_type in FS:
+            if FS[fs_type] & type:
+                self.type = fs_type
+
+
+    def __str__(self):
+        """
+        """
+        return '{}_{}fs{}'.format(self.start, self.end, self.type)

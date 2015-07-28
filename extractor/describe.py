@@ -9,7 +9,8 @@ from __future__ import (absolute_import, division, print_function,
 
 import math
 
-from .variant import ISeq, ISeqList, DNAVar, ProteinVar, Allele, ProteinAllele
+from .variant import (ISeq, ISeqList, DNAVar, ProteinVar, Allele,
+    ProteinAllele, FrameShiftAnnotationList, FrameShiftAnnotation)
 from . import extractor, util
 
 
@@ -410,6 +411,7 @@ def describe_protein(s1, s2):
     codons = 'KNKNTTTTRSRSIIMIQHQHPPPPRRRRLLLLEDEDAAAAGGGGVVVV*Y*YSSSS*CWCLFLF'
 
     description = ProteinAllele()
+    annotation = FrameShiftAnnotationList()
 
     s1_swig = util.swig_str(s1)
     s2_swig = util.swig_str(s2)
@@ -417,26 +419,29 @@ def describe_protein(s1, s2):
     extracted = extractor.extract(s1_swig[0], s1_swig[1],
         s2_swig[0], s2_swig[1], extractor.TYPE_PROTEIN, codons_swig[0])
 
-    frame_shift_starts = {}
     for variant in extracted.variants:
-        if variant.type & extractor.FRAME_SHIFT:
-            frame_shift_starts[variant.reference_start + 1] = variant.type
-            if (variant.type & extractor.FRAME_SHIFT_1 or
-                    variant.type & extractor.FRAME_SHIFT_2):
-                last_frame_shift = variant.reference_start + 1
+        if (variant.type & extractor.FRAME_SHIFT and 
+                (variant.type & extractor.FRAME_SHIFT_1 or variant.type &
+                extractor.FRAME_SHIFT_2)):
+            annotation.append(FrameShiftAnnotation(
+                start=variant.reference_start + 1,
+                end=variant.reference_end + 1,
+                sample_start=variant.sample_start + 1,
+                sample_end=variant.sample_end + 1, type=variant.type))
 
     for variant in extracted.variants:
-        if not variant.type & extractor.FRAME_SHIFT:
-            if not (variant.type & extractor.IDENTITY):
-                var = var_to_protein_var(s1, s2, variant,
-                    weight_position=extracted.weight_position)
-                if var.start in frame_shift_starts:
-                    var.set_frame_shift(frame_shift_starts[var.start])
-                description.append(var)
+        if (not variant.type & extractor.FRAME_SHIFT and not
+                variant.type & extractor.IDENTITY):
+            var = var_to_protein_var(s1, s2, variant,
+                weight_position=extracted.weight_position)
+            description.append(var)
 
-    if description[-1].start == last_frame_shift:
-        description[-1].is_frame_shift = True
+    if description[-1].type == 'delins':
+        for frame_shift in annotation:
+            if frame_shift.start >= description[-1].start:
+                description[-1].is_frame_shift = True
 
     if not description:
-        return ProteinAllele([ProteinVar()])
-    return description
+        return (ProteinAllele([ProteinVar()]),
+            FrameShiftAnnotationList([FrameShiftAnnotation]))
+    return description, annotation
