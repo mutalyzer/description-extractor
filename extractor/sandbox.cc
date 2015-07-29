@@ -116,13 +116,28 @@ struct Substring
   inline Substring(void): length(0) { }
 }; // Substring
 
-void print_codon(FILE* stream, size_t const index)
+size_t Dprint_codon(size_t const index,
+                    FILE*        stream = stderr)
 {
-  fprintf(stream, "%c%c%c", IUPAC_BASE[index >> 0x4],
-                            IUPAC_BASE[(index >> 0x2) & 0x3],
-                            IUPAC_BASE[index & 0x3]);
-  return;
-} // print_codon
+  return fprintf(stream, "%c%c%c", IUPAC_BASE[index >> 0x4],
+                                   IUPAC_BASE[(index >> 0x2) & 0x3],
+                                   IUPAC_BASE[index & 0x3]);
+} // Dprint_codon
+
+size_t Dprint_truncated(char_t const* const string,
+                        size_t const        start,
+                        size_t const        end,
+                        size_t const        length = 40,
+                        FILE*               stream = stderr)
+{
+  if (end - start <= length - 3)
+  {
+    return fwrite(string + start, sizeof(char_t), end - start, stream);
+  } // if
+  return fwrite(string + start, sizeof(char_t), length / 2 - 1, stream) +
+         fputs("...", stream) +
+         fwrite(string + end - (length / 2) + 1, sizeof(char_t), length / 2 - 1, stream);
+} // Dprint_truncated
 
 uint8_t calculate_frame_shift(size_t const reference_1,
                               size_t const reference_2,
@@ -146,7 +161,26 @@ uint8_t calculate_frame_shift(size_t const reference_1,
           {
             if (((acid_map[sample] >> k) & 0x1ull) == 0x1ull)
             {
-              shift = FRAME_SHIFT_NONE;
+
+/*
+              Dprint_codon(i);
+              fprintf(stderr, " ");
+              Dprint_codon(j);
+              fprintf(stderr, " vs ");
+              Dprint_codon(k);
+              fprintf(stderr, ": ");
+              Dprint_codon(codon_1);
+              fprintf(stderr, " (fs_1) ");
+              Dprint_codon(codon_2);
+              fprintf(stderr, " (fs_2) ");
+              Dprint_codon(codon_reverse);
+              fprintf(stderr, " (fs_inv) ");
+              Dprint_codon(codon_reverse_1);
+              fprintf(stderr, " (fs1_inv) ");
+              Dprint_codon(codon_reverse_2);
+              fprintf(stderr, " (fs2_inv): ");
+*/
+
               if (codon_1 == k)
               {
                 shift |= FRAME_SHIFT_1;
@@ -167,7 +201,7 @@ uint8_t calculate_frame_shift(size_t const reference_1,
               {
                 shift |= FRAME_SHIFT_REVERSE_2;
               } // if
-              //printf("0x%x\n", shift);
+              //fprintf(stderr, "0x%x\n", shift);
             } // if
           } // for
         } // if
@@ -183,7 +217,7 @@ void initialize_frame_shift_map(char_t const* const codon_string)
   {
     acid_map[codon_string[i] & 0x7f] |= (0x1ull << i);
   } // for
-
+  //return;
   for (size_t i = 0; i < 128; ++i)
   {
     if (acid_map[i] != 0x0ull)
@@ -260,39 +294,89 @@ void LCS_frame_shift(std::vector<Substring> &substring,
     lcs[1][i][4] = 0;
   } // for
 
+
+  fprintf(stderr, "  LCS table (forward):\n     ");
+  for (size_t i = 1; i < reference_length; ++i)
+  {
+    fprintf(stderr, "%4c%c", reference[reference_start + i - 1], reference[reference_start + i]);
+  } // for
+  fprintf(stderr, "\n");
+
+/*
+  fprintf(stderr, "  LCS table (reverse):\n      %c(%c)", reference[reference_end - 1], reference[reference_end - 1]);
+  for (size_t i = 1; i < reference_length; ++i)
+  {
+    fprintf(stderr, "%4c%c", reference[reference_end - i - 1], reference[reference_end - i]);
+  } // for
+  fprintf(stderr, "\n");
+*/
+
   Substring fs_substring[5];
   for (size_t i = 0; i < sample_length; ++i)
   {
-    uint8_t const shift_reverse = frame_shift(reference[reference_end - 1], reference[reference_end - 2], sample[sample_start + i]);
+
+    fprintf(stderr, "    %c", sample[sample_start + i]);
+
+    uint8_t const shift_reverse = frame_shift(reference[reference_end - 1], reference[reference_end - 1], sample[sample_start + i]);
     if ((shift_reverse & FRAME_SHIFT_REVERSE) == FRAME_SHIFT_REVERSE)
     {
       lcs[i % 2][0][2] = 1;
-      fs_substring[2] = Substring(reference_start, sample_start + i, lcs[i % 2][0][2], FRAME_SHIFT_REVERSE);
     } // if
+    if (lcs[i % 2][0][2] > fs_substring[2].length)
+    {
+      fs_substring[2] = Substring(reference_start - lcs[i % 2][0][2] + 1, sample_start + i - lcs[i % 2][0][2] + 1, lcs[i % 2][0][2], FRAME_SHIFT_REVERSE);
+    } // if
+
+    //fprintf(stderr, "%5d", shift_reverse);
+
     for (size_t j = 1; j < reference_length; ++j)
     {
       uint8_t const shift_forward = frame_shift(reference[reference_start + j - 1], reference[reference_start + j], sample[sample_start + i]);
       uint8_t const shift_reverse = frame_shift(reference[reference_end - j - 1], reference[reference_end - j], sample[sample_start + i]);
+
+      fprintf(stderr, "%5d", shift_reverse);
+
       if ((shift_forward & FRAME_SHIFT_1) == FRAME_SHIFT_1)
       {
         lcs[i % 2][j][0] = lcs[(i + 1) % 2][j - 1][0] + 1;
       } // if
+      else
+      {
+        lcs[i % 2][j][0] = 0;
+      } // else
       if ((shift_forward & FRAME_SHIFT_2) == FRAME_SHIFT_2)
       {
         lcs[i % 2][j][1] = lcs[(i + 1) % 2][j - 1][1] + 1;
       } // if
+      else
+      {
+        lcs[i % 2][j][1] = 0;
+      } // else
       if ((shift_reverse & FRAME_SHIFT_REVERSE) == FRAME_SHIFT_REVERSE)
       {
         lcs[i % 2][j][2] = lcs[(i + 1) % 2][j - 1][2] + 1;
       } // if
+      else
+      {
+        lcs[i % 2][j][2] = 0;
+      } // else
       if ((shift_reverse & FRAME_SHIFT_REVERSE_1) == FRAME_SHIFT_REVERSE_1)
       {
         lcs[i % 2][j][3] = lcs[(i + 1) % 2][j - 1][3] + 1;
       } // if
+      else
+      {
+        lcs[i % 2][j][3] = 0;
+      } // else
       if ((shift_reverse & FRAME_SHIFT_REVERSE_2) == FRAME_SHIFT_REVERSE_2)
       {
         lcs[i % 2][j][4] = lcs[(i + 1) % 2][j - 1][4] + 1;
       } // if
+      else
+      {
+        lcs[i % 2][j][4] = 0;
+      } // else
+
       if (lcs[i % 2][j][0] > fs_substring[0].length)
       {
         fs_substring[0] = Substring(reference_start + j - lcs[i % 2][j][0], sample_start + i - lcs[i % 2][j][0] + 1, lcs[i % 2][j][0], FRAME_SHIFT_1);
@@ -303,7 +387,7 @@ void LCS_frame_shift(std::vector<Substring> &substring,
       } // if
       if (lcs[i % 2][j][2] > fs_substring[2].length)
       {
-        fs_substring[2] = Substring(reference_start + j - lcs[i % 2][j][2] + 1, sample_start + i - lcs[i % 2][j][2], lcs[i % 2][j][2], FRAME_SHIFT_REVERSE);
+        fs_substring[2] = Substring(reference_start + j - lcs[i % 2][j][2] + 1, sample_start + i - lcs[i % 2][j][2] + 1, lcs[i % 2][j][2], FRAME_SHIFT_REVERSE);
       } // if
       if (lcs[i % 2][j][3] > fs_substring[3].length)
       {
@@ -314,6 +398,7 @@ void LCS_frame_shift(std::vector<Substring> &substring,
         fs_substring[4] = Substring(reference_start + j - lcs[i % 2][j][4], sample_start + i - lcs[i % 2][j][4] + 1, lcs[i % 2][j][4], FRAME_SHIFT_REVERSE_2);
       } // if
     } // for
+    fprintf(stderr, "\n");
   } // for
   substring = std::vector<Substring>(1, fs_substring[0]);
   substring.push_back(fs_substring[1]);
@@ -344,7 +429,7 @@ void backtranslation(size_t              reference_DNA[],
     {
       if (((acid_map[reference[reference_start + p] & 0x7f] >> i) & 0x1) == 0x1)
       {
-        size_t codon[5] = {0x0};
+        uint8_t codon[5] = {0x0};
         codon[2] = ((i >> 0x4) | (i & 0xc) | ((i & 0x3) << 0x4)) ^ 0x3f;
         for (size_t j = 0; j < 64; ++j)
         {
@@ -391,6 +476,15 @@ void extractor_frame_shift(std::vector<Variant> &annotation,
   size_t const reference_length = reference_end - reference_start;
   size_t const sample_length = sample_end - sample_start;
 
+  fputs("Extraction (frame shift)\n", stderr);
+  fprintf(stderr, "  reference %ld--%ld:  ", reference_start, reference_end);
+  Dprint_truncated(reference, reference_start, reference_end);
+  fprintf(stderr, " (%ld)\n", reference_length);
+  fprintf(stderr, "  sample %ld--%ld:     ", sample_start, sample_end);
+  Dprint_truncated(sample, sample_start, sample_end);
+  fprintf(stderr, " (%ld)\n", sample_length);
+
+
   // First the base cases to end the recursion.
   if (reference_length <= 0 || sample_length <= 0)
   {
@@ -433,11 +527,13 @@ void extractor_frame_shift(std::vector<Variant> &annotation,
 
   fprintf(stderr, "  LCS type = %d\n", lcs.type);
   fprintf(stderr, "    %ld--%ld: ", lcs.reference_index, lcs.reference_index + lcs.length);
+  Dprint_truncated(reference, lcs.reference_index, lcs.reference_index + lcs.length);
   fprintf(stderr, " (%ld)\n    %ld--%ld: ", lcs.length, lcs.sample_index, lcs.sample_index + lcs.length);
+  Dprint_truncated(sample, lcs.sample_index, lcs.sample_index + lcs.length);
   fprintf(stderr, " (%ld)", lcs.length);
   fputs("\n", stderr);
 
-
+  fprintf(stderr, "  Probability:\n");
   size_t weight = 1;
   for (size_t i = 0; i < lcs.length; ++i)
   {
@@ -452,7 +548,7 @@ void extractor_frame_shift(std::vector<Variant> &annotation,
     } // if
     if ((lcs.type & FRAME_SHIFT_REVERSE) == FRAME_SHIFT_REVERSE)
     {
-      weight_compound += frame_shift_count[reference[lcs.reference_index + i] & 0x7f][reference[lcs.reference_index + i + 1] & 0x7f][2];
+      weight_compound += frame_shift_count[reference[lcs.reference_index + i] & 0x7f][reference[lcs.reference_index + i] & 0x7f][2];
     } // if
     if ((lcs.type & FRAME_SHIFT_REVERSE_1) == FRAME_SHIFT_REVERSE_1)
     {
@@ -462,24 +558,28 @@ void extractor_frame_shift(std::vector<Variant> &annotation,
     {
       weight_compound += frame_shift_count[reference[lcs.reference_index + i] & 0x7f][reference[lcs.reference_index + i + 1] & 0x7f][4];
     } // if
+    fprintf(stderr, "    weight_compound: %ld\n", weight_compound);
     weight *= weight_compound;
   } // for
 
 
   // DNA reconstruction
+  fprintf(stderr, "  Backtranslation:\n    ");
+
   size_t reference_DNA[lcs.length * 3];
   size_t sample_DNA[lcs.length * 3];
   backtranslation(reference_DNA, sample_DNA, reference, lcs.reference_index, sample, lcs.sample_index, lcs.length, lcs.type);
+
   for (size_t i = 0; i < lcs.length; ++i)
   {
-    printf("%c%c%c ", IUPAC_ALPHA[reference_DNA[i * 3]], IUPAC_ALPHA[reference_DNA[i * 3 + 1]], IUPAC_ALPHA[reference_DNA[i * 3 + 2]]);
+    fprintf(stderr, "%c%c%c ", IUPAC_ALPHA[reference_DNA[i * 3]], IUPAC_ALPHA[reference_DNA[i * 3 + 1]], IUPAC_ALPHA[reference_DNA[i * 3 + 2]]);
   } // for
-  printf("\n");
+  fprintf(stderr, "\n    ");
   for (size_t i = 0; i < lcs.length; ++i)
   {
-    printf("%c%c%c ", IUPAC_ALPHA[sample_DNA[i * 3]], IUPAC_ALPHA[sample_DNA[i * 3 + 1]], IUPAC_ALPHA[sample_DNA[i * 3 + 2]]);
+    fprintf(stderr, "%c%c%c ", IUPAC_ALPHA[sample_DNA[i * 3]], IUPAC_ALPHA[sample_DNA[i * 3 + 1]], IUPAC_ALPHA[sample_DNA[i * 3 + 2]]);
   } // for
-  printf("\n");
+  fprintf(stderr, "\n");
 
 
   // Recursively apply this function to the prefixes of the strings.
@@ -505,8 +605,7 @@ int main(int, char* [])
   initialize_frame_shift_map(CODON_STRING);
 
   std::vector<Variant> annotation;
-  extractor_frame_shift(annotation, "MLGNMNVFMAVLGIILFSGFLAAYFSHKWDD", 1, 32,
-                                    "MVGRYRFEFILIILILCALITARFYLS", 1, 28);
+  extractor_frame_shift(annotation, "MDYSL", 1, 5, "MQGIV", 1, 5);
 
   // Printing the variants.
   fprintf(stdout, "Annotation (%ld):\n", annotation.size());
