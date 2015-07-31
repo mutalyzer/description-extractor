@@ -23,16 +23,16 @@ using namespace mutalyzer;
 
 #include <cstdio>
 
-/*
+
 #include <iostream>
 #include <string>
 using namespace std;
-*/
+
 
 // Entry point.
 int main(int argc, char* argv[])
 {
-
+/*
   if (argc < 3)
   {
     fprintf(stderr, "usage: %s reference sample\n", argv[0]);
@@ -70,9 +70,8 @@ int main(int argc, char* argv[])
   size_t const alt_length = fread(sample, sizeof(char_t), sample_length, file);
   static_cast<void>(alt_length);
   fclose(file);
+*/
 
-
-/*
   string header[4305];
   string protein[4305];
 
@@ -82,27 +81,28 @@ int main(int argc, char* argv[])
     getline(cin, protein[i]);
   } // for
 
-  for (int i = 0; i < 10; ++i)
+  for (int i = 0; i < 4305; ++i)
   {
     cerr << i << endl;
-    for (int j = i + 1; j < 10; ++j)
+    double best = 1.f;
+    for (int j = i + 1; j < 4305; ++j)
     {
       vector<Variant> variant;
       extract(variant, protein[i].c_str(), protein[i].length(), protein[j].c_str(), protein[j].length(), TYPE_PROTEIN, "KNKNTTTTRSRSIIMIQHQHPPPPRRRRLLLLEDEDAAAAGGGGVVVV*Y*YSSSS*CWCLFLF");
 
-      fprintf(stdout, "%s %s\n", header[i].c_str(), header[j].c_str());
       for (std::vector<Variant>::iterator it = variant.begin(); it != variant.end(); ++it)
       {
-        if (it->type >= FRAME_SHIFT)
+        if (it->type >= FRAME_SHIFT && best > it->probability)
         {
-          fprintf(stdout, "%ld--%ld, %ld--%ld, %d, %lf, %ld--%ld\n", it->reference_start, it->reference_end, it->sample_start, it->sample_end, it->type, 1.f - it->probability, it->transposition_start, it->transposition_end);
+          best = it->probability;
+          fprintf(stdout, "%.9s %.9s %ld--%ld, %ld--%ld, %d, %.10e\n", header[i].c_str(), header[j].c_str(), it->reference_start, it->reference_end, it->sample_start, it->sample_end, it->type, 1.f - it->probability);
         } // if
       } // for
-
     } // for
+    fprintf(stdout, "\n");
   } // for
-*/
 
+/*
   // The actual extraction.
   std::vector<Variant> variant;
   size_t const weight = extract(variant, reference, reference_length - 1, sample, sample_length - 1, TYPE_PROTEIN, "KNKNTTTTRSRSIIMIQHQHPPPPRRRRLLLLEDEDAAAAGGGGVVVV*Y*YSSSS*CWCLFLF");
@@ -126,7 +126,7 @@ int main(int argc, char* argv[])
   // Cleaning up.
   delete[] reference;
   delete[] sample;
-
+*/
   return 0;
 } // main
 

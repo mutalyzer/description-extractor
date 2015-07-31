@@ -875,7 +875,6 @@ void extractor_frame_shift(std::vector<Variant> &annotation,
     {
       probability_compound += frame_shift_frequency[reference[lcs.reference_index + i] & 0x7f][reference[lcs.reference_index + i + 1] & 0x7f][4];
     } // if
-    //fprintf(stderr, "    probability_compound: %lf\n", probability_compound);
     probability *= probability_compound;
   } // for
 
@@ -1386,15 +1385,15 @@ void LCS_frame_shift(std::vector<Substring> &substring,
       } // if
       if (lcs[i % 2][j][2] > fs_substring[2].length)
       {
-        fs_substring[2] = Substring(reference_start + j - lcs[i % 2][j][2] + 1, sample_start + i - lcs[i % 2][j][2] + 1, lcs[i % 2][j][2], FRAME_SHIFT_REVERSE);
+        fs_substring[2] = Substring(reference_end - j - 1, sample_start + i - lcs[i % 2][j][2] + 1, lcs[i % 2][j][2], FRAME_SHIFT_REVERSE);
       } // if
       if (lcs[i % 2][j][3] > fs_substring[3].length)
       {
-        fs_substring[3] = Substring(reference_start + j - lcs[i % 2][j][3], sample_start + i - lcs[i % 2][j][3] + 1, lcs[i % 2][j][3], FRAME_SHIFT_REVERSE_1);
+        fs_substring[3] = Substring(reference_end - j - 1, sample_start + i - lcs[i % 2][j][3] + 1, lcs[i % 2][j][3], FRAME_SHIFT_REVERSE_1);
       } // if
       if (lcs[i % 2][j][4] > fs_substring[4].length)
       {
-        fs_substring[4] = Substring(reference_start + j - lcs[i % 2][j][4], sample_start + i - lcs[i % 2][j][4] + 1, lcs[i % 2][j][4], FRAME_SHIFT_REVERSE_2);
+        fs_substring[4] = Substring(reference_end - j - 1, sample_start + i - lcs[i % 2][j][4] + 1, lcs[i % 2][j][4], FRAME_SHIFT_REVERSE_2);
       } // if
     } // for
   } // for
@@ -1644,7 +1643,21 @@ static void initialize_acid_frequency(void)
 // based on a given codon string.
 void initialize_frame_shift_map(char_t const* const codon_string)
 {
-  // FIXME:
+  for (size_t i = 0; i < 64; ++i)
+  {
+    acid_map[i] = 0x0ull;
+  } // for
+  for (size_t i = 0; i < 128; ++i)
+  {
+    for (size_t j = 0; j < 128; ++j)
+    {
+      for (size_t k = 0; k < 5; ++k)
+      {
+        frame_shift_count[i][j][k] = 0;
+        frame_shift_frequency[i][j][k] = .05f;
+      } // for
+    } // for
+  } // for
   initialize_acid_frequency();
   for (size_t i = 0; i < 64; ++i)
   {

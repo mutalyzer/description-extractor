@@ -284,6 +284,10 @@ void initialize_frame_shift_map(char_t const* const codon_string)
 
 void initialize_acid_frequency(void)
 {
+  for (size_t i = 0; i < 128; ++i)
+  {
+    acid_frequency[i] = .05f;
+  } // for
   acid_frequency['A'] = .09515673f;
   acid_frequency['C'] = .01157279f;
   acid_frequency['D'] = .05151007f;
@@ -342,8 +346,9 @@ void LCS_frame_shift(std::vector<Substring> &substring,
     fprintf(stderr, "%4c%c", reference[reference_start + i - 1], reference[reference_start + i]);
   } // for
   fprintf(stderr, "\n");
+*/
 
-
+/*
   fprintf(stderr, "  LCS table (reverse):\n      %c(%c)", reference[reference_end - 1], reference[reference_end - 1]);
   for (size_t i = 1; i < reference_length; ++i)
   {
@@ -428,15 +433,15 @@ void LCS_frame_shift(std::vector<Substring> &substring,
       } // if
       if (lcs[i % 2][j][2] > fs_substring[2].length)
       {
-        fs_substring[2] = Substring(reference_start + j - lcs[i % 2][j][2] + 1, sample_start + i - lcs[i % 2][j][2] + 1, lcs[i % 2][j][2], FRAME_SHIFT_REVERSE);
+        fs_substring[2] = Substring(reference_end - j - 1, sample_start + i - lcs[i % 2][j][2] + 1, lcs[i % 2][j][2], FRAME_SHIFT_REVERSE);
       } // if
       if (lcs[i % 2][j][3] > fs_substring[3].length)
       {
-        fs_substring[3] = Substring(reference_start + j - lcs[i % 2][j][3], sample_start + i - lcs[i % 2][j][3] + 1, lcs[i % 2][j][3], FRAME_SHIFT_REVERSE_1);
+        fs_substring[3] = Substring(reference_end - j - 1, sample_start + i - lcs[i % 2][j][3] + 1, lcs[i % 2][j][3], FRAME_SHIFT_REVERSE_1);
       } // if
       if (lcs[i % 2][j][4] > fs_substring[4].length)
       {
-        fs_substring[4] = Substring(reference_start + j - lcs[i % 2][j][4], sample_start + i - lcs[i % 2][j][4] + 1, lcs[i % 2][j][4], FRAME_SHIFT_REVERSE_2);
+        fs_substring[4] = Substring(reference_end - j - 1, sample_start + i - lcs[i % 2][j][4] + 1, lcs[i % 2][j][4], FRAME_SHIFT_REVERSE_2);
       } // if
     } // for
     //fprintf(stderr, "\n");
@@ -667,7 +672,6 @@ void extractor_frame_shift(std::vector<Variant> &annotation,
   } // for
   fprintf(stderr, "\n");
 
-
   // Recursively apply this function to the prefixes of the strings.
   std::vector<Variant> prefix;
   extractor_frame_shift(prefix, reference, reference_start, lcs.reference_index, sample, sample_start, lcs.sample_index);
@@ -693,6 +697,23 @@ int main(int, char* [])
   initialize_acid_frequency();
   initialize_frame_shift_map(CODON_STRING);
 
+/*
+  std::vector<Variant> annotation;
+  extractor_frame_shift(annotation, "GQPVEFTWQSDDGISL",
+                                    0, 16,
+                                    "ATLIPVLNGVHQAGLS",
+                                    0, 16);
+
+  // Printing the variants.
+  fprintf(stdout, "Annotation (%ld):\n", annotation.size());
+  for (std::vector<Variant>::iterator it = annotation.begin(); it != annotation.end(); ++it)
+  {
+    fprintf(stdout, "  %ld--%ld, %ld--%ld, %d, %lf, %ld--%ld\n", it->reference_start, it->reference_end, it->sample_start, it->sample_end, it->type, 1.f - it->probability, it->transposition_start, it->transposition_end);
+  } // for
+
+
+  return 1;
+*/
   {
     fprintf(stdout, "\n%s %s\n", "MDYSL", "MALFP");
     std::vector<Variant> annotation;
