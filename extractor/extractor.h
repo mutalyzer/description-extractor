@@ -8,8 +8,8 @@
 // FILE INFORMATION:
 //   File:     extractor.h (implemented in extractor.cc)
 //   Author:   Jonathan K. Vis
-//   Revision: 2.2.1
-//   Date:     2015/03/11
+//   Revision: 2.3.0
+//   Date:     2015/07/31
 // *******************************************************************
 // DESCRIPTION:
 //   This library can be used to generate HGVS variant descriptions as
@@ -34,7 +34,7 @@ namespace mutalyzer
 {
 
 // Version string for run-time identification.
-static char const* const VERSION = "2.2.1";
+static char const* const VERSION = "2.3.0";
 
 
 // The character type used for all strings. For now it should just be
@@ -154,7 +154,11 @@ struct Variant
   size_t       sample_start;
   size_t       sample_end;
   unsigned int type;
-  size_t       weight;
+  union
+  {
+    size_t     weight;
+    double     probability;
+  }; // union
   size_t       transposition_start;
   size_t       transposition_end;
 
@@ -688,6 +692,9 @@ size_t Dprint_truncated(char_t const* const string,
                         size_t const        end,
                         size_t const        length = 40,
                         FILE*               stream = stderr);
+
+size_t Dprint_codon(size_t const index,
+                    FILE*        stream = stderr);
 #endif
 
 

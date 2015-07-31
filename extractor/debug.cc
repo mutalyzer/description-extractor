@@ -8,8 +8,8 @@
 // FILE INFORMATION:
 //   File:     debug.cc
 //   Author:   Jonathan K. Vis
-//   Revision: 2.1.8
-//   Date:     2015/01/12
+//   Revision: 2.3.0
+//   Date:     2015/07/31
 // *******************************************************************
 // DESCRIPTION:
 //   This source can be used to debug the Extractor library within
@@ -95,7 +95,7 @@ int main(int argc, char* argv[])
       {
         if (it->type >= FRAME_SHIFT)
         {
-          fprintf(stdout, "%ld--%ld, %ld--%ld, %d, %ld\n", it->reference_start, it->reference_end, it->sample_start, it->sample_end, it->type, it->weight);
+          fprintf(stdout, "%ld--%ld, %ld--%ld, %d, %lf, %ld--%ld\n", it->reference_start, it->reference_end, it->sample_start, it->sample_end, it->type, 1.f - it->probability, it->transposition_start, it->transposition_end);
         } // if
       } // for
 
@@ -112,10 +112,14 @@ int main(int argc, char* argv[])
   fprintf(stdout, "Variants (%ld / %ld):\n", variant.size(), weight);
   for (std::vector<Variant>::iterator it = variant.begin(); it != variant.end(); ++it)
   {
-    //if (it->type != IDENTITY)
+    if (it->type >= FRAME_SHIFT)
+    {
+      fprintf(stdout, "%ld--%ld, %ld--%ld, %d, %lf, %ld--%ld\n", it->reference_start, it->reference_end, it->sample_start, it->sample_end, it->type, 1.f - it->probability, it->transposition_start, it->transposition_end);
+    } // if
+    else
     {
       fprintf(stdout, "%ld--%ld, %ld--%ld, %d, %ld, %ld--%ld\n", it->reference_start, it->reference_end, it->sample_start, it->sample_end, it->type, it->weight, it->transposition_start, it->transposition_end);
-    } // if
+    } // else
   } // for
 
 

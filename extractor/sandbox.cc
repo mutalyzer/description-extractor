@@ -53,6 +53,9 @@ static uint8_t frame_shift_count[128][128][5] = {{{0}}};
 
 static uint64_t acid_map[128] = {0x0ull};
 
+static double acid_frequency[128] = {.0f};
+static double frame_shift_frequency[128][128][5] = {{{.0f}}};
+
 struct Variant
 {
   size_t       reference_start;
@@ -60,7 +63,11 @@ struct Variant
   size_t       sample_start;
   size_t       sample_end;
   unsigned int type;
-  size_t       weight;
+  union
+  {
+    size_t       weight;
+    double       probability;
+  }; // union
   size_t       transposition_start;
   size_t       transposition_end;
 
@@ -211,6 +218,13 @@ uint8_t calculate_frame_shift(size_t const reference_1,
   return shift;
 } // calculate_frame_shift
 
+uint8_t frame_shift(char_t const reference_1,
+                    char_t const reference_2,
+                    char_t const sample)
+{
+  return frame_shift_map[reference_1 & 0x7f][reference_2 & 0x7f][sample & 0x7f];
+} // frame_shift
+
 void initialize_frame_shift_map(char_t const* const codon_string)
 {
   for (size_t i = 0; i < 64; ++i)
@@ -232,26 +246,33 @@ void initialize_frame_shift_map(char_t const* const codon_string)
             {
               uint8_t const shift = calculate_frame_shift(i, j, k);
               frame_shift_map[i][j][k] = shift;
+
               if ((shift & FRAME_SHIFT_1) == FRAME_SHIFT_1)
               {
                 ++frame_shift_count[i][j][0];
+                frame_shift_frequency[i][j][0] += acid_frequency[k];
               } // if
               if ((shift & FRAME_SHIFT_2) == FRAME_SHIFT_2)
               {
                 ++frame_shift_count[i][j][1];
+                frame_shift_frequency[i][j][1] += acid_frequency[k];
               } // if
               if ((shift & FRAME_SHIFT_REVERSE) == FRAME_SHIFT_REVERSE)
               {
                 ++frame_shift_count[i][j][2];
+                frame_shift_frequency[i][j][2] += acid_frequency[k];
               } // if
               if ((shift & FRAME_SHIFT_REVERSE_1) == FRAME_SHIFT_REVERSE_1)
               {
                 ++frame_shift_count[i][j][3];
+                frame_shift_frequency[i][j][3] += acid_frequency[k];
               } // if
               if ((shift & FRAME_SHIFT_REVERSE_2) == FRAME_SHIFT_REVERSE_2)
               {
                 ++frame_shift_count[i][j][4];
+                frame_shift_frequency[i][j][4] += acid_frequency[k];
               } // if
+
             } // if
           } // for
         } // if
@@ -261,12 +282,32 @@ void initialize_frame_shift_map(char_t const* const codon_string)
   return;
 } // initialize_frame_shift_map
 
-uint8_t frame_shift(char_t const reference_1,
-                    char_t const reference_2,
-                    char_t const sample)
+void initialize_acid_frequency(void)
 {
-  return frame_shift_map[reference_1 & 0x7f][reference_2 & 0x7f][sample & 0x7f];
-} // frame_shift
+  acid_frequency['A'] = .09515673f;
+  acid_frequency['C'] = .01157279f;
+  acid_frequency['D'] = .05151007f;
+  acid_frequency['E'] = .05762795f;
+  acid_frequency['F'] = .03890338f;
+  acid_frequency['G'] = .07374416f;
+  acid_frequency['H'] = .02266328f;
+  acid_frequency['I'] = .06010209f;
+  acid_frequency['K'] = .04406110f;
+  acid_frequency['L'] = .10672657f;
+  acid_frequency['M'] = .02819341f;
+  acid_frequency['N'] = .03945573f;
+  acid_frequency['P'] = .04425210f;
+  acid_frequency['Q'] = .04439959f;
+  acid_frequency['R'] = .05510809f;
+  acid_frequency['S'] = .05802322f;
+  acid_frequency['T'] = .05398938f;
+  acid_frequency['U'] = .00000221f;
+  acid_frequency['V'] = .07073316f;
+  acid_frequency['W'] = .01531018f;
+  acid_frequency['X'] = .00001106f;
+  acid_frequency['Y'] = .02845373f;
+  return;
+} // initialize_acid_frequency
 
 void LCS_frame_shift(std::vector<Substring> &substring,
                      char_t const* const     reference,
@@ -294,7 +335,7 @@ void LCS_frame_shift(std::vector<Substring> &substring,
     lcs[1][i][4] = 0;
   } // for
 
-
+/*
   fprintf(stderr, "  LCS table (forward):\n     ");
   for (size_t i = 1; i < reference_length; ++i)
   {
@@ -302,7 +343,7 @@ void LCS_frame_shift(std::vector<Substring> &substring,
   } // for
   fprintf(stderr, "\n");
 
-/*
+
   fprintf(stderr, "  LCS table (reverse):\n      %c(%c)", reference[reference_end - 1], reference[reference_end - 1]);
   for (size_t i = 1; i < reference_length; ++i)
   {
@@ -315,7 +356,7 @@ void LCS_frame_shift(std::vector<Substring> &substring,
   for (size_t i = 0; i < sample_length; ++i)
   {
 
-    fprintf(stderr, "    %c", sample[sample_start + i]);
+    //fprintf(stderr, "    %c", sample[sample_start + i]);
 
     uint8_t const shift_reverse = frame_shift(reference[reference_end - 1], reference[reference_end - 1], sample[sample_start + i]);
     if ((shift_reverse & FRAME_SHIFT_REVERSE) == FRAME_SHIFT_REVERSE)
@@ -334,7 +375,7 @@ void LCS_frame_shift(std::vector<Substring> &substring,
       uint8_t const shift_forward = frame_shift(reference[reference_start + j - 1], reference[reference_start + j], sample[sample_start + i]);
       uint8_t const shift_reverse = frame_shift(reference[reference_end - j - 1], reference[reference_end - j], sample[sample_start + i]);
 
-      fprintf(stderr, "%5d", shift_reverse);
+      //fprintf(stderr, "%5d", shift_reverse);
 
       if ((shift_forward & FRAME_SHIFT_1) == FRAME_SHIFT_1)
       {
@@ -398,7 +439,7 @@ void LCS_frame_shift(std::vector<Substring> &substring,
         fs_substring[4] = Substring(reference_start + j - lcs[i % 2][j][4], sample_start + i - lcs[i % 2][j][4] + 1, lcs[i % 2][j][4], FRAME_SHIFT_REVERSE_2);
       } // if
     } // for
-    fprintf(stderr, "\n");
+    //fprintf(stderr, "\n");
   } // for
   substring = std::vector<Substring>(1, fs_substring[0]);
   substring.push_back(fs_substring[1]);
@@ -417,44 +458,87 @@ void backtranslation(size_t              reference_DNA[],
                      size_t const        length,
                      uint8_t const       type)
 {
+  for (size_t i = 0; i < 3 * length; ++ i)
+  {
+    reference_DNA[i] = 0;
+    sample_DNA[i] = 0;
+  } // for
   for (size_t p = 0; p < length; ++p)
   {
-    reference_DNA[p * 3] = 0x0;
-    reference_DNA[p * 3 + 1] = 0x0;
-    reference_DNA[p * 3 + 2] = 0x0;
-    sample_DNA[p * 3] = 0x0;
-    sample_DNA[p * 3 + 1] = 0x0;
-    sample_DNA[p * 3 + 2] = 0x0;
     for (size_t i = 0; i < 64; ++i)
     {
-      if (((acid_map[reference[reference_start + p] & 0x7f] >> i) & 0x1) == 0x1)
+      if (((acid_map[reference[reference_start + p] & 0x7f] >> i) & 0x1ull) == 0x1ull)
       {
-        uint8_t codon[5] = {0x0};
-        codon[2] = ((i >> 0x4) | (i & 0xc) | ((i & 0x3) << 0x4)) ^ 0x3f;
+        size_t const codon_reverse = ((i >> 0x4) | (i & 0xc) | ((i & 0x3) << 0x4)) ^ 0x3f;
+        for (size_t k = 0; k < 64; ++k)
+        {
+          if (((acid_map[sample[sample_start + length - p - 1] & 0x7f] >> k) & 0x1ull) == 0x1ull)
+          {
+            if ((type & FRAME_SHIFT_REVERSE) == FRAME_SHIFT_REVERSE && codon_reverse == k)
+            {
+              reference_DNA[p * 3] |= 0x1 << (i >> 4);
+              reference_DNA[p * 3 + 1] |= 0x1 << ((i >> 2) & 0x3);
+              reference_DNA[p * 3 + 2] |= 0x1 << (i & 0x3);
+              sample_DNA[(length - p) * 3 - 3] |= 0x1 << (codon_reverse >> 4);
+              sample_DNA[(length - p) * 3 - 2] |= 0x1 << ((codon_reverse >> 2) & 0x3);
+              sample_DNA[(length - p) * 3 - 1] |= 0x1 << (codon_reverse & 0x3);
+            } // if
+          } // if
+        } // for
+
         for (size_t j = 0; j < 64; ++j)
         {
-          if (((acid_map[reference[reference_start + p + 1] & 0x7f] >> j) & 0x1) == 0x1)
+          if (((acid_map[reference[reference_start + p + 1] & 0x7f] >> j) & 0x1ull) == 0x1ull)
           {
-            codon[0] = ((i & 0x3) << 0x4) | ((j & 0x3c) >> 0x2);
-            codon[1] = ((i & 0xf) << 0x2) | (j >> 0x4);
-            codon[3] = (((i & 0xc) >> 0x2) | ((i & 0x3) << 0x2) | (j & 0x30)) ^ 0x3f;
-            codon[4] = ((i & 0x3) | ((j & 0x30) >> 0x2) | ((j & 0xc) << 0x2)) ^ 0x3f;
+            size_t const codon_1 = ((i & 0x3) << 0x4) | ((j & 0x3c) >> 0x2);
+            size_t const codon_2 = ((i & 0xf) << 0x2) | (j >> 0x4);
+            size_t const codon_reverse_1 = (((i & 0xc) >> 0x2) | ((i & 0x3) << 0x2) | (j & 0x30)) ^ 0x3f;
+            size_t const codon_reverse_2 = ((i & 0x3) | ((j & 0x30) >> 0x2) | ((j & 0xc) << 0x2)) ^ 0x3f;
+
             for (size_t k = 0; k < 64; ++k)
             {
-              if (((acid_map[sample[sample_start + p] & 0x7f] >> k) & 0x1) == 0x1)
+              if (((acid_map[sample[sample_start + p] & 0x7f] >> k) & 0x1ull) == 0x1ull)
               {
-                for (size_t c = 0; c < 5; ++c)
+                if ((type & FRAME_SHIFT_1) == FRAME_SHIFT_1 && codon_1 == k)
                 {
-                  if (codon[c] == k && (type & (0x1 << c)) == (0x1 << c))
-                  {
-                    reference_DNA[p * 3] |= 0x1 << (i >> 4);
-                    reference_DNA[p * 3 + 1] |= 0x1 << ((i >> 2) & 0x3);
-                    reference_DNA[p * 3 + 2] |= 0x1 << (i & 0x3);
-                    sample_DNA[p * 3] |= 0x1 << (codon[c] >> 4);
-                    sample_DNA[p * 3 + 1] |= 0x1 << ((codon[c] >> 2) & 0x3);
-                    sample_DNA[p * 3 + 2] |= 0x1 << (codon[c] & 0x3);
-                  } // if
-                } // for
+                  reference_DNA[p * 3] |= 0x1 << (i >> 4);
+                  reference_DNA[p * 3 + 1] |= 0x1 << ((i >> 2) & 0x3);
+                  reference_DNA[p * 3 + 2] |= 0x1 << (i & 0x3);
+                  sample_DNA[p * 3] |= 0x1 << (codon_1 >> 4);
+                  sample_DNA[p * 3 + 1] |= 0x1 << ((codon_1 >> 2) & 0x3);
+                  sample_DNA[p * 3 + 2] |= 0x1 << (codon_1 & 0x3);
+                } // if
+                if ((type & FRAME_SHIFT_2) == FRAME_SHIFT_2 && codon_2 == k)
+                {
+                  reference_DNA[p * 3] |= 0x1 << (i >> 4);
+                  reference_DNA[p * 3 + 1] |= 0x1 << ((i >> 2) & 0x3);
+                  reference_DNA[p * 3 + 2] |= 0x1 << (i & 0x3);
+                  sample_DNA[p * 3] |= 0x1 << (codon_2 >> 4);
+                  sample_DNA[p * 3 + 1] |= 0x1 << ((codon_2 >> 2) & 0x3);
+                  sample_DNA[p * 3 + 2] |= 0x1 << (codon_2 & 0x3);
+                } // if
+              } // if
+
+              if (((acid_map[sample[sample_start + length - p - 1] & 0x7f] >> k) & 0x1ull) == 0x1ull)
+              {
+                if ((type & FRAME_SHIFT_REVERSE_1) == FRAME_SHIFT_REVERSE_1 && codon_reverse_1 == k)
+                {
+                  reference_DNA[p * 3] |= 0x1 << (i >> 4);
+                  reference_DNA[p * 3 + 1] |= 0x1 << ((i >> 2) & 0x3);
+                  reference_DNA[p * 3 + 2] |= 0x1 << (i & 0x3);
+                  sample_DNA[(length - p) * 3 - 3] |= 0x1 << (codon_reverse_1 >> 4);
+                  sample_DNA[(length - p) * 3 - 2] |= 0x1 << ((codon_reverse_1 >> 2) & 0x3);
+                  sample_DNA[(length - p) * 3 - 1] |= 0x1 << (codon_reverse_1 & 0x3);
+                } // if
+                if ((type & FRAME_SHIFT_REVERSE_2) == FRAME_SHIFT_REVERSE_2 && codon_reverse_2 == k)
+                {
+                  reference_DNA[p * 3] |= 0x1 << (i >> 4);
+                  reference_DNA[p * 3 + 1] |= 0x1 << ((i >> 2) & 0x3);
+                  reference_DNA[p * 3 + 2] |= 0x1 << (i & 0x3);
+                  sample_DNA[(length - p) * 3 - 3] |= 0x1 << (codon_reverse_2 >> 4);
+                  sample_DNA[(length - p) * 3 - 2] |= 0x1 << ((codon_reverse_2 >> 2) & 0x3);
+                  sample_DNA[(length - p) * 3 - 1] |= 0x1 << (codon_reverse_2 & 0x3);
+                } // if
               } // if
             } // for
           } // if
@@ -533,34 +617,36 @@ void extractor_frame_shift(std::vector<Variant> &annotation,
   fprintf(stderr, " (%ld)", lcs.length);
   fputs("\n", stderr);
 
+
   fprintf(stderr, "  Probability:\n");
-  size_t weight = 1;
+  double probability = 1.f;
   for (size_t i = 0; i < lcs.length; ++i)
   {
-    size_t weight_compound = 0;
+    double probability_compound = .0f;
     if ((lcs.type & FRAME_SHIFT_1) == FRAME_SHIFT_1)
     {
-      weight_compound += frame_shift_count[reference[lcs.reference_index + i] & 0x7f][reference[lcs.reference_index + i + 1] & 0x7f][0];
+      probability_compound += frame_shift_frequency[reference[lcs.reference_index + i] & 0x7f][reference[lcs.reference_index + i + 1] & 0x7f][0];
     } // if
     if ((lcs.type & FRAME_SHIFT_2) == FRAME_SHIFT_2)
     {
-      weight_compound += frame_shift_count[reference[lcs.reference_index + i] & 0x7f][reference[lcs.reference_index + i + 1] & 0x7f][1];
+      probability_compound += frame_shift_frequency[reference[lcs.reference_index + i] & 0x7f][reference[lcs.reference_index + i + 1] & 0x7f][1];
     } // if
     if ((lcs.type & FRAME_SHIFT_REVERSE) == FRAME_SHIFT_REVERSE)
     {
-      weight_compound += frame_shift_count[reference[lcs.reference_index + i] & 0x7f][reference[lcs.reference_index + i] & 0x7f][2];
+      probability_compound += frame_shift_frequency[reference[lcs.reference_index + i] & 0x7f][reference[lcs.reference_index + i] & 0x7f][2];
     } // if
     if ((lcs.type & FRAME_SHIFT_REVERSE_1) == FRAME_SHIFT_REVERSE_1)
     {
-      weight_compound += frame_shift_count[reference[lcs.reference_index + i] & 0x7f][reference[lcs.reference_index + i + 1] & 0x7f][3];
+      probability_compound += frame_shift_frequency[reference[lcs.reference_index + i] & 0x7f][reference[lcs.reference_index + i + 1] & 0x7f][3];
     } // if
     if ((lcs.type & FRAME_SHIFT_REVERSE_2) == FRAME_SHIFT_REVERSE_2)
     {
-      weight_compound += frame_shift_count[reference[lcs.reference_index + i] & 0x7f][reference[lcs.reference_index + i + 1] & 0x7f][4];
+      probability_compound += frame_shift_frequency[reference[lcs.reference_index + i] & 0x7f][reference[lcs.reference_index + i + 1] & 0x7f][4];
     } // if
-    fprintf(stderr, "    weight_compound: %ld\n", weight_compound);
-    weight *= weight_compound;
+    //fprintf(stderr, "    probability_compound: %lf\n", probability_compound);
+    probability *= probability_compound;
   } // for
+    fprintf(stderr, "    probability: %lf\n", probability);
 
 
   // DNA reconstruction
@@ -594,7 +680,9 @@ void extractor_frame_shift(std::vector<Variant> &annotation,
 
   // Add all variants (in order) to the annotation vector.
   annotation.insert(annotation.end(), prefix.begin(), prefix.end());
-  annotation.push_back(Variant(lcs.reference_index, lcs.reference_index + lcs.length, lcs.sample_index, lcs.sample_index + lcs.length, FRAME_SHIFT | lcs.type, weight));
+  Variant variant(lcs.reference_index, lcs.reference_index + lcs.length, lcs.sample_index, lcs.sample_index + lcs.length, FRAME_SHIFT | lcs.type);
+  variant.probability = probability;
+  annotation.push_back(variant);
   annotation.insert(annotation.end(), suffix.begin(), suffix.end());
 
   return;
@@ -602,17 +690,138 @@ void extractor_frame_shift(std::vector<Variant> &annotation,
 
 int main(int, char* [])
 {
+  initialize_acid_frequency();
   initialize_frame_shift_map(CODON_STRING);
 
-  std::vector<Variant> annotation;
-  extractor_frame_shift(annotation, "MDYSL", 1, 5, "MQGIV", 1, 5);
-
-  // Printing the variants.
-  fprintf(stdout, "Annotation (%ld):\n", annotation.size());
-  for (std::vector<Variant>::iterator it = annotation.begin(); it != annotation.end(); ++it)
   {
-    fprintf(stdout, "%ld--%ld, %ld--%ld, %d, %ld, %ld--%ld\n", it->reference_start, it->reference_end, it->sample_start, it->sample_end, it->type, it->weight, it->transposition_start, it->transposition_end);
-  } // for
+    fprintf(stdout, "\n%s %s\n", "MDYSL", "MALFP");
+    std::vector<Variant> annotation;
+    extractor_frame_shift(annotation, "MDYSL", 1, 5, "MALFP", 1, 5);
+
+    // Printing the variants.
+    fprintf(stdout, "Annotation (%ld):\n", annotation.size());
+    for (std::vector<Variant>::iterator it = annotation.begin(); it != annotation.end(); ++it)
+    {
+      fprintf(stdout, "  %ld--%ld, %ld--%ld, %d, %lf, %ld--%ld\n", it->reference_start, it->reference_end, it->sample_start, it->sample_end, it->type, 1.f - it->probability, it->transposition_start, it->transposition_end);
+    } // for
+  }
+
+  {
+    fprintf(stdout, "\n%s %s\n", "MDYSL", "MATIP");
+    std::vector<Variant> annotation;
+    extractor_frame_shift(annotation, "MDYSL", 1, 5, "MATIP", 1, 5);
+
+    // Printing the variants.
+    fprintf(stdout, "Annotation (%ld):\n", annotation.size());
+    for (std::vector<Variant>::iterator it = annotation.begin(); it != annotation.end(); ++it)
+    {
+      fprintf(stdout, "  %ld--%ld, %ld--%ld, %d, %lf, %ld--%ld\n", it->reference_start, it->reference_end, it->sample_start, it->sample_end, it->type, 1.f - it->probability, it->transposition_start, it->transposition_end);
+    } // for
+  }
+
+  {
+    fprintf(stdout, "\n%s %s\n", "MDYSL", "MTIPW");
+    std::vector<Variant> annotation;
+    extractor_frame_shift(annotation, "MDYSL", 1, 5, "MTIPW", 1, 5);
+
+    // Printing the variants.
+    fprintf(stdout, "Annotation (%ld):\n", annotation.size());
+    for (std::vector<Variant>::iterator it = annotation.begin(); it != annotation.end(); ++it)
+    {
+      fprintf(stdout, "  %ld--%ld, %ld--%ld, %d, %lf, %ld--%ld\n", it->reference_start, it->reference_end, it->sample_start, it->sample_end, it->type, 1.f - it->probability, it->transposition_start, it->transposition_end);
+    } // for
+  }
+
+  {
+    fprintf(stdout, "\n%s %s\n", "MDYSL", "MLFPG");
+    std::vector<Variant> annotation;
+    extractor_frame_shift(annotation, "MDYSL", 1, 5, "MLFPG", 1, 5);
+
+    // Printing the variants.
+    fprintf(stdout, "Annotation (%ld):\n", annotation.size());
+    for (std::vector<Variant>::iterator it = annotation.begin(); it != annotation.end(); ++it)
+    {
+      fprintf(stdout, "  %ld--%ld, %ld--%ld, %d, %lf, %ld--%ld\n", it->reference_start, it->reference_end, it->sample_start, it->sample_end, it->type, 1.f - it->probability, it->transposition_start, it->transposition_end);
+    } // for
+  }
+
+  {
+    fprintf(stdout, "\n%s %s\n", "MDYSL", "MQGIV");
+    std::vector<Variant> annotation;
+    extractor_frame_shift(annotation, "MDYSL", 1, 5, "MQGIV", 1, 5);
+
+    // Printing the variants.
+    fprintf(stdout, "Annotation (%ld):\n", annotation.size());
+    for (std::vector<Variant>::iterator it = annotation.begin(); it != annotation.end(); ++it)
+    {
+      fprintf(stdout, "  %ld--%ld, %ld--%ld, %d, %lf, %ld--%ld\n", it->reference_start, it->reference_end, it->sample_start, it->sample_end, it->type, 1.f - it->probability, it->transposition_start, it->transposition_end);
+    } // for
+  }
+
+  {
+    fprintf(stdout, "\n%s %s\n", "MDYSL", "MAGNS");
+    std::vector<Variant> annotation;
+    extractor_frame_shift(annotation, "MDYSL", 1, 5, "MAGNS", 1, 5);
+
+    // Printing the variants.
+    fprintf(stdout, "Annotation (%ld):\n", annotation.size());
+    for (std::vector<Variant>::iterator it = annotation.begin(); it != annotation.end(); ++it)
+    {
+      fprintf(stdout, "  %ld--%ld, %ld--%ld, %d, %lf, %ld--%ld\n", it->reference_start, it->reference_end, it->sample_start, it->sample_end, it->type, 1.f - it->probability, it->transposition_start, it->transposition_end);
+    } // for
+  }
+
+  {
+    fprintf(stdout, "\n%s %s\n", "MDYSL", "MDRE*");
+    std::vector<Variant> annotation;
+    extractor_frame_shift(annotation, "MDYSL", 1, 5, "MDRE*", 1, 5);
+
+    // Printing the variants.
+    fprintf(stdout, "Annotation (%ld):\n", annotation.size());
+    for (std::vector<Variant>::iterator it = annotation.begin(); it != annotation.end(); ++it)
+    {
+      fprintf(stdout, "  %ld--%ld, %ld--%ld, %d, %lf, %ld--%ld\n", it->reference_start, it->reference_end, it->sample_start, it->sample_end, it->type, 1.f - it->probability, it->transposition_start, it->transposition_end);
+    } // for
+  }
+
+  {
+    fprintf(stdout, "\n%s %s\n", "MDYSL", "IRE*S");
+    std::vector<Variant> annotation;
+    extractor_frame_shift(annotation, "MDYSL", 0, 5, "IRE*S", 0, 5);
+
+    // Printing the variants.
+    fprintf(stdout, "Annotation (%ld):\n", annotation.size());
+    for (std::vector<Variant>::iterator it = annotation.begin(); it != annotation.end(); ++it)
+    {
+      fprintf(stdout, "  %ld--%ld, %ld--%ld, %d, %lf, %ld--%ld\n", it->reference_start, it->reference_end, it->sample_start, it->sample_end, it->type, 1.f - it->probability, it->transposition_start, it->transposition_end);
+    } // for
+  }
+
+  {
+    fprintf(stdout, "\n%s %s\n", "MDYSL", "TGNSP");
+    std::vector<Variant> annotation;
+    extractor_frame_shift(annotation, "MDYSL", 0, 5, "TGNSP", 0, 5);
+
+    // Printing the variants.
+    fprintf(stdout, "Annotation (%ld):\n", annotation.size());
+    for (std::vector<Variant>::iterator it = annotation.begin(); it != annotation.end(); ++it)
+    {
+      fprintf(stdout, "  %ld--%ld, %ld--%ld, %d, %lf, %ld--%ld\n", it->reference_start, it->reference_end, it->sample_start, it->sample_end, it->type, 1.f - it->probability, it->transposition_start, it->transposition_end);
+    } // for
+  }
+
+  {
+    fprintf(stdout, "\n%s %s\n", "MDYSLAAALTLHGH", "MTIPWRSPHFHGH");
+    std::vector<Variant> annotation;
+    extractor_frame_shift(annotation, "MDYSLAAALTLHGH", 1, 11, "MTIPWRSPHFHGH", 1, 10);
+
+    // Printing the variants.
+    fprintf(stdout, "Annotation (%ld):\n", annotation.size());
+    for (std::vector<Variant>::iterator it = annotation.begin(); it != annotation.end(); ++it)
+    {
+      fprintf(stdout, "  %ld--%ld, %ld--%ld, %d, %lf, %ld--%ld\n", it->reference_start, it->reference_end, it->sample_start, it->sample_end, it->type, 1.f - it->probability, it->transposition_start, it->transposition_end);
+    } // for
+  }
 
   return 0;
 } // main
