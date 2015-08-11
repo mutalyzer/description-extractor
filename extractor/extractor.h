@@ -8,8 +8,8 @@
 // FILE INFORMATION:
 //   File:     extractor.h (implemented in extractor.cc)
 //   Author:   Jonathan K. Vis
-//   Revision: 2.2.1
-//   Date:     2015/03/11
+//   Revision: 2.3.0
+//   Date:     2015/07/31
 // *******************************************************************
 // DESCRIPTION:
 //   This library can be used to generate HGVS variant descriptions as
@@ -34,7 +34,7 @@ namespace mutalyzer
 {
 
 // Version string for run-time identification.
-static char const* const VERSION = "2.2.1";
+static char const* const VERSION = "2.3.0";
 
 
 // The character type used for all strings. For now it should just be
@@ -126,16 +126,6 @@ static double const TRANSPOSITION_CUT_OFF =   0.1;
 extern size_t global_reference_length;
 
 
-// The actual frame shift map indexed by the lower 127 ASCII
-// characters. This map should be precalculated given a codon string
-// by the initialize_frame_shift_map function.
-extern uint8_t frame_shift_map[128][128][128];
-
-// A frequency count of all possible frame shifts (5) for all
-// combinations of two amino acids (indexed by the lower 127 ASCII
-// characters). Used to calculate the frame shift probability.
-extern uint8_t frame_shift_count[128][128][5];
-
 // *******************************************************************
 // Variant structure
 //   This structure describes a variant (region of change).
@@ -164,7 +154,11 @@ struct Variant
   size_t       sample_start;
   size_t       sample_end;
   unsigned int type;
-  size_t       weight;
+  union
+  {
+    size_t     weight;
+    double     probability;
+  }; // union
   size_t       transposition_start;
   size_t       transposition_end;
 
@@ -654,17 +648,14 @@ void initialize_frame_shift_map(char_t const* const codon_string);
 //   sequence and the (partial) overlap between all possible DNA
 //   sequences of the sample amico acid.
 //
-//   @arg acid_map: maps amino acids (coded as the lower 127 ASCII
-//                  characters) to DNA codons
 //   @arg reference_1: first reference amino acid
 //   @arg reference_2: second reference amino acid
 //   @arg sample: sample amino acid
 //   @return: frame shift
 // *******************************************************************
-uint8_t calculate_frame_shift(uint64_t const acid_map[],
-                              size_t const   reference_1,
-                              size_t const   reference_2,
-                              size_t const   sample);
+uint8_t calculate_frame_shift(size_t const reference_1,
+                              size_t const reference_2,
+                              size_t const sample);
 
 // *******************************************************************
 // frame_shift function
@@ -701,6 +692,9 @@ size_t Dprint_truncated(char_t const* const string,
                         size_t const        end,
                         size_t const        length = 40,
                         FILE*               stream = stderr);
+
+size_t Dprint_codon(size_t const index,
+                    FILE*        stream = stderr);
 #endif
 
 
