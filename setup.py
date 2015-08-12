@@ -1,25 +1,22 @@
-# Patch for swig.
-from distutils.command.build import build as _build
-_build.sub_commands = [
-    ('build_ext', _build.has_ext_modules),
-    ('build_py', _build.has_pure_modules),
-    ('build_clib', _build.has_c_libraries),
-    ('build_scripts', _build.has_scripts)
-]
-
-#from setuptools.command.bdist_egg import bdist_egg
-#old_run = bdist_egg.run
-#
-#def run(self):
-#    old_run(self)
-#    self.run_command("install_lib")
-#
-#bdist_egg.run = run
-
 import os
 import sys
 from setuptools import setup
 from distutils.core import Extension
+
+# We do some trickery to assure SWIG is always run before installing the
+# generated files.
+# http://stackoverflow.com/questions/12491328/python-distutils-not-include-the-swig-generated-module
+from setuptools.command.install import install
+from distutils.command.build import build
+class CustomBuild(build):
+    def run(self):
+        self.run_command('build_ext')
+        build.run(self)
+class CustomInstall(install):
+    def run(self):
+        self.run_command('build_ext')
+        self.do_egg_install()
+custom_cmdclass = {'build': CustomBuild, 'install': CustomInstall}
 
 if sys.version_info < (2, 6):
     raise Exception('extractor requires Python 2.6 or higher.')
@@ -53,6 +50,7 @@ except IOError:
 
 setup(
     name='description-extractor',
+    cmdclass=custom_cmdclass,
     ext_modules=[Extension('_extractor', ['extractor/extractor.i',
         'extractor/extractor.cc'], swig_opts=['-c++'])],
     version=distmeta['__version__'],
