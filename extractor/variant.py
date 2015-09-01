@@ -3,8 +3,8 @@ Models for the description extractor.
 """
 
 
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
+from __future__ import (
+    absolute_import, division, print_function, unicode_literals)
 
 from . import extractor
 from extractor.util import python_2_unicode_compatible, seq3, str
@@ -23,7 +23,7 @@ FS = {
     '2': extractor.FRAME_SHIFT_2,
     'inv': extractor.FRAME_SHIFT_REVERSE,
     '1inv': extractor.FRAME_SHIFT_REVERSE_1,
-    '2inv': extractor.FRAME_SHIFT_REVERSE_1,
+    '2inv': extractor.FRAME_SHIFT_REVERSE_1
 }
 
 
@@ -92,7 +92,8 @@ class ISeq(object):
     """
     Container for an inserted sequence.
     """
-    def __init__(self, sequence='', start=0, end=0, reverse=False,
+    def __init__(
+            self, sequence='', start=0, end=0, reverse=False,
             weight_position=1):
         """
         Initialise the class with the appropriate values.
@@ -139,7 +140,8 @@ class ISeq(object):
             return len(self.sequence) * extractor.WEIGHT_BASE
 
         inverse_weight = WEIGHTS['inv'] if self.reverse else 0
-        return (self.weight_position * 2 + extractor.WEIGHT_SEPARATOR +
+        return (
+            self.weight_position * 2 + extractor.WEIGHT_SEPARATOR +
             inverse_weight)
 
 
@@ -148,8 +150,9 @@ class AISeq(object):
     """
     Container for an annotated inserted sequence.
     """
-    def __init__(self, sequence='', start=0, end=0, sample_start=0,
-            sample_end=0, frames=[], weight_position=1):
+    def __init__(
+            self, sequence='', start=0, end=0, sample_start=0, sample_end=0,
+            frames=[], weight_position=1):
         """
         Initialise the class with the appropriate values.
 
@@ -179,8 +182,8 @@ class AISeq(object):
         if self.type == 'trans':
             return '{}_{}'.format(self.start, self.end)
 
-        return '{}_{}{}|{}'.format(self.start, self.end, self.sequence,
-            '|'.join(self.frames))
+        return '{}_{}{}|{}'.format(
+            self.start, self.end, self.sequence, '|'.join(self.frames))
 
 
 @python_2_unicode_compatible
@@ -188,9 +191,10 @@ class DNAVar(object):
     """
     Container for a DNA variant.
     """
-    def __init__(self, start=0, start_offset=0, end=0, end_offset=0,
-            sample_start=0, sample_start_offset=0, sample_end=0,
-            sample_end_offset=0, type='none', deleted=ISeqList([ISeq()]),
+    def __init__(
+            self, start=0, start_offset=0, end=0, end_offset=0, sample_start=0,
+            sample_start_offset=0, sample_end=0, sample_end_offset=0,
+            type='none', deleted=ISeqList([ISeq()]),
             inserted=ISeqList([ISeq()]), shift=0, weight_position=1):
         """
         Initialise the class with the appropriate values.
@@ -271,8 +275,9 @@ class ProteinVar(object):
     Container for a protein variant.
 
     """
-    def __init__(self, s1='', s2='', start=0, end=0, sample_start=0,
-            sample_end=0, type='none', deleted=ISeqList([ISeq()]),
+    def __init__(
+            self, s1='', s2='', start=0, end=0, sample_start=0, sample_end=0,
+            type='none', deleted=ISeqList([ISeq()]),
             inserted=AISeqList([AISeq()]), shift=0, term=0, weight_position=1):
         """
         Initialise the class with the appropriate values.
@@ -352,8 +357,8 @@ class ProteinVar(object):
             if self.type in ('ins', 'delins'):
                 return description + str(self.annotated_inserted)
             return description
-        return description + '{}>{}'.format(self.deleted,
-            self.annotated_inserted)
+        return description + '{}>{}'.format(
+            self.deleted, self.annotated_inserted)
 
 
 @python_2_unicode_compatible

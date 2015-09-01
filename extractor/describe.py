@@ -379,9 +379,17 @@ def describe_protein(s1, s2, codon_table=1):
             variant = variants[index]
             index += 1
             seq_list = AISeqList()
+
+            # NOTE: This is for filling.
+            last_end = variants[index].sample_start
+
             while (index < len(variants) and
                     variants[index].type & extractor.FRAME_SHIFT):
-                get_frames(variants[index].type)
+                if last_end != variants[index].sample_start:
+                    seq_list.append(AISeq(
+                        s2[last_end:variants[index].sample_start]))
+                last_end = variants[index].sample_end
+
                 seq_list.append(AISeq(
                     s2[variants[index].sample_start:
                         variants[index].sample_end],
@@ -391,9 +399,12 @@ def describe_protein(s1, s2, codon_table=1):
                     sample_end=variants[index].sample_end,
                     frames=get_frames(variants[index].type)))
 
-                # NOTE: Fill inserted (not covered by fs) positions.
                 # NOTE: Perhaps use trans_open, trans_close to ...
                 index += 1
+
+            if last_end != variant.sample_end:
+                seq_list.append(AISeq(s2[last_end:variant.sample_end]))
+
             var = var_to_protein_var(s1, s2, variant, seq_list,
                 weight_position=extracted.weight_position)
             description.append(var)
