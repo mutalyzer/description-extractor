@@ -1,3 +1,4 @@
+
 # Validate this file using http://lint.travis-ci.org/
 language: python
 sudo: false
@@ -7,13 +8,6 @@ python:
   - "3.3"
   - "3.4"
   - "3.5"
-before_install:
-  - sudo apt-get update -qq
-  - sudo apt-get install -y swig
-  - pip install pytest
-install:
-  - python setup.py install
-=======
 addons:
   apt_packages: swig
 before_install: pip install pytest
