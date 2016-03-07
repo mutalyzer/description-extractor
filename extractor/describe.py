@@ -184,7 +184,7 @@ def var_to_dna_var(s1, s2, var, seq_list=[], weight_position=1):
                 var.reference_start:var.reference_end],
                 weight_position=weight_position)]),
             inserted=ISeqList([ISeq(sequence=s2[
-                var.sample_start:var.reference_end],
+                var.sample_start:var.sample_end],
                 weight_position=weight_position)]),
             weight_position=weight_position)
 
