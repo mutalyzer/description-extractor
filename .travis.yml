@@ -1,5 +1,6 @@
 # Validate this file using http://lint.travis-ci.org/
 language: python
+sudo: false
 python:
   - "2.6"
   - "2.7"
@@ -12,4 +13,9 @@ before_install:
   - pip install pytest
 install:
   - python setup.py install
+=======
+addons:
+  apt_packages: swig
+before_install: pip install pytest
+install: python setup.py install
 script: py.test
