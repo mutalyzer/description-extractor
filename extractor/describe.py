@@ -340,9 +340,9 @@ def describe_dna(s1, s2):
 
 
 def print_var(variant):
-    print('({:3}, {:3}), ({:3}, {:3}), {:08b}'.format(variant.reference_start,
+    print('({:3}, {:3}), ({:3}, {:3}), {:08b}, {}, {}'.format(variant.reference_start,
         variant.reference_end, variant.sample_start, variant.sample_end,
-        variant.type))
+        variant.type, variant.type, variant.sample_end - variant.sample_start))
 
 
 def get_frames(flags):
@@ -375,19 +375,22 @@ def describe_protein(s1, s2, codon_table=1):
 
     index = 0
     while index < len(variants):
-        if not variants[index].type & extractor.IDENTITY:
+        if variants[index].type != extractor.IDENTITY:
             variant = variants[index]
             index += 1
             seq_list = AISeqList()
 
             # NOTE: This is for filling.
-            last_end = variants[index].sample_start
+            last_end = variants[index].reference_start
 
             while (index < len(variants) and
                     variants[index].type & extractor.FRAME_SHIFT):
+
                 if last_end != variants[index].sample_start:
                     seq_list.append(AISeq(
                         s2[last_end:variants[index].sample_start]))
+                        
+
                 last_end = variants[index].sample_end
 
                 seq_list.append(AISeq(
