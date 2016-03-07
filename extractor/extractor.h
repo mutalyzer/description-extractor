@@ -1,15 +1,9 @@
 // *******************************************************************
-//   (C) Copyright 2015 Leiden Institute of Advanced Computer Science
-//   Universiteit Leiden
-//   All Rights Reserved
-// *******************************************************************
 // Extractor (library)
 // *******************************************************************
 // FILE INFORMATION:
 //   File:     extractor.h (implemented in extractor.cc)
 //   Author:   Jonathan K. Vis
-//   Revision: 2.3.0
-//   Date:     2015/07/31
 // *******************************************************************
 // DESCRIPTION:
 //   This library can be used to generate HGVS variant descriptions as
@@ -34,7 +28,7 @@ namespace mutalyzer
 {
 
 // Version string for run-time identification.
-static char const* const VERSION = "2.3.0";
+static char const* const VERSION = "2.3.1";
 
 
 // The character type used for all strings. For now it should just be

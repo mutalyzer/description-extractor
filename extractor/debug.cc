@@ -1,15 +1,9 @@
 // *******************************************************************
-//   (C) Copyright 2015 Leiden Institute of Advanced Computer Science
-//   Universiteit Leiden
-//   All Rights Reserved
-// *******************************************************************
 // Extractor (library)
 // *******************************************************************
 // FILE INFORMATION:
 //   File:     debug.cc
 //   Author:   Jonathan K. Vis
-//   Revision: 2.3.0
-//   Date:     2015/07/31
 // *******************************************************************
 // DESCRIPTION:
 //   This source can be used to debug the Extractor library within

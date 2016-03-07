@@ -1,15 +1,9 @@
 ## *******************************************************************
-##   (C) Copyright 2014 Leiden Institute of Advanced Computer Science
-##   Universiteit Leiden
-##   All Rights Reserved
-## *******************************************************************
 ## Extractor (library)
 ## *******************************************************************
 ## FILE INFORMATION:
 ##   File:     Makefile
 ##   Author:   Jonathan K. Vis
-##   Revision: 2.1.7
-##   Date:     2014/12/18
 ## *******************************************************************
 ## DESCRIPTION:
 ##  Build the Extractor library for python.

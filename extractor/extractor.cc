@@ -1,15 +1,9 @@
 // *******************************************************************
-//   (C) Copyright 2015 Leiden Institute of Advanced Computer Science
-//   Universiteit Leiden
-//   All Rights Reserved
-// *******************************************************************
 // Extractor (library)
 // *******************************************************************
 // FILE INFORMATION:
 //   File:     extractor.cc (depends on extractor.h)
 //   Author:   Jonathan K. Vis
-//   Revision: 2.3.0
-//   Date:     2015/07/31
 // *******************************************************************
 // DESCRIPTION:
 //   This library can be used to generete HGVS variant descriptions as

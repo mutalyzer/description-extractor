@@ -3,7 +3,7 @@ extractor: Extract a list of differences between two sequences.
 
 
 Copyright (c) 2013 Leiden University Medical Center <humgen@lumc.nl>
-Copyright (c) 2013 Jonathan K. Vis <jvis@liacs.nl>
+Copyright (c) 2016 Jonathan K. Vis <j.k.vis@lumc.nl>
 
 Licensed under the MIT license, see the LICENSE file.
 """
@@ -20,7 +20,7 @@ __version_info__ = tuple(extractor.VERSION.split('.'))
 
 __version__ = extractor.VERSION
 __author__ = 'LUMC, Jonathan K. Vis'
-__contact__ = 'jvis@liacs.nl'
+__contact__ = 'j.k.vis@lumc.nl'
 __homepage__ = 'https://github.com/mutalyzer/description-extractor'
 
 

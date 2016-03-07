@@ -1,15 +1,9 @@
 // *******************************************************************
-//   (C) Copyright 2015 Leiden Institute of Advanced Computer Science
-//   Universiteit Leiden
-//   All Rights Reserved
-// *******************************************************************
 // Extractor (library)
 // *******************************************************************
 // FILE INFORMATION:
 //   File:     extractor.i (SWIG interface file)
 //   Author:   Jonathan K. Vis
-//   Revision: 2.2.0
-//   Date:     2015/03/10
 // *******************************************************************
 // DESCRIPTION:
 //   Defines the SWIG interface for the Extractor library for use in
