@@ -79,5 +79,5 @@ setup(
         'Topic :: Scientific/Engineering',
     ],
     keywords='bioinformatics',
-    install_requires=['biopython==1.65']
+    install_requires=['biopython']
 )
