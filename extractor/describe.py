@@ -389,7 +389,6 @@ def describe_protein(s1, s2, codon_table=1):
                 if last_end != variants[index].sample_start:
                     seq_list.append(AISeq(
                         s2[last_end:variants[index].sample_start]))
-                        
 
                 last_end = variants[index].sample_end
 
