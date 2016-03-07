@@ -4,75 +4,38 @@ General utility definitions.
 
 
 from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
+    unicode_literals)
 
 import sys
 
+from Bio.Data import CodonTable
+from Bio.Data.IUPACData import (protein_letters_1to3,
+    protein_letters_1to3_extended)
+from Bio.SeqUtils import seq3
 
 PY2 = sys.version_info[0] == 2
 
 
-# From BioPython.
-protein_letters_1to3 = {
-    'A': 'Ala', 'C': 'Cys', 'D': 'Asp',
-    'E': 'Glu', 'F': 'Phe', 'G': 'Gly', 'H': 'His',
-    'I': 'Ile', 'K': 'Lys', 'L': 'Leu', 'M': 'Met',
-    'N': 'Asn', 'P': 'Pro', 'Q': 'Gln', 'R': 'Arg',
-    'S': 'Ser', 'T': 'Thr', 'V': 'Val', 'W': 'Trp',
-    'Y': 'Tyr',
-}
-protein_letters_1to3_extended = dict(list(protein_letters_1to3.items()) + list({
-    'B': 'Asx', 'X': 'Xaa', 'Z': 'Glx', 'J': 'Xle',
-    'U': 'Sel', 'O': 'Pyl',
-}.items()))
-
-
-# From BioPython.
-def seq3(seq, custom_map={'*': 'Ter'}, undef_code='Xaa'):
-    """Turn a one letter code protein sequence into one with three letter codes.
-
-    The single input argument 'seq' should be a protein sequence using single
-    letter codes, either as a python string or as a Seq or MutableSeq object.
-
-    This function returns the amino acid sequence as a string using the three
-    letter amino acid codes. Output follows the IUPAC standard (including
-    ambiguous characters B for "Asx", J for "Xle" and X for "Xaa", and also U
-    for "Sel" and O for "Pyl") plus "Ter" for a terminator given as an asterisk.
-    Any unknown character (including possible gap characters), is changed into
-    'Xaa'.
-
-    e.g.
-
-    >>> from Bio.SeqUtils import seq3
-    >>> seq3("MAIVMGRWKGAR*")
-    'MetAlaIleValMetGlyArgTrpLysGlyAlaArgTer'
-
-    You can set a custom translation of the codon termination code using the
-    "custom_map" argument, e.g.
-
-    >>> seq3("MAIVMGRWKGAR*", custom_map={"*": "***"})
-    'MetAlaIleValMetGlyArgTrpLysGlyAlaArg***'
-
-    You can also set a custom translation for non-amino acid characters, such
-    as '-', using the "undef_code" argument, e.g.
-
-    >>> seq3("MAIVMGRWKGA--R*", undef_code='---')
-    'MetAlaIleValMetGlyArgTrpLysGlyAla------ArgTer'
-
-    If not given, "undef_code" defaults to "Xaa", e.g.
-
-    >>> seq3("MAIVMGRWKGA--R*")
-    'MetAlaIleValMetGlyArgTrpLysGlyAlaXaaXaaArgTer'
-
-    This function was inspired by BioPerl's seq3.
+def codon_table_string(table_id):
     """
-    # not doing .update() on IUPACData dict with custom_map dict
-    # to preserve its initial state (may be imported in other modules)
-    threecode = dict(list(protein_letters_1to3_extended.items()) +
-                     list(custom_map.items()))
-    #We use a default of 'Xaa' for undefined letters
-    #Note this will map '-' to 'Xaa' which may be undesirable!
-    return ''.join(threecode.get(aa, undef_code) for aa in str(seq))
+    Return the codon table referenced by {table_id} in compresed from. The
+    result consists of a string of amino acids sorted by the codon that
+    translates to them. For example, the codon 'AAG' has position 3 in the
+    sorted list of codons, so its translation 'K' occurs in the third position
+    of the output.
+
+    :arg table_id: ID of a codon table.
+    :type table_id: int
+
+    :returns: String representation of code table referenced by {table_id}.
+    :rtype: str
+    """
+    codons = CodonTable.unambiguous_dna_by_id[table_id].forward_table.items()
+
+    codons += map(lambda x: (x, '*'),
+        CodonTable.unambiguous_dna_by_id[table_id].stop_codons)
+
+    return ''.join(map(lambda x: x[1], sorted(codons)))
 
 
 def swig_str(s, ascii_only=True):

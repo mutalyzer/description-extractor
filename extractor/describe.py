@@ -5,74 +5,15 @@ other.
 
 
 from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
+    unicode_literals)
 
 import math
 
-from .variant import (ISeq, ISeqList, DNAVar, ProteinVar, Allele,
-    ProteinAllele, FrameShiftAnnotationList, FrameShiftAnnotation)
+from Bio.Seq import reverse_complement
+
+from .variant import (ISeq, AISeq, ISeqList, AISeqList, DNAVar, ProteinVar,
+    Allele, ProteinAllele, FS)
 from . import extractor, util
-
-
-# Taken from BioPython.
-AMBIGUOUS_DNA_COMPLEMENT = {
-    'A': 'T',
-    'C': 'G',
-    'G': 'C',
-    'T': 'A',
-    'M': 'K',
-    'R': 'Y',
-    'W': 'W',
-    'S': 'S',
-    'Y': 'R',
-    'K': 'M',
-    'V': 'B',
-    'H': 'D',
-    'D': 'H',
-    'B': 'V',
-    'X': 'X',
-    'N': 'N'}
-AMBIGUOUS_RNA_COMPLEMENT = {
-    'A': 'U',
-    'C': 'G',
-    'G': 'C',
-    'U': 'A',
-    'M': 'K',
-    'R': 'Y',
-    'W': 'W',
-    'S': 'S',
-    'Y': 'R',
-    'K': 'M',
-    'V': 'B',
-    'H': 'D',
-    'D': 'H',
-    'B': 'V',
-    'X': 'X',
-    'N': 'N'}
-
-
-def _make_translation_table(complement_mapping):
-    before = list(complement_mapping.keys())
-    before += [b.lower() for b in before]
-    after = list(complement_mapping.values())
-    after += [b.lower() for b in after]
-    return dict((ord(k), v) for k, v in zip(before, after))
-
-
-_dna_complement_table = _make_translation_table(AMBIGUOUS_DNA_COMPLEMENT)
-_rna_complement_table = _make_translation_table(AMBIGUOUS_RNA_COMPLEMENT)
-
-
-def reverse_complement(sequence):
-    """
-    Reverse complement of a sequence represented as unicode string.
-    """
-    if 'U' in sequence or 'u' in sequence:
-        table = _rna_complement_table
-    else:
-        table = _dna_complement_table
-
-    return ''.join(reversed(sequence.translate(table)))
 
 
 def roll(s, first, last):
@@ -143,7 +84,7 @@ def palinsnoop(s):
              is a 'palindrome'.
     @rtype: int
     """
-    s_revcomp = reverse_complement(s)
+    s_revcomp = reverse_complement(str(s)) # FIXME str inserted.
 
     for i in range(int(math.ceil(len(s) / 2.0))):
         if s[i] != s_revcomp[i]:
@@ -293,7 +234,7 @@ def var_to_protein_var(s1, s2, var, seq_list=[], weight_position=1):
                 start=var.reference_start - ins_length + 1,
                 end=var.reference_end, type='dup', shift=shift,
                 sample_start=var.sample_start + 1, sample_end=var.sample_end,
-                inserted=ISeqList([ISeq(sequence=s2[
+                inserted=AISeqList([AISeq(sequence=s2[
                 var.sample_start:var.sample_end],
                     weight_position=weight_position)]),
                 weight_position=weight_position)
@@ -301,7 +242,7 @@ def var_to_protein_var(s1, s2, var, seq_list=[], weight_position=1):
         return ProteinVar(s1=s1, s2=s2, start=var.reference_start,
             end=var.reference_start + 1,
             inserted=seq_list or
-            ISeqList([ISeq(sequence=s2[var.sample_start:var.sample_end],
+            AISeqList([AISeq(sequence=s2[var.sample_start:var.sample_end],
                 weight_position=weight_position)]),
             type='ins', shift=shift, sample_start=var.sample_start + 1,
             sample_end=var.sample_end, weight_position=weight_position)
@@ -317,7 +258,7 @@ def var_to_protein_var(s1, s2, var, seq_list=[], weight_position=1):
         return ProteinVar(s1=s1, s2=s2, start=var.reference_start + 1,
             end=var.reference_end, type='del', shift=shift,
             sample_start=var.sample_start, sample_end=var.sample_end + 1,
-            deleted=ISeqList([ISeq(sequence=s1[
+            deleted=AISeqList([AISeq(sequence=s1[
                 var.reference_start:var.reference_end],
                 weight_position=weight_position)]),
             weight_position=weight_position)
@@ -328,19 +269,19 @@ def var_to_protein_var(s1, s2, var, seq_list=[], weight_position=1):
         return ProteinVar(s1=s1, s2=s2, start=var.reference_start + 1,
             end=var.reference_end, sample_start=var.sample_start + 1,
             sample_end=var.sample_end, type='subst',
-            deleted=ISeqList([ISeq(sequence=s1[var.reference_start],
+            deleted=AISeqList([AISeq(sequence=s1[var.reference_start],
                 weight_position=weight_position)]),
-            inserted=ISeqList([ISeq(sequence=s2[var.sample_start],
+            inserted=AISeqList([AISeq(sequence=s2[var.sample_start],
                 weight_position=weight_position)]),
             weight_position=weight_position)
 
     # InDel.
     return ProteinVar(s1=s1, s2=s2, start=var.reference_start + 1,
-        end=var.reference_end, deleted=ISeqList([ISeq(sequence=s1[
+        end=var.reference_end, deleted=AISeqList([AISeq(sequence=s1[
                 var.reference_start:var.reference_end],
                 weight_position=weight_position)]),
         inserted=seq_list or
-        ISeqList([ISeq(sequence=s2[var.sample_start:var.sample_end],
+        AISeqList([AISeq(sequence=s2[var.sample_start:var.sample_end],
             weight_position=weight_position)]),
         type='delins', sample_start=var.sample_start + 1,
         sample_end=var.sample_end, weight_position=weight_position)
@@ -364,13 +305,6 @@ def describe_dna(s1, s2):
                                   s2_swig[0], s2_swig[1], extractor.TYPE_DNA)
 
     for variant in extracted.variants:
-        #print(variant.type, variant.reference_start,
-        #    variant.reference_end, variant.sample_start,
-        #    variant.sample_end, variant.transposition_start,
-        #    variant.transposition_end)
-        #print(variant.type & extractor.TRANSPOSITION_OPEN, variant.type &
-        #    extractor.TRANSPOSITION_CLOSE)
-
         if variant.type & extractor.TRANSPOSITION_OPEN:
             if not in_transposition:
                 seq_list = ISeqList()
@@ -405,43 +339,80 @@ def describe_dna(s1, s2):
     return description
 
 
-def describe_protein(s1, s2):
+def print_var(variant):
+    print('({:3}, {:3}), ({:3}, {:3}), {:08b}, {}, {}'.format(variant.reference_start,
+        variant.reference_end, variant.sample_start, variant.sample_end,
+        variant.type, variant.type, variant.sample_end - variant.sample_start))
+
+
+def get_frames(flags):
+    result = []
+
+    for fs in FS:
+        if flags & FS[fs]:
+            result.append(fs)
+
+    return result
+
+
+def describe_protein(s1, s2, codon_table=1):
     """
     """
-    codons = 'KNKNTTTTRSRSIIMIQHQHPPPPRRRRLLLLEDEDAAAAGGGGVVVV*Y*YSSSS*CWCLFLF'
+    codons = util.codon_table_string(codon_table) 
 
     description = ProteinAllele()
-    annotation = FrameShiftAnnotationList()
 
     s1_swig = util.swig_str(s1)
     s2_swig = util.swig_str(s2)
     codons_swig = util.swig_str(codons)
     extracted = extractor.extract(s1_swig[0], s1_swig[1],
         s2_swig[0], s2_swig[1], extractor.TYPE_PROTEIN, codons_swig[0])
+    variants = extracted.variants
 
-    for variant in extracted.variants:
-        if (variant.type & extractor.FRAME_SHIFT and 
-                (variant.type & extractor.FRAME_SHIFT_1 or variant.type &
-                extractor.FRAME_SHIFT_2)):
-            annotation.append(FrameShiftAnnotation(
-                start=variant.reference_start + 1,
-                end=variant.reference_end + 1,
-                sample_start=variant.sample_start + 1,
-                sample_end=variant.sample_end + 1, type=variant.type))
+    #for variant in variants:
+    #    print_var(variant)
+    #print()
 
-    for variant in extracted.variants:
-        if (not variant.type & extractor.FRAME_SHIFT and not
-                variant.type & extractor.IDENTITY):
-            var = var_to_protein_var(s1, s2, variant,
+    index = 0
+    while index < len(variants):
+        if variants[index].type != extractor.IDENTITY:
+            variant = variants[index]
+            index += 1
+            seq_list = AISeqList()
+
+            # NOTE: This is for filling.
+            last_end = variants[index].reference_start
+
+            while (index < len(variants) and
+                    variants[index].type & extractor.FRAME_SHIFT):
+
+                if last_end != variants[index].sample_start:
+                    seq_list.append(AISeq(
+                        s2[last_end:variants[index].sample_start]))
+
+                last_end = variants[index].sample_end
+
+                seq_list.append(AISeq(
+                    s2[variants[index].sample_start:
+                        variants[index].sample_end],
+                    start=variants[index].reference_start + 1,
+                    end=variants[index].reference_end,
+                    sample_start=variants[index].sample_start + 1,
+                    sample_end=variants[index].sample_end,
+                    frames=get_frames(variants[index].type)))
+
+                # NOTE: Perhaps use trans_open, trans_close to ...
+                index += 1
+
+            if last_end != variant.sample_end:
+                seq_list.append(AISeq(s2[last_end:variant.sample_end]))
+
+            var = var_to_protein_var(s1, s2, variant, seq_list,
                 weight_position=extracted.weight_position)
             description.append(var)
-
-    if description[-1].type == 'delins':
-        for frame_shift in annotation:
-            if frame_shift.start >= description[-1].start:
-                description[-1].is_frame_shift = True
+        else:
+            index += 1
 
     if not description:
-        return (ProteinAllele([ProteinVar()]),
-            FrameShiftAnnotationList([FrameShiftAnnotation]))
-    return description, annotation
+        return ProteinAllele([ProteinVar()])
+    return description

@@ -3,8 +3,8 @@ Models for the description extractor.
 """
 
 
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
+from __future__ import (
+    absolute_import, division, print_function, unicode_literals)
 
 from . import extractor
 from extractor.util import python_2_unicode_compatible, seq3, str
@@ -19,11 +19,11 @@ WEIGHTS = {
     'delins': extractor.WEIGHT_DELETION_INSERTION
 }
 FS = {
-    '+1': extractor.FRAME_SHIFT_1,
-    '+2': extractor.FRAME_SHIFT_2,
+    '1': extractor.FRAME_SHIFT_1,
+    '2': extractor.FRAME_SHIFT_2,
     'inv': extractor.FRAME_SHIFT_REVERSE,
-    'inv+1': extractor.FRAME_SHIFT_REVERSE_1,
-    'inv+2': extractor.FRAME_SHIFT_REVERSE_1,
+    '1inv': extractor.FRAME_SHIFT_REVERSE_1,
+    '2inv': extractor.FRAME_SHIFT_REVERSE_1
 }
 
 
@@ -82,15 +82,18 @@ class ISeqList(HGVSList):
     pass
 
 
-class FrameShiftAnnotationList(HGVSList):
-    pass
+class AISeqList(ISeqList):
+    def get_sequence(self):
+        return ''.join(map(lambda x: x.sequence, self.items))
+
 
 @python_2_unicode_compatible
 class ISeq(object):
     """
     Container for an inserted sequence.
     """
-    def __init__(self, sequence='', start=0, end=0, reverse=False,
+    def __init__(
+            self, sequence='', start=0, end=0, reverse=False,
             weight_position=1):
         """
         Initialise the class with the appropriate values.
@@ -122,10 +125,12 @@ class ISeq(object):
         return '{0}_{1}{2}'.format(self.start, self.end, inverted)
 
 
+    # TODO: Is this still used?
     def __bool__(self):
          return bool(self.sequence)
 
 
+    # TODO: Is this still used?
     def __nonzero__(self): # Python 2.x compatibility.
         return self.__bool__()
 
@@ -135,8 +140,50 @@ class ISeq(object):
             return len(self.sequence) * extractor.WEIGHT_BASE
 
         inverse_weight = WEIGHTS['inv'] if self.reverse else 0
-        return (self.weight_position * 2 + extractor.WEIGHT_SEPARATOR +
+        return (
+            self.weight_position * 2 + extractor.WEIGHT_SEPARATOR +
             inverse_weight)
+
+
+@python_2_unicode_compatible
+class AISeq(object):
+    """
+    Container for an annotated inserted sequence.
+    """
+    def __init__(
+            self, sequence='', start=0, end=0, sample_start=0, sample_end=0,
+            frames=[], weight_position=1):
+        """
+        Initialise the class with the appropriate values.
+
+        :arg unicode sequence: Literal inserted sequence.
+        :arg int start: Start position for a transposed sequence.
+        :arg int end: End position for a transposed sequence.
+        """
+        self.sequence = sequence
+        self.start = start
+        self.end = end
+        self.sample_start = sample_start
+        self.sample_end = sample_end
+        self.weight_position = weight_position
+        self.frames = frames
+
+        self.type = 'trans'
+        if self.sequence:
+            self.type = 'ins'
+        if self.frames:
+            self.type = 'fs'
+
+
+    def __str__(self):
+        if self.type == 'ins':
+            return self.sequence
+
+        if self.type == 'trans':
+            return '{}_{}'.format(self.start, self.end)
+
+        return '{}_{}{}|{}'.format(
+            self.start, self.end, self.sequence, '|'.join(self.frames))
 
 
 @python_2_unicode_compatible
@@ -144,9 +191,10 @@ class DNAVar(object):
     """
     Container for a DNA variant.
     """
-    def __init__(self, start=0, start_offset=0, end=0, end_offset=0,
-            sample_start=0, sample_start_offset=0, sample_end=0,
-            sample_end_offset=0, type='none', deleted=ISeqList([ISeq()]),
+    def __init__(
+            self, start=0, start_offset=0, end=0, end_offset=0, sample_start=0,
+            sample_start_offset=0, sample_end=0, sample_end_offset=0,
+            type='none', deleted=ISeqList([ISeq()]),
             inserted=ISeqList([ISeq()]), shift=0, weight_position=1):
         """
         Initialise the class with the appropriate values.
@@ -227,9 +275,10 @@ class ProteinVar(object):
     Container for a protein variant.
 
     """
-    def __init__(self, s1='', s2='', start=0, end=0, sample_start=0,
-            sample_end=0, type='none', deleted=ISeqList([ISeq()]),
-            inserted=ISeqList([ISeq()]), shift=0, term=0, weight_position=1):
+    def __init__(
+            self, s1='', s2='', start=0, end=0, sample_start=0, sample_end=0,
+            type='none', deleted=ISeqList([ISeq()]),
+            inserted=AISeqList([AISeq()]), shift=0, term=0, weight_position=1):
         """
         Initialise the class with the appropriate values.
 
@@ -255,10 +304,10 @@ class ProteinVar(object):
         self.sample_end_aa = s2[sample_end - 1]
         self.type = type
         self.deleted = deleted
-        self.inserted = inserted
+        self.inserted = ISeqList([ISeq(inserted.get_sequence())])
+        self.annotated_inserted = inserted
         self.shift = shift
         self.term = term
-        self.is_frame_shift = False
 
 
     def __str__(self):
@@ -268,15 +317,16 @@ class ProteinVar(object):
         :returns unicode: The HGVS description of the raw variant stored in
             this class.
         """
+        # TODO: ext*
         if self.type == 'unknown':
             return '?'
         if self.type == 'none':
             return '='
 
         description = '{}{}'.format(seq3(self.start_aa), self.start)
-        if self.is_frame_shift:
+        if self.term:
             return description + '{}fs*{}'.format(
-                seq3(self.inserted[0].sequence[0]), self.end - self.start + 2)
+                seq3(self.inserted[0].sequence[0]), self.term)
         if self.start != self.end:
             description += '_{}{}'.format(seq3(self.end_aa), self.end)
 
@@ -284,7 +334,7 @@ class ProteinVar(object):
             description += self.type
 
             if self.type in ('ins', 'delins'):
-                return description + seq3(self.inserted)
+                return description + seq3(str(self.inserted)) # FIXME: str
             return description
         return description + seq3(self.inserted)
 
@@ -305,9 +355,10 @@ class ProteinVar(object):
             description += self.type
 
             if self.type in ('ins', 'delins'):
-                return description + str(self.inserted)
+                return description + str(self.annotated_inserted)
             return description
-        return description + '{}>{}'.format(self.deleted, self.inserted)
+        return description + '{}>{}'.format(
+            self.deleted, self.annotated_inserted)
 
 
 @python_2_unicode_compatible
@@ -315,11 +366,12 @@ class FrameShiftAnnotation(object):
     """
     Container for frame shift annotation.
     """
-    def __init__(self, start=0, end=0, sample_start=0, sample_end=0,
+    def __init__(self, s2='', start=0, end=0, sample_start=0, sample_end=0,
             type='none'):
         """
         Initialise the class with the appropriate values.
 
+        :arg unicode s2: Sample sequence.
         :arg int start: Start position.
         :arg int end: End position.
         :arg int sample_start: Start position.
@@ -330,6 +382,7 @@ class FrameShiftAnnotation(object):
         self.end = end
         self.sample_start = sample_start
         self.sample_end = sample_end
+        self.seq = s2[sample_start - 1:sample_end]
         for fs_type in FS:
             if FS[fs_type] & type:
                 self.type = fs_type
@@ -338,4 +391,4 @@ class FrameShiftAnnotation(object):
     def __str__(self):
         """
         """
-        return '{}_{}fs{}'.format(self.start, self.end, self.type)
+        return '{}_{}{}|{}'.format(self.start, self.end, self.seq, self.type)
