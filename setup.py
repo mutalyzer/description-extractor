@@ -77,5 +77,6 @@ setup(
         'Programming Language :: C++',
         'Topic :: Scientific/Engineering',
     ],
-    keywords='bioinformatics'
+    keywords='bioinformatics',
+    install_requires=['biopython==1.65']
 )
