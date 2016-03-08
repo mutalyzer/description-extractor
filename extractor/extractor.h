@@ -28,7 +28,7 @@ namespace mutalyzer
 {
 
 // Version string for run-time identification.
-static char const* const VERSION = "2.3.1";
+static char const* const VERSION = "2.3.2";
 
 
 // The character type used for all strings. For now it should just be
@@ -695,4 +695,3 @@ size_t Dprint_codon(size_t const index,
 } // mutalyzer
 
 #endif
-
