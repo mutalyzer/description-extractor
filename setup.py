@@ -43,7 +43,7 @@ for line in open(os.path.join('extractor', 'extractor.h')):
         break
 
 try:
-    with open('readme.md') as readme:
+    with open('README.md') as readme:
         long_description = readme.read()
 except IOError:
     long_description = 'See ' + distmeta['__homepage__']
