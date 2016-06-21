@@ -358,20 +358,21 @@ def get_frames(flags):
 def describe_protein(s1, s2, codon_table=1):
     """
     """
-    codons = util.codon_table_string(codon_table) 
+    codons = util.codon_table_string(codon_table)
 
     description = ProteinAllele()
 
     s1_swig = util.swig_str(s1)
     s2_swig = util.swig_str(s2)
     codons_swig = util.swig_str(codons)
+
     extracted = extractor.extract(s1_swig[0], s1_swig[1],
         s2_swig[0], s2_swig[1], extractor.TYPE_PROTEIN, codons_swig[0])
     variants = extracted.variants
 
-    #for variant in variants:
-    #    print_var(variant)
-    #print()
+    for variant in variants:
+        print_var(variant)
+    print()
 
     index = 0
     while index < len(variants):
@@ -386,7 +387,7 @@ def describe_protein(s1, s2, codon_table=1):
             while (index < len(variants) and
                     variants[index].type & extractor.FRAME_SHIFT):
 
-                if last_end != variants[index].sample_start:
+                if last_end < variants[index].sample_start:
                     seq_list.append(AISeq(
                         s2[last_end:variants[index].sample_start]))
 
