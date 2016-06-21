@@ -370,9 +370,9 @@ def describe_protein(s1, s2, codon_table=1):
         s2_swig[0], s2_swig[1], extractor.TYPE_PROTEIN, codons_swig[0])
     variants = extracted.variants
 
-    for variant in variants:
-        print_var(variant)
-    print()
+    #for variant in variants:
+    #    print_var(variant)
+    #print()
 
     index = 0
     while index < len(variants):
@@ -405,7 +405,7 @@ def describe_protein(s1, s2, codon_table=1):
                 # NOTE: Perhaps use trans_open, trans_close to ...
                 index += 1
 
-            if last_end != variant.sample_end:
+            if last_end < variant.sample_end:
                 seq_list.append(AISeq(s2[last_end:variant.sample_end]))
 
             var = var_to_protein_var(s1, s2, variant, seq_list,
