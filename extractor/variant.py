@@ -23,7 +23,7 @@ FS = {
     '2': extractor.FRAME_SHIFT_2,
     'inv': extractor.FRAME_SHIFT_REVERSE,
     '1inv': extractor.FRAME_SHIFT_REVERSE_1,
-    '2inv': extractor.FRAME_SHIFT_REVERSE_1
+    '2inv': extractor.FRAME_SHIFT_REVERSE_2
 }
 
 
