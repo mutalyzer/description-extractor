@@ -28,7 +28,7 @@ namespace mutalyzer
 {
 
 // Version string for run-time identification.
-static char const* const VERSION = "2.3.3";
+static char const* const VERSION = "2.3.4";
 
 
 // The character type used for all strings. For now it should just be
@@ -666,6 +666,16 @@ uint8_t calculate_frame_shift(size_t const reference_1,
 uint8_t frame_shift(char_t const reference_1,
                     char_t const reference_2,
                     char_t const sample);
+
+
+void backtranslation(char_t             reference_DNA[],
+                     char_t             sample_DNA[],
+                     char_t const* const reference,
+                     size_t const        reference_start,
+                     char_t const* const sample,
+                     size_t const        sample_start,
+                     size_t const        length,
+                     uint8_t const       type);
 
 
 #if defined(__debug__)

@@ -121,6 +121,9 @@ class ISeq(object):
         if not (self.start or self.end):
             return ''
 
+        if self.start == self.end:
+             return '{}'.format(self.start)
+
         inverted = 'inv' if self.reverse else ''
         return '{0}_{1}{2}'.format(self.start, self.end, inverted)
 
@@ -180,7 +183,9 @@ class AISeq(object):
             return self.sequence
 
         if self.type == 'trans':
-            return '{}_{}'.format(self.start, self.end)
+            if self.start != self.end:
+                return '{}_{}'.format(self.start, self.end)
+            return '{}'.format(self.start)
 
         return '{}_{}{}|{}'.format(
             self.start, self.end, self.sequence, '|'.join(self.frames))
@@ -193,7 +198,7 @@ class DNAVar(object):
     """
     def __init__(
             self, start=0, start_offset=0, end=0, end_offset=0, sample_start=0,
-            sample_start_offset=0, sample_end=0, sample_end_offset=0,
+            sample_start_offset=0, sample_end=0, sample_end_offset=0, count=0,
             type='none', deleted=ISeqList([ISeq()]),
             inserted=ISeqList([ISeq()]), shift=0, weight_position=1):
         """
@@ -207,6 +212,7 @@ class DNAVar(object):
         :arg int sample_start_offset:
         :arg int sample_end: End position.
         :arg int sample_end_offset:
+        :arg int count
         :arg unicode type: Variant type.
         :arg unicode deleted: Deleted part of the reference sequence.
         :arg ISeqList inserted: Inserted part.
@@ -222,6 +228,7 @@ class DNAVar(object):
         self.sample_start_offset = sample_start_offset
         self.sample_end = sample_end
         self.sample_end_offset = sample_end_offset
+        self.count = count
         self.type = type
         self.deleted = deleted
         self.inserted = inserted
@@ -240,6 +247,9 @@ class DNAVar(object):
             return '?'
         if self.type == 'none':
             return '='
+
+        if self.count > 0:
+            return '{0}({1})'.format(self.inserted, self.count)
 
         description = str(self.start)
 

@@ -26,4 +26,5 @@ __homepage__ = 'https://github.com/mutalyzer/description-extractor'
 
 describe_dna = describe.describe_dna
 describe_protein = describe.describe_protein
+describe_repeats = describe.describe_repeats
 extract = extractor.extract

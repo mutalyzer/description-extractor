@@ -103,7 +103,7 @@ def var_to_dna_var(s1, s2, var, seq_list=[], weight_position=1):
     :arg unicode s2: Sample sequence.
     :arg str var: Variant from the extractor module.
     :arg str seq_list: Container for an inserted sequence.
-    :arg str weight_position: Weight of a position.
+    :arg int weight_position: Weight of a position.
     """
     # Unknown.
     if s1 == '?' or s2 == '?':
@@ -120,7 +120,10 @@ def var_to_dna_var(s1, s2, var, seq_list=[], weight_position=1):
         var.sample_start += shift3
         var.sample_end += shift3
 
+
         if (var.sample_start - ins_length >= 0 and
+                '$' not in s1[var.reference_start - ins_length:var.reference_start] and
+                '$' not in s2[var.sample_start:var.sample_end] and
                 s1[var.reference_start - ins_length:var.reference_start] ==
                 s2[var.sample_start:var.sample_end]):
             # NOTE: We may want to omit the inserted / deleted sequence and
@@ -337,6 +340,90 @@ def describe_dna(s1, s2):
     if not description:
         return Allele([DNAVar()])
     return description
+
+
+
+def mask_string(string, units):
+    MASK = '$'
+    for unit in units:
+        found = string.find(unit)
+        if found != -1:
+            string = string.replace(unit, MASK * len(unit))
+    return string
+
+def get_repeats(string, unit):
+    repeats = []
+    found = string.find(unit, 0)
+    while found != -1:
+        last = len(repeats) - 1
+        if last > -1 and repeats[last]['start'] + repeats[last]['count'] * len(unit) == found:
+            repeats[last]['count'] += 1
+        else:
+            repeats.append({'start': found, 'count': 1, 'unit': unit})
+        found = string.find(unit, found + 1)
+    return repeats
+
+def describe_repeats(reference, sample, units):
+    masked_ref = mask_string(reference, units)
+    masked_alt = mask_string(sample, units)
+
+    repeats = []
+    for unit in units:
+        repeats += get_repeats(sample, unit)
+    repeats = sorted(repeats, key=lambda repeat: repeat['start'])
+
+    ref_swig = util.swig_str(masked_ref)
+    alt_swig = util.swig_str(masked_alt)
+    extracted = extractor.extract(ref_swig[0], ref_swig[1],
+                                  alt_swig[0], alt_swig[1], extractor.TYPE_DNA)
+
+    in_transposition = 0
+    index = 0
+    repeat = 0
+    description = Allele()
+    seq_list = ISeqList()
+    for variant in extracted.variants:
+        while variant.sample_start > index:
+            seq_list.append(DNAVar(type='repeat',inserted=repeats[repeat]['unit'],count=repeats[repeat]['count']))
+            index = repeats[repeat]['start'] + repeats[repeat]['count'] * len(repeats[repeat]['unit'])
+            repeat += 1
+
+        if variant.type & extractor.TRANSPOSITION_OPEN:
+            in_transposition += 1
+
+        if in_transposition:
+            if variant.type & extractor.IDENTITY:
+                seq_list.append(ISeq(start=variant.transposition_start + 1,
+                    end=variant.transposition_end, reverse=False,
+                    weight_position=extracted.weight_position))
+            elif variant.type & extractor.REVERSE_COMPLEMENT:
+                seq_list.append(ISeq(start=variant.transposition_start + 1,
+                    end=variant.transposition_end, reverse=True,
+                    weight_position=extracted.weight_position))
+            else:
+                seq_list.append(ISeq(
+                    sequence=sample[variant.sample_start:variant.sample_end],
+                    weight_position=extracted.weight_position))
+        elif variant.type & extractor.IDENTITY:
+            seq_list.append(ISeq(start=variant.reference_start + 1,
+                end=variant.reference_end, reverse=False,weight_position=extracted.weight_position))
+        elif variant.type & extractor.REVERSE_COMPLEMENT:
+            seq_list.append(ISeq(start=variant.reference_start + 1,
+                end=variant.reference_end, reverse=True,weight_position=extracted.weight_position))
+        else:
+            seq_list.append(ISeq(sequence=sample[variant.sample_start:variant.sample_end],
+                weight_position=extracted.weight_position))
+
+        if variant.type & extractor.TRANSPOSITION_CLOSE:
+            in_transposition -= 1
+
+        index = variant.sample_end
+
+    description.append(DNAVar(start=1,end=len(reference),sample_start=1,sample_end=len(sample),type='delins',inserted=seq_list))
+
+    print(description)
+
+
 
 
 def print_var(variant):

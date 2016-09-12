@@ -67,6 +67,10 @@ static uint64_t acid_map[128] = {0x0ull};
 static double acid_frequency[128] = {.0f};
 static double frame_shift_frequency[128][128][5] = {{{.0f}}};
 
+// This character is always ignored when LCS matching and can be used for
+// repeat masking
+static char_t const MASK = '$';
+
 // Only used to interface to Python: calls the C++ extract function.
 Variant_List extract(char_t const* const reference,
                      size_t const        reference_length,
@@ -200,12 +204,40 @@ size_t extract(std::vector<Variant> &variant,
 size_t extractor(std::vector<Variant> &variant,
                  char_t const* const   reference,
                  char_t const* const   complement,
-                 size_t const          reference_start,
-                 size_t const          reference_end,
+                 size_t           reference_start,
+                 size_t           reference_end,
                  char_t const* const   sample,
-                 size_t const          sample_start,
-                 size_t const          sample_end)
+                 size_t           sample_start,
+                 size_t           sample_end)
 {
+  // First do prefix and suffix matching on the MASK character
+  size_t i = 0;
+  while (reference_start + i < reference_end && reference[reference_start + i] == MASK)
+  {
+    ++i;
+  } // while
+  reference_start += i;
+  i = 0;
+  while (reference_end - i - 1 > reference_start && reference[reference_end - i - 1] == MASK)
+  {
+    ++i;
+  } // while
+  reference_end -= i;
+
+  i = 0;
+  while (sample_start + i < sample_end && sample[sample_start + i] == MASK)
+  {
+    ++i;
+  } // while
+  sample_start += i;
+  i = 0;
+  while (sample_end - i - 1 > sample_start && sample[sample_end - i - 1] == MASK)
+  {
+    ++i;
+  } // while
+  sample_end -= i;
+
+
   size_t const reference_length = reference_end - reference_start;
   size_t const sample_length = sample_end - sample_start;
 
@@ -911,11 +943,11 @@ size_t LCS(std::vector<Substring> &substring,
 
 
   // The initial k.
-  size_t k = reference_length > sample_length ? sample_length / 4 : reference_length / 4;
+  size_t k = reference_length > sample_length ? sample_length / 8 : reference_length / 8;
 
 
   // Reduce k until the cut-off is reached.
-  while (k > 4 && k > cut_off)
+  while (k > 8 && k > cut_off)
   {
 
 
@@ -990,7 +1022,7 @@ size_t LCS_1(std::vector<Substring> &substring,
     for (size_t j = 0; j < reference_length; ++j)
     {
       // A match
-      if (reference[reference_start + j] == sample[sample_start + i])
+      if (reference[reference_start + j] == sample[sample_start + i] && reference[reference_start + j] != MASK)
       {
         if (i == 0 || j == 0)
         {
@@ -1024,7 +1056,7 @@ size_t LCS_1(std::vector<Substring> &substring,
       // If applicable check for a LCS in reverse complement space.
       // The same code is used as before but the complement string is
       // travesed backwards (towards the start).
-      if (complement != 0 && complement[reference_end - j - 1] == sample[sample_start + i])
+      if (complement != 0 && complement[reference_end - j - 1] == sample[sample_start + i] && complement[reference_end - j - 1] != MASK)
       {
         if (i == 0 || j == 0)
         {
@@ -1206,7 +1238,7 @@ size_t LCS_k(std::vector<Substring> &substring,
       // Extending to the right.
       {
         size_t i = 0;
-        while (i <= k && it->reference_index + it->length + i < reference_end && it->sample_index + it->length + i < sample_end && reference[it->reference_index + it->length + i] == sample[it->sample_index + it->length + i])
+        while (i <= k && it->reference_index + it->length + i < reference_end && it->sample_index + it->length + i < sample_end && reference[it->reference_index + it->length + i] == sample[it->sample_index + it->length + i] && reference[it->reference_index + it->length + i] != MASK)
         {
           ++i;
         } // while
@@ -1215,7 +1247,7 @@ size_t LCS_k(std::vector<Substring> &substring,
       // Extending to the left.
       {
         size_t i = 0;
-        while (i <= k && it->reference_index - i - 1 >= reference_start && it->sample_index - i - 1 >= sample_start && reference[it->reference_index - i - 1] == sample[it->sample_index - i - 1])
+        while (i <= k && it->reference_index - i - 1 >= reference_start && it->sample_index - i - 1 >= sample_start && reference[it->reference_index - i - 1] == sample[it->sample_index - i - 1] && reference[it->reference_index - i - 1] != MASK)
         {
           ++i;
         } // while
@@ -1232,7 +1264,7 @@ size_t LCS_k(std::vector<Substring> &substring,
       // Extending to the right (sample orientation).
       {
         size_t i = 0;
-        while (i <= k && it->reference_index - i - 1 >= reference_start && it->sample_index + it->length + i < sample_end && complement[it->reference_index - i - 1] == sample[it->sample_index + it->length + i])
+        while (i <= k && it->reference_index - i - 1 >= reference_start && it->sample_index + it->length + i < sample_end && complement[it->reference_index - i - 1] == sample[it->sample_index + it->length + i] && complement[it->reference_index - i - 1] != MASK)
         {
           ++i;
         } // while
@@ -1242,7 +1274,7 @@ size_t LCS_k(std::vector<Substring> &substring,
       // Extending to the left (sample orientation).
       {
         size_t i = 0;
-        while (i <= k && it->reference_index + it->length + i < reference_end && it->sample_index - i - 1 >= sample_start && complement[it->reference_index + it->length + i] == sample[it->sample_index - i - 1])
+        while (i <= k && it->reference_index + it->length + i < reference_end && it->sample_index - i - 1 >= sample_start && complement[it->reference_index + it->length + i] == sample[it->sample_index - i - 1] && complement[it->reference_index + it->length + i] != MASK)
         {
           ++i;
         } // while
@@ -1407,7 +1439,7 @@ bool string_match(char_t const* const string_1,
 {
   for (size_t i = 0; i < length; ++i)
   {
-    if (string_1[i] != string_2[i])
+    if (string_1[i] != string_2[i] || string_1[i] == MASK)
     {
       return false;
     } // if
@@ -1425,7 +1457,7 @@ bool string_match_reverse(char_t const* const string_1,
 {
   for (size_t i = 0; i < length; ++i)
   {
-    if (string_1[-i] != string_2[i])
+    if (string_1[-i] != string_2[i] || string_1[-i] == MASK)
     {
       return false;
     } // if
@@ -1445,7 +1477,7 @@ size_t prefix_match(char_t const* const reference,
 
   // Traverse both strings towards the end as long as their characters
   // are equal. Do NOT exceed the length of the strings.
-  while (i < reference_length && i < sample_length && reference[i] == sample[i])
+  while (i < reference_length && i < sample_length && reference[i] == sample[i] && reference[i] != MASK)
   {
     ++i;
   } // while
@@ -1466,7 +1498,7 @@ size_t suffix_match(char_t const* const reference,
   // Start at the end of both strings and traverse towards the start
   // as long as their characters are equal. Do not exceed the length
   // of the strings.
-  while (i < reference_length - prefix && i < sample_length - prefix && reference[reference_length - i - 1] == sample[sample_length - i - 1])
+  while (i < reference_length - prefix && i < sample_length - prefix && reference[reference_length - i - 1] == sample[sample_length - i - 1] && reference[reference_length - i - 1] != MASK)
   {
     ++i;
   } // while
@@ -1506,8 +1538,8 @@ char_t const* IUPAC_complement(char_t const* const string,
   return complement;
 } // IUPAC_complement
 
-void backtranslation(size_t              reference_DNA[],
-                     size_t              sample_DNA[],
+void backtranslation(char_t              ref_DNA[],
+                     char_t              alt_DNA[],
                      char_t const* const reference,
                      size_t const        reference_start,
                      char_t const* const sample,
@@ -1515,11 +1547,14 @@ void backtranslation(size_t              reference_DNA[],
                      size_t const        length,
                      uint8_t const       type)
 {
-  for (size_t i = 0; i < 3 * length; ++ i)
+  size_t reference_DNA[3 * length];
+  size_t sample_DNA[3 * length];
+  for (size_t i = 0; i < 3 * length; i++)
   {
     reference_DNA[i] = 0;
     sample_DNA[i] = 0;
   } // for
+
   for (size_t p = 0; p < length; ++p)
   {
     for (size_t i = 0; i < 64; ++i)
@@ -1602,6 +1637,11 @@ void backtranslation(size_t              reference_DNA[],
         } // for
       } // if
     } // for
+  } // for
+  for (size_t i = 0; i < 3 * length; i++)
+  {
+    ref_DNA[i] = IUPAC_ALPHA[reference_DNA[i]];
+    alt_DNA[i] = IUPAC_ALPHA[sample_DNA[i]];
   } // for
   return;
 } // backtranslation
