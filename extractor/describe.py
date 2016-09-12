@@ -377,10 +377,10 @@ def describe_repeats(reference, sample, units):
     prefix = describe_dna(reference[:reference_start], sample[:sample_start])
     for variant in prefix:
         if variant.type != 'none':
-            variant.start -= reference_start
-            variant.end -= reference_start
-            variant.sample_start -= sample_start
-            variant.sample_end -= sample_end
+            variant.start -= reference_start + 1
+            variant.end -= reference_start + 1
+            variant.sample_start -= sample_start + 1
+            variant.sample_end -= sample_end + 1
             description.append(variant)
 
     ref_swig = util.swig_str(masked_ref[reference_start:reference_end])
@@ -438,17 +438,18 @@ def describe_repeats(reference, sample, units):
         seq_list.append(DNAVar(type='repeat',inserted=repeats[repeat]['unit'],count=repeats[repeat]['count']))
         repeat += 1
 
-    
-
     description.append(DNAVar(start=1,end=reference_end - reference_start,sample_start=1,sample_end=len(sample),type='delins',inserted=seq_list))
 
     suffix = describe_dna(reference[reference_end:], sample[sample_end:])
     for variant in suffix:
         if variant.type != 'none':
+            variant.start += reference_end - reference_start
+            variant.end += reference_end - reference_start
+            variant.sample_start += sample_end - sample_start
+            variant.sample_end += sample_end - sample_start
             description.append(variant)
 
-
-    print(description)
+    print('l.{}'.format(description))
 
 
 
