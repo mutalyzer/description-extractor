@@ -364,23 +364,38 @@ def get_repeats(string, unit):
     return repeats
 
 def describe_repeats(reference, sample, units):
+    MASK = '$'
     masked_ref = mask_string(reference, units)
     masked_alt = mask_string(sample, units)
 
-    repeats = []
-    for unit in units:
-        repeats += get_repeats(sample, unit)
-    repeats = sorted(repeats, key=lambda repeat: repeat['start'])
+    reference_start = max(0, masked_ref.find(MASK))
+    reference_end = min(len(masked_ref), masked_ref.rfind(MASK)) + 1
+    sample_start = max(0, masked_alt.find(MASK))
+    sample_end = min(len(masked_alt), masked_alt.rfind(MASK)) + 1
 
-    ref_swig = util.swig_str(masked_ref)
-    alt_swig = util.swig_str(masked_alt)
+    description = Allele()
+    prefix = describe_dna(reference[:reference_start], sample[:sample_start])
+    for variant in prefix:
+        if variant.type != 'none':
+            variant.start -= reference_start
+            variant.end -= reference_start
+            variant.sample_start -= sample_start
+            variant.sample_end -= sample_end
+            description.append(variant)
+
+    ref_swig = util.swig_str(masked_ref[reference_start:reference_end])
+    alt_swig = util.swig_str(masked_alt[sample_start:sample_end])
     extracted = extractor.extract(ref_swig[0], ref_swig[1],
                                   alt_swig[0], alt_swig[1], extractor.TYPE_DNA)
+
+    repeats = []
+    for unit in units:
+        repeats += get_repeats(sample[sample_start:sample_end], unit)
+    repeats = sorted(repeats, key=lambda repeat: repeat['start'])
 
     in_transposition = 0
     index = 0
     repeat = 0
-    description = Allele()
     seq_list = ISeqList()
     for variant in extracted.variants:
         while variant.sample_start > index:
@@ -402,7 +417,7 @@ def describe_repeats(reference, sample, units):
                     weight_position=extracted.weight_position))
             else:
                 seq_list.append(ISeq(
-                    sequence=sample[variant.sample_start:variant.sample_end],
+                    sequence=sample[variant.sample_start + sample_start:variant.sample_end + sample_start],
                     weight_position=extracted.weight_position))
         elif variant.type & extractor.IDENTITY:
             seq_list.append(ISeq(start=variant.reference_start + 1,
@@ -411,7 +426,7 @@ def describe_repeats(reference, sample, units):
             seq_list.append(ISeq(start=variant.reference_start + 1,
                 end=variant.reference_end, reverse=True,weight_position=extracted.weight_position))
         else:
-            seq_list.append(ISeq(sequence=sample[variant.sample_start:variant.sample_end],
+            seq_list.append(ISeq(sequence=sample[variant.sample_start + sample_start:variant.sample_end + sample_start],
                 weight_position=extracted.weight_position))
 
         if variant.type & extractor.TRANSPOSITION_CLOSE:
@@ -419,7 +434,19 @@ def describe_repeats(reference, sample, units):
 
         index = variant.sample_end
 
-    description.append(DNAVar(start=1,end=len(reference),sample_start=1,sample_end=len(sample),type='delins',inserted=seq_list))
+    while repeat < len(repeats):
+        seq_list.append(DNAVar(type='repeat',inserted=repeats[repeat]['unit'],count=repeats[repeat]['count']))
+        repeat += 1
+
+    
+
+    description.append(DNAVar(start=1,end=reference_end - reference_start,sample_start=1,sample_end=len(sample),type='delins',inserted=seq_list))
+
+    suffix = describe_dna(reference[reference_end:], sample[sample_end:])
+    for variant in suffix:
+        if variant.type != 'none':
+            description.append(variant)
+
 
     print(description)
 
