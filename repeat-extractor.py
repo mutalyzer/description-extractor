@@ -95,20 +95,39 @@ for line in lines:
     else:
         sequences[label] = [string.strip()]
 
-for sequence in sequences:
-    reference = sequences[sequence][0]
-    repeats = short_sequence_repeat_extractor(reference, min_length)
-    units = {}
-    for repeat in repeats:
-        if repeat.count + 1 >= min_count:
-            units[reference[repeat.start:repeat.end]] = repeat.count + 1
-    unit_list = []
-    for unit in units:
-        unit_list.append(unit)
+select = 'D8S1179'
+unit_list = ['TCTA', 'TATC']
+reference = sequences[select][0]
+sample = sequences[select][7]
+description = describe_repeats(reference, sample, unit_list)
+print 'l.{}'.format(description)
 
-    print sequence, unit_list
-    for string in sequences[sequence]:
-        description = describe_repeats(reference, string, unit_list)
-        print 'l.{}'.format(description)
-    print
+
+#for sequence in sequences:
+#    best = 0
+#    for string in sequences[sequence]:
+#        repeats = short_sequence_repeat_extractor(string, min_length)
+#        score = 0
+#        for repeat in repeats:
+#            if repeat.count + 1 >= min_count:
+#                score += (repeat.end - repeat.start) * (repeat.end - repeat.start) * (repeat.count + 1)
+#        if score > best:
+#            reference = string
+#            best = score
+
+#    repeats = short_sequence_repeat_extractor(reference, min_length)
+#    units = {}
+#    for repeat in repeats:
+#        if repeat.count + 1 >= min_count:
+#            units[reference[repeat.start:repeat.end]] = repeat.count + 1
+#    unit_list = []
+#    for unit in units:
+#        unit_list.append(unit)
+
+#    print sequence, unit_list
+#    reference = sequences[sequence][0]
+#    for string in sequences[sequence]:
+#        description = describe_repeats(reference, string, unit_list)
+#        print 'l.{}'.format(description)
+#    print
 

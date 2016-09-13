@@ -360,7 +360,7 @@ def mask_string(string, units):
 
 def describe_repeats(reference, sample, units):
     MASK = '$'
-    masked_ref, ref_rep = mask_string(reference, units)
+    masked_ref, _ = mask_string(reference, units)
     masked_alt, repeats = mask_string(sample, units)
 
     reference_start = max(0, masked_ref.find(MASK))
@@ -372,10 +372,6 @@ def describe_repeats(reference, sample, units):
     prefix = describe_dna(reference[:reference_start], sample[:sample_start])
     for variant in prefix:
         if variant.type != 'none':
-            variant.start -= reference_start + 1
-            variant.end -= reference_start + 1
-            variant.sample_start -= sample_start + 1
-            variant.sample_end -= sample_end + 1
             description.append(variant)
 
     ref_swig = util.swig_str(masked_ref[reference_start:reference_end])
@@ -383,14 +379,50 @@ def describe_repeats(reference, sample, units):
     extracted = extractor.extract(ref_swig[0], ref_swig[1],
                                   alt_swig[0], alt_swig[1], extractor.TYPE_DNA)
 
+    variant_list = []
+    for variant in extracted.variants:
+        replaced = []
+        i = variant.sample_start
+        start = i
+        while i < variant.sample_end:
+            while i < variant.sample_end and masked_alt[i + sample_start] != MASK:
+                i += 1
+            if i < variant.sample_end:
+                split = extractor.Variant()
+                split.reference_start = variant.reference_start
+                split.reference_end = variant.reference_end
+                split.sample_start = start
+                split.sample_end = i
+                split.type = variant.type
+                split.transposition_start = variant.transposition_start
+                split.transposition_end = variant.transposition_end
+                replaced.append(split)
+                while i < variant.sample_end and masked_alt[i + sample_start] == MASK:
+                    i += 1
+                start = i
+
+        if len(replaced) > 0:
+            split = extractor.Variant()
+            split.reference_start = variant.reference_start
+            split.reference_end = variant.reference_end
+            split.sample_start = start
+            split.sample_end = variant.sample_end
+            split.type = variant.type
+            split.transposition_start = variant.transposition_start
+            split.transposition_end = variant.transposition_end
+            replaced.append(split)
+            variant_list += replaced
+        else:
+            variant_list.append(variant)
+
     in_transposition = 0
     index = 0
     repeat = 0
     seq_list = ISeqList()
-    for variant in extracted.variants:
+    for variant in variant_list:
         while variant.sample_start > index and repeat < len(repeats):
             seq_list.append(DNAVar(type='repeat',inserted=repeats[repeat]['unit'],count=repeats[repeat]['count']))
-            index = repeats[repeat]['start'] + repeats[repeat]['count'] * len(repeats[repeat]['unit']) - sample_start
+            index = repeats[repeat]['start'] + repeats[repeat]['count'] * len(repeats[repeat]['unit'])
             repeat += 1
 
         if variant.type & extractor.TRANSPOSITION_OPEN:
@@ -398,24 +430,24 @@ def describe_repeats(reference, sample, units):
 
         if in_transposition:
             if variant.type & extractor.IDENTITY:
-                seq_list.append(ISeq(start=variant.transposition_start + 1,
-                    end=variant.transposition_end, reverse=False,
+                seq_list.append(ISeq(start=variant.transposition_start + 1 + reference_start,
+                    end=variant.transposition_end + reference_start, reverse=False,
                     weight_position=extracted.weight_position))
             elif variant.type & extractor.REVERSE_COMPLEMENT:
-                seq_list.append(ISeq(start=variant.transposition_start + 1,
-                    end=variant.transposition_end, reverse=True,
+                seq_list.append(ISeq(start=variant.transposition_start + 1 + reference_start,
+                    end=variant.transposition_end + reference_start, reverse=True,
                     weight_position=extracted.weight_position))
-            else:
+            else: #bases insertion
                 seq_list.append(ISeq(
                     sequence=sample[variant.sample_start + sample_start:variant.sample_end + sample_start],
                     weight_position=extracted.weight_position))
         elif variant.type & extractor.IDENTITY:
-            seq_list.append(ISeq(start=variant.reference_start + 1,
-                end=variant.reference_end, reverse=False,weight_position=extracted.weight_position))
+            seq_list.append(ISeq(start=variant.reference_start + 1 + reference_start,
+                end=variant.reference_end + reference_start, reverse=False,weight_position=extracted.weight_position))
         elif variant.type & extractor.REVERSE_COMPLEMENT:
-            seq_list.append(ISeq(start=variant.reference_start + 1,
-                end=variant.reference_end, reverse=True,weight_position=extracted.weight_position))
-        else:
+            seq_list.append(ISeq(start=variant.reference_start + 1 + reference_start,
+                end=variant.reference_end + reference_start, reverse=True,weight_position=extracted.weight_position))
+        else: #bases insertion
             seq_list.append(ISeq(sequence=sample[variant.sample_start + sample_start:variant.sample_end + sample_start],
                 weight_position=extracted.weight_position))
 
@@ -428,15 +460,11 @@ def describe_repeats(reference, sample, units):
         seq_list.append(DNAVar(type='repeat',inserted=repeats[repeat]['unit'],count=repeats[repeat]['count']))
         repeat += 1
 
-    description.append(DNAVar(start=1,end=reference_end - reference_start,sample_start=1,sample_end=len(sample),type='delins',inserted=seq_list))
+    description.append(DNAVar(start=reference_start + 1,end=reference_end,sample_start=sample_start,sample_end=sample_end,type='delins',inserted=seq_list))
 
     suffix = describe_dna(reference[reference_end:], sample[sample_end:])
     for variant in suffix:
         if variant.type != 'none':
-            variant.start += reference_end - reference_start
-            variant.end += reference_end - reference_start
-            variant.sample_start += sample_end - sample_start
-            variant.sample_end += sample_end - sample_start
             description.append(variant)
 
     return description
