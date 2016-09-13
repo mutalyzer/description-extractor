@@ -460,12 +460,17 @@ def describe_repeats(reference, sample, units):
         seq_list.append(DNAVar(type='repeat',inserted=repeats[repeat]['unit'],count=repeats[repeat]['count']))
         repeat += 1
 
-    description.append(DNAVar(start=reference_start + 1,end=reference_end,sample_start=sample_start,sample_end=sample_end,type='delins',inserted=seq_list))
+    if len(variant_list) > 0 or len(repeats) > 0:
+        description.append(DNAVar(start=reference_start + 1,end=reference_end,sample_start=sample_start,sample_end=sample_end,type='delins',inserted=seq_list))
 
-    suffix = describe_dna(reference[reference_end:], sample[sample_end:])
-    for variant in suffix:
-        if variant.type != 'none':
-            description.append(variant)
+        suffix = describe_dna(reference[reference_end:], sample[sample_end:])
+        for variant in suffix:
+            if variant.type != 'none':
+                variant.start += reference_end
+                variant.end += reference_end
+                description.append(variant)
+    else:
+        description = prefix
 
     return description
 
