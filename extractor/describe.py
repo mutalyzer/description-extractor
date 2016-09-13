@@ -345,28 +345,23 @@ def describe_dna(s1, s2):
 
 def mask_string(string, units):
     MASK = '$'
+    repeats = []
     for unit in units:
         found = string.find(unit)
-        if found != -1:
-            string = string.replace(unit, MASK * len(unit))
-    return string
-
-def get_repeats(string, unit):
-    repeats = []
-    found = string.find(unit, 0)
-    while found != -1:
-        last = len(repeats) - 1
-        if last > -1 and repeats[last]['start'] + repeats[last]['count'] * len(unit) == found:
-            repeats[last]['count'] += 1
-        else:
-            repeats.append({'start': found, 'count': 1, 'unit': unit})
-        found = string.find(unit, found + 1)
-    return repeats
+        while found != -1:
+            last = len(repeats) - 1
+            if last > -1 and repeats[last]['start'] + repeats[last]['count'] * len(unit) == found:
+                repeats[last]['count'] += 1
+            else:
+                repeats.append({'start': found, 'count': 1, 'unit': unit})
+            string = string[:found] + MASK * len(unit) + string[found + len(unit):]
+            found = string.find(unit, found + len(unit))
+    return string, sorted(repeats, key=lambda repeat: repeat['start'])
 
 def describe_repeats(reference, sample, units):
     MASK = '$'
-    masked_ref = mask_string(reference, units)
-    masked_alt = mask_string(sample, units)
+    masked_ref, ref_rep = mask_string(reference, units)
+    masked_alt, repeats = mask_string(sample, units)
 
     reference_start = max(0, masked_ref.find(MASK))
     reference_end = min(len(masked_ref), masked_ref.rfind(MASK)) + 1
@@ -388,19 +383,14 @@ def describe_repeats(reference, sample, units):
     extracted = extractor.extract(ref_swig[0], ref_swig[1],
                                   alt_swig[0], alt_swig[1], extractor.TYPE_DNA)
 
-    repeats = []
-    for unit in units:
-        repeats += get_repeats(sample[sample_start:sample_end], unit)
-    repeats = sorted(repeats, key=lambda repeat: repeat['start'])
-
     in_transposition = 0
     index = 0
     repeat = 0
     seq_list = ISeqList()
     for variant in extracted.variants:
-        while variant.sample_start > index:
+        while variant.sample_start > index and repeat < len(repeats):
             seq_list.append(DNAVar(type='repeat',inserted=repeats[repeat]['unit'],count=repeats[repeat]['count']))
-            index = repeats[repeat]['start'] + repeats[repeat]['count'] * len(repeats[repeat]['unit'])
+            index = repeats[repeat]['start'] + repeats[repeat]['count'] * len(repeats[repeat]['unit']) - sample_start
             repeat += 1
 
         if variant.type & extractor.TRANSPOSITION_OPEN:
@@ -449,9 +439,7 @@ def describe_repeats(reference, sample, units):
             variant.sample_end += sample_end - sample_start
             description.append(variant)
 
-    print('l.{}'.format(description))
-
-
+    return description
 
 
 def print_var(variant):

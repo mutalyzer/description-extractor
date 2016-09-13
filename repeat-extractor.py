@@ -108,7 +108,7 @@ for sequence in sequences:
 
     print sequence, unit_list
     for string in sequences[sequence]:
-        describe_repeats(reference, string, unit_list)
+        description = describe_repeats(reference, string, unit_list)
+        print 'l.{}'.format(description)
     print
-
 
