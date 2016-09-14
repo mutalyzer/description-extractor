@@ -463,7 +463,7 @@ def describe_repeats(reference, sample, units):
         repeat += 1
 
     if len(variant_list) > 0 or len(repeats) > 0:
-        description.append(DNAVar(start=reference_start + 1,end=reference_end,sample_start=sample_start,sample_end=sample_end,type='delins',inserted=seq_list))
+        description.append(DNAVar(start=reference_start + 1,end=reference_end,sample_start=sample_start,sample_end=sample_end,type='struct',inserted=seq_list))
 
         suffix = describe_dna(reference[reference_end:], sample[sample_end:])
         for variant in suffix:

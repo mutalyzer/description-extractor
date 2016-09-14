@@ -261,6 +261,8 @@ class DNAVar(object):
 
             if self.type in ('ins', 'delins'):
                 return description + str(self.inserted)
+            elif self.type == 'struct':
+                return str(self.inserted)
             return description
 
         return description + '{0}>{1}'.format(self.deleted, self.inserted)
