@@ -477,10 +477,10 @@ def describe_repeats(reference, sample, units):
     cm = Crossmap([reference_start + 1, reference_end], [], 1)
     for variant in description:
         for inserted in variant.inserted:
-            inserted.start = cm.tuple2string(cm.g2x(inserted.start))
-            inserted.end = cm.tuple2string(cm.g2x(inserted.end))
-        variant.start = cm.tuple2string(cm.g2x(variant.start))
-        variant.end = cm.tuple2string(cm.g2x(variant.end))
+            inserted.start = cm.tuple2string(cm.g2x(int(inserted.start)))
+            inserted.end = cm.tuple2string(cm.g2x(int(inserted.end)))
+        variant.start = cm.tuple2string(cm.g2x(int(variant.start)))
+        variant.end = cm.tuple2string(cm.g2x(int(variant.end)))
 
     return description, reference_start, reference_end
 
