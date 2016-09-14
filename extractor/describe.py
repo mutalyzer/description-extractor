@@ -15,6 +15,8 @@ from .variant import (ISeq, AISeq, ISeqList, AISeqList, DNAVar, ProteinVar,
     Allele, ProteinAllele, FS)
 from . import extractor, util
 
+from crossmapper import Crossmap
+
 
 def roll(s, first, last):
     """
@@ -472,7 +474,15 @@ def describe_repeats(reference, sample, units):
     else:
         description = prefix
 
-    return description
+    cm = Crossmap([reference_start + 1, reference_end], [], 1)
+    for variant in description:
+        for inserted in variant.inserted:
+            inserted.start = cm.tuple2string(cm.g2x(inserted.start))
+            inserted.end = cm.tuple2string(cm.g2x(inserted.end))
+        variant.start = cm.tuple2string(cm.g2x(variant.start))
+        variant.end = cm.tuple2string(cm.g2x(variant.end))
+
+    return description, reference_start, reference_end
 
 
 def print_var(variant):

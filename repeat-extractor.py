@@ -4,7 +4,6 @@ from __future__ import unicode_literals
 
 from extractor import *
 
-
 #ref = 'AGCTGTGGGAGGGAGCCAGTGGATTTGGAAACAGAAATGGCTTGGCCTTGCCTGCCTGCCTGCCTGCCTTCCTTCCTTCCTTCCTTCCTTCCTTCCTTCCTTCCTTCCTTCCTTCCCTCCTGCAATCCTTTAACTTACTGAATAACTCATGATTATGGGCCACCTGCAGGTACCATGCTAG'
 #alt = 'AGCTGTGGGAGGGAGCCAGTGGATTTGGAAACAGAAATGGCTTCGCCTTGCCTGCCTGCCTGCCTGCCTTCCTTCCTTCCTTCCTTCCTTCCTTCCTTCCTTCCTTCCTTCCTTCCGTCCTTCCTTCCCTCCTGCAATCCTATAACTTACTGAATAACTCATGATTATGGGCCACCTGCAGGTACCATGCTAG'
 #units = ['TCCT', 'GCCT']
@@ -95,39 +94,47 @@ for line in lines:
     else:
         sequences[label] = [string.strip()]
 
-#select = 'Amel'
-#unit_list = ['TATC']
-#reference = sequences[select][0]
-#sample = sequences[select][0]
-#description = describe_repeats(reference, sample, unit_list)
-#print 'l.{}'.format(description)
+select = 'D13S317'
+unit_list = ['TATC']
+reference = sequences[select][0]
+sample = sequences[select][0]
+description, _, _ = describe_repeats(reference, sample, unit_list)
+print 'l.{}'.format(description)
 
 
-for sequence in sequences:
-    best = 0
-    for string in sequences[sequence]:
-        repeats = short_sequence_repeat_extractor(string, min_length)
-        score = 0
-        for repeat in repeats:
-            if repeat.count + 1 >= min_count:
-                score += (repeat.end - repeat.start) * (repeat.end - repeat.start) * (repeat.count + 1)
-        if score > best:
-            reference = string
-            best = score
+#for sequence in sequences:
+#    best = 0
+#    for string in sequences[sequence]:
+#        repeats = short_sequence_repeat_extractor(string, min_length)
+#        score = 0
+#        for repeat in repeats:
+#            if repeat.count + 1 >= min_count:
+#                score += (repeat.end - repeat.start) * (repeat.end - repeat.start) * (repeat.count + 1)
+#        if score > best:
+#            reference = string
+#            best = score
 
-    repeats = short_sequence_repeat_extractor(reference, min_length)
-    units = {}
-    for repeat in repeats:
-        if repeat.count + 1 >= min_count:
-            units[reference[repeat.start:repeat.end]] = repeat.count + 1
-    unit_list = []
-    for unit in units:
-        unit_list.append(unit)
+#    repeats = short_sequence_repeat_extractor(reference, min_length)
+#    units = {}
+#    for repeat in repeats:
+#        if repeat.count + 1 >= min_count:
+#            units[reference[repeat.start:repeat.end]] = repeat.count + 1
+#    unit_list = []
+#    for unit in units:
+#        unit_list.append(unit)
 
-    print sequence, unit_list
-    reference = sequences[sequence][0]
-    for string in sequences[sequence]:
-        description = describe_repeats(reference, string, unit_list)
-        print 'l.{}'.format(description)
-    print
+#    print sequence,
+#    if best > 0:
+#        print unit_list
+#    else:
+#        print 'no repeat unit identified'
+#    reference = sequences[sequence][0]
+#    for string in sequences[sequence]:
+#        if best > 0:
+#            description, _, _ = describe_repeats(reference, string, unit_list)
+#        else:
+#            description = describe_dna(reference, string)
+#        print 'l.{}'.format(description)
+#    print
+
 
