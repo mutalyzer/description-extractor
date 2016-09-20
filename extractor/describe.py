@@ -391,13 +391,13 @@ def describe_repeats(reference, sample, units):
                 i += 1
             if i < variant.sample_end:
                 split = extractor.Variant()
-                split.reference_start = variant.reference_start
-                split.reference_end = variant.reference_end
+                split.reference_start = variant.reference_start + reference_start
+                split.reference_end = variant.reference_end + reference_start
                 split.sample_start = start
                 split.sample_end = i
                 split.type = variant.type
-                split.transposition_start = variant.transposition_start
-                split.transposition_end = variant.transposition_end
+                split.transposition_start = variant.transposition_start + reference_start
+                split.transposition_end = variant.transposition_end + reference_start
                 replaced.append(split)
                 while i < variant.sample_end and masked_alt[i + sample_start] == MASK:
                     i += 1
@@ -405,13 +405,13 @@ def describe_repeats(reference, sample, units):
 
         if len(replaced) > 0:
             split = extractor.Variant()
-            split.reference_start = variant.reference_start
-            split.reference_end = variant.reference_end
+            split.reference_start = variant.reference_start + reference_start
+            split.reference_end = variant.reference_end + reference_start
             split.sample_start = start
             split.sample_end = variant.sample_end
             split.type = variant.type
-            split.transposition_start = variant.transposition_start
-            split.transposition_end = variant.transposition_end
+            split.transposition_start = variant.transposition_start + reference_start
+            split.transposition_end = variant.transposition_end + reference_start
             replaced.append(split)
             variant_list += replaced
         else:
@@ -449,7 +449,7 @@ def describe_repeats(reference, sample, units):
         elif variant.type & extractor.REVERSE_COMPLEMENT:
             seq_list.append(ISeq(start=variant.reference_start + 1 + reference_start,
                 end=variant.reference_end + reference_start, reverse=True,weight_position=extracted.weight_position))
-        else: #bases insertion
+        elif variant.sample_end != variant.sample_start:
             seq_list.append(ISeq(sequence=sample[variant.sample_start + sample_start:variant.sample_end + sample_start],
                 weight_position=extracted.weight_position))
 

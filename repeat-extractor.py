@@ -94,46 +94,77 @@ for line in lines:
     else:
         sequences[label] = [string.strip()]
 
+literature = {
+    'Amel':        [],
+    'CSF1P0':      ['AGAT'],
+    'D10S1248':    ['GGAA'],
+    'D12S391':     ['AGAT', 'AGAC'],
+    'D13S317':     ['TATC'],
+    'D16S539':     ['GATA'],
+    'D18S51':      ['GAAA'],
+    'D19S433':     ['AAGG'],
+    'D1S1656':     ['TAGA', 'TG'],
+    'D21S11':      ['TCTA', 'TCTG'],
+    'D22S1045':    ['ATT'],
+    'D2S1338':     ['TGCC', 'TTCC'],
+    'D2S441':      ['TCTA'],
+    'D3S1358':     ['AGAT', 'TCTA'],
+    'D5S818':      ['AGAT'],
+    'D7S820':      ['GATA'],
+    'D8S1179':     ['TATC'],
+    'FGA':         ['TTTC', 'CTTT', 'TTCC'],
+    'PentaD':      ['AAAGA'],
+    'PentaE':      ['AAAGA'],
+    'TH01':        ['TCAT'],
+    'TPOX':        ['AATG'],
+    'vWA':         ['TCTA', 'TCTG', 'TCCA'],
+    'DYS391':      ['TCTA']
+}
+
+
 #select = 'D13S317'
-#unit_list = ['TATC']
+#unit_list = literature[select]
 #reference = sequences[select][0]
-#sample = sequences[select][0]
-#description, _, _ = describe_repeats(reference, sample, unit_list)
-#print 'l.{}'.format(description)
+#sample = sequences[select][14]
+#description, rep_start, rep_end = describe_repeats(reference, sample, unit_list)
+#print '{}({}_{}):l.{}'.format(select, rep_start, rep_end, description)
+
 
 
 for sequence in sequences:
-    best = 0
-    for string in sequences[sequence]:
-        repeats = short_sequence_repeat_extractor(string, min_length)
-        score = 0
-        for repeat in repeats:
-            if repeat.count + 1 >= min_count:
-                score += (repeat.end - repeat.start) * (repeat.end - repeat.start) * (repeat.count + 1)
-        if score > best:
-            reference = string
-            best = score
+#    best = 0
+#    for string in sequences[sequence]:
+#        repeats = short_sequence_repeat_extractor(string, min_length)
+#        score = 0
+#        for repeat in repeats:
+#            if repeat.count + 1 >= min_count:
+#                score += (repeat.end - repeat.start) * (repeat.end - repeat.start) * (repeat.count + 1)
+#        if score > best:
+#            reference = string
+#            best = score
 
-    repeats = short_sequence_repeat_extractor(reference, min_length)
-    units = {}
-    for repeat in repeats:
-        if repeat.count + 1 >= min_count:
-            units[reference[repeat.start:repeat.end]] = repeat.count + 1
-    unit_list = []
-    for unit in units:
-        unit_list.append(unit)
+#    repeats = short_sequence_repeat_extractor(reference, min_length)
+#    units = {}
+#    for repeat in repeats:
+#        if repeat.count + 1 >= min_count:
+#            units[reference[repeat.start:repeat.end]] = repeat.count + 1
+#    unit_list = []
+#    for unit in units:
+#        unit_list.append(unit)
+
+    unit_list = literature[sequence]
 
     reference = sequences[sequence][0]
     print sequence + ':',
     print reference
-    if best > 0:
+    if len(unit_list) > 0:
         print 'repeat units:', unit_list
     else:
         print 'repeat units: []'
     for string in sequences[sequence]:
         rep_start = 1
         rep_end = len(reference)
-        if best > 0:
+        if len(unit_list) > 0:
             description, rep_start, rep_end = describe_repeats(reference, string, unit_list)
         else:
             description = describe_dna(reference, string)
