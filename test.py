@@ -3,7 +3,7 @@
 
 from __future__ import unicode_literals
 
-import monoseq
+#import monoseq
 
 from extractor import describe
 
