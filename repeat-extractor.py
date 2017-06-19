@@ -94,36 +94,36 @@ for line in lines:
     else:
         sequences[label] = [string.strip()]
 
-literature = {
-    'Amel':        [],
-    'CSF1P0':      ['AGAT'],
-    'D10S1248':    ['GGAA'],
-    'D12S391':     ['AGAT', 'AGAC'],
-    'D13S317':     ['TATC'],
-    'D16S539':     ['GATA'],
-    'D18S51':      ['GAAA'],
-    'D19S433':     ['AAGG'],
-    'D1S1656':     ['TAGA', 'TG'],
-    'D21S11':      ['TCTA', 'TCTG'],
-    'D22S1045':    ['ATT'],
-    'D2S1338':     ['TGCC', 'TTCC'],
-    'D2S441':      ['TCTA'],
-    'D3S1358':     ['AGAT', 'TCTA'],
-    'D5S818':      ['AGAT'],
-    'D7S820':      ['GATA'],
-    'D8S1179':     ['TATC'],
-    'FGA':         ['TTTC', 'CTTT', 'TTCC'],
-    'PentaD':      ['AAAGA'],
-    'PentaE':      ['AAAGA'],
-    'TH01':        ['TCAT'],
-    'TPOX':        ['AATG'],
-    'vWA':         ['TCTA', 'TCTG', 'TCCA'],
-    'DYS391':      ['TCTA']
+standard = {
+    'Amel':     [],
+    'CSF1P0':   ['AGAT'],
+    'D10S1248': ['GGAA'],
+    'D12S391':  ['AGAT', 'AGAC'],
+    'D13S317':  ['TATC'],
+    'D16S539':  ['GATA'],
+    'D18S51':   ['GAAA'],
+    'D19S433':  ['AAGG'],
+    'D1S1656':  ['TAGA', 'TG'],
+    'D21S11':   ['TCTA', 'TCTG'],
+    'D22S1045': ['ATT'],
+    'D2S1338':  ['TGCC', 'TTCC'],
+    'D2S441':   ['TCTA'],
+    'D3S1358':  ['AGAT', 'TCTA'],
+    'D5S818':   ['AGAT'],
+    'D7S820':   ['GATA'],
+    'D8S1179':  ['TATC'],
+    'FGA':      ['TTTC', 'CTTT', 'TTCC'],
+    'PentaD':   ['AAAGA'],
+    'PentaE':   ['AAAGA'],
+    'TH01':     ['TCAT'],
+    'TPOX':     ['AATG'],
+    'vWA':      ['TCTA', 'TCTG', 'TCCA'],
+    'DYS391':   ['TCTA']
 }
 
 
 #select = 'D13S317'
-#unit_list = literature[select]
+#unit_list = standard[select]
 #reference = sequences[select][0]
 #sample = sequences[select][14]
 #description, rep_start, rep_end = describe_repeats(reference, sample, unit_list)
@@ -152,7 +152,7 @@ for sequence in sequences:
 #    for unit in units:
 #        unit_list.append(unit)
 
-    unit_list = literature[sequence]
+    unit_list = standard[sequence]
 
     reference = sequences[sequence][0]
     print sequence + ':',

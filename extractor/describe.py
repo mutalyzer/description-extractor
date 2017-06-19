@@ -127,9 +127,12 @@ def var_to_dna_var(s1, s2, var, seq_list=[], weight_position=1):
                 '$' not in s1[var.reference_start - ins_length:var.reference_start] and
                 '$' not in s2[var.sample_start:var.sample_end] and
                 s1[var.reference_start - ins_length:var.reference_start] ==
+                s2[var.sample_start:var.sample_end] and
+                s2[var.sample_start - ins_length:var.sample_start] ==
                 s2[var.sample_start:var.sample_end]):
             # NOTE: We may want to omit the inserted / deleted sequence and
             # use the ranges instead.
+
             return DNAVar(start=var.reference_start - ins_length + 1,
                 end=var.reference_end, type='dup', shift=shift,
                 sample_start=var.sample_start + 1, sample_end=var.sample_end,
@@ -310,6 +313,7 @@ def describe_dna(s1, s2):
                                   s2_swig[0], s2_swig[1], extractor.TYPE_DNA)
 
     for variant in extracted.variants:
+
         if variant.type & extractor.TRANSPOSITION_OPEN:
             if not in_transposition:
                 seq_list = ISeqList()
