@@ -3,7 +3,6 @@ language: python
 sudo: false
 python:
   - "2.7"
-  - "3.6"
 addons:
   apt_packages: swig
 before_install: pip install pytest
