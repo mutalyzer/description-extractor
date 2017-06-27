@@ -79,5 +79,9 @@ setup(
         'Topic :: Scientific/Engineering',
     ],
     keywords='bioinformatics',
-    install_requires=['biopython']
+    install_requires=['biopython',
+                      'crossmapper==0.0.1'],
+    dependency_links=[
+        'https://github.com/mutalyzer/crossmapper/archive/v0.0.1.tar.gz#egg=crossmapper-0.0.1'
+    ]
 )
