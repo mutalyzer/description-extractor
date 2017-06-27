@@ -28,7 +28,7 @@ namespace mutalyzer
 {
 
 // Version string for run-time identification.
-static char const* const VERSION = "2.3.4";
+static char const* const VERSION = "2.3.5";
 
 
 // The character type used for all strings. For now it should just be
