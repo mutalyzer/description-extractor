@@ -2,13 +2,12 @@
 language: python
 sudo: false
 python:
-  - "2.6"
   - "2.7"
-  - "3.3"
-  - "3.4"
-  - "3.5"
 addons:
   apt_packages: swig
 before_install: pip install pytest
-install: python setup.py install
+install:
+  - pip install -r requirements.txt
+  - python setup.py install
+
 script: py.test
