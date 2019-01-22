@@ -6,7 +6,7 @@ import subprocess
 class git_clone_external(build_ext):
     def run(self):
         subprocess.check_call(['rm', '-rf', 'extractor-core'])
-        subprocess.check_call(['git', 'clone', 'https://github.com/mutalyzer/extractor-core.git'])
+        subprocess.check_call(['git', 'clone', 'git@github.com:mutalyzer/extractor-core.git'])
         build_ext.run(self)
 
 
