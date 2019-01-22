@@ -69,7 +69,7 @@ static PyMethodDef ExtractorMethods[] =
 static struct PyModuleDef extractormodule =
 {
     PyModuleDef_HEAD_INIT,
-    "description-extractor",
+    "descriptionextractor",
     "HGVS Variant Description Extractor",
     -1,
     ExtractorMethods
@@ -77,10 +77,10 @@ static struct PyModuleDef extractormodule =
 
 
 PyMODINIT_FUNC
-PyInit_extractor(void)
+PyInit_descriptionextractor(void)
 {
     return PyModule_Create(&extractormodule);
-} // PyInit_extractor
+} // PyInit_descriptionextractor
 
 
 int
@@ -93,7 +93,7 @@ main(int, char* argv[])
         return EXIT_FAILURE;
     } // if
 
-    PyImport_AppendInittab("description-extractor", PyInit_extractor);
+    PyImport_AppendInittab("descriptionextractor", PyInit_descriptionextractor);
 
     Py_SetProgramName(program);
 

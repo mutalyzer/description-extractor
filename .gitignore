@@ -7,5 +7,5 @@ share/
 lib64
 pyvenv.cfg
 
-description_extractor.egg-info/
+descriptionextractor.egg-info/
 extractor-core/
