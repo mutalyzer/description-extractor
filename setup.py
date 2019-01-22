@@ -1,5 +1,4 @@
 from setuptools import setup, Extension
-
 from setuptools.command.build_ext import build_ext
 import subprocess
 
@@ -9,13 +8,11 @@ class git_clone_external(build_ext):
         subprocess.check_call(['git', 'clone', 'git@github.com:mutalyzer/extractor-core.git'])
         build_ext.run(self)
 
-
 extractor = Extension('descriptionextractor', sources = ['extractor-module.cc',
-                                                          'extractor-core/src/extractor.cc'])
-
+                                                         'extractor-core/src/extractor.cc'])
 setup(name = 'descriptionextractor',
-      version = '3.0',
+      version = '3.0.0',
       cmdclass = {'build_ext': git_clone_external},
-      description = 'This is the extractor package',
+      description = 'HGVS variant description extractor',
       ext_modules = [extractor]
 )
