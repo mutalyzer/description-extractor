@@ -79,7 +79,11 @@ static struct PyModuleDef extractormodule =
 PyMODINIT_FUNC
 PyInit_descriptionextractor(void)
 {
-    return PyModule_Create(&extractormodule);
+    PyObject* module = PyModule_Create(&extractormodule);
+
+    PyModule_AddStringConstant(module, "version", mutalyzer::VERSION);
+
+    return module;
 } // PyInit_descriptionextractor
 
 

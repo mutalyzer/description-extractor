@@ -7,5 +7,7 @@ share/
 lib64
 pyvenv.cfg
 
+pip-selfcheck.json
+
 descriptionextractor.egg-info/
 extractor-core/
