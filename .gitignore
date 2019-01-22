@@ -1,9 +1,11 @@
 bin/
 build/
+dist/
 include/
 lib/
 share/
 lib64
 pyvenv.cfg
 
-extractor/
+description_extractor.egg-info/
+extractor-core/
