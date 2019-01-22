@@ -1,0 +1,9 @@
+bin/
+build/
+include/
+lib/
+share/
+lib64
+pyvenv.cfg
+
+extractor/
