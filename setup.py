@@ -8,9 +8,9 @@ class git_clone_external(build_ext):
         subprocess.check_call(['git', 'clone', 'git@github.com:mutalyzer/extractor-core.git'])
         build_ext.run(self)
 
-extractor = Extension('descriptionextractor', sources = ['extractor-module.cc',
-                                                         'extractor-core/src/extractor.cc'])
-setup(name = 'descriptionextractor',
+extractor = Extension('extractor', sources = ['extractor-module.cc',
+                                              'extractor-core/src/extractor.cc'])
+setup(name = 'description-extractor',
       version = '3.0.0',
       cmdclass = {'build_ext': git_clone_external},
       description = 'HGVS variant description extractor',

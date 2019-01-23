@@ -10,7 +10,7 @@
 
 
 static PyObject*
-extractor_extract_dna(PyObject*, PyObject* args)
+extractor_describe_dna(PyObject*, PyObject* args)
 {
     char* reference;
     char* sample;
@@ -55,12 +55,17 @@ extractor_extract_dna(PyObject*, PyObject* args)
         } // if
     } // for
     return result;
-} // extractor_extract
+} // extractor_describe_dna
 
 
 static PyMethodDef ExtractorMethods[] =
 {
-    {"extract_dna", extractor_extract_dna, METH_VARARGS, "Run the extract function."},
+    {"describe_dna", extractor_describe_dna, METH_VARARGS,
+    "Give an allele description of the change from {reference} to {observed}.\n"
+    "   :arg ascii reference: Reference sequence.\n"
+    "   :arg ascii observed: Observed sequence.\n"
+    "   :returns list({}): A list of dictionaries representing the obsereved allele in terms of the reference sequence."
+    },
 
     {NULL, NULL, 0, NULL}  // sentinel
 }; // ExtractorMethods
@@ -69,22 +74,23 @@ static PyMethodDef ExtractorMethods[] =
 static struct PyModuleDef extractormodule =
 {
     PyModuleDef_HEAD_INIT,
-    "descriptionextractor",
-    "HGVS Variant Description Extractor",
+    "description-extractor",
+    "HGVS variant description extractor\n"
+    "Extract a list of differences between two sequences.",
     -1,
     ExtractorMethods
 }; // extractormodule
 
 
 PyMODINIT_FUNC
-PyInit_descriptionextractor(void)
+PyInit_extractor(void)
 {
     PyObject* module = PyModule_Create(&extractormodule);
 
-    PyModule_AddStringConstant(module, "version", mutalyzer::VERSION);
+    PyModule_AddStringConstant(module, "core_version", mutalyzer::VERSION);
 
     return module;
-} // PyInit_descriptionextractor
+} // PyInit_extractor
 
 
 int
@@ -97,7 +103,7 @@ main(int, char* argv[])
         return EXIT_FAILURE;
     } // if
 
-    PyImport_AppendInittab("descriptionextractor", PyInit_descriptionextractor);
+    PyImport_AppendInittab("extractor", PyInit_extractor);
 
     Py_SetProgramName(program);
 

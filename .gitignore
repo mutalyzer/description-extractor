@@ -9,5 +9,5 @@ pyvenv.cfg
 
 pip-selfcheck.json
 
-descriptionextractor.egg-info/
+description_extractor.egg-info/
 extractor-core/
