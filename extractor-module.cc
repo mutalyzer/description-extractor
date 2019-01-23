@@ -10,6 +10,62 @@
 
 
 static PyObject*
+point_location(size_t const point)
+{
+    return Py_BuildValue("{s:s,s:i}", "type", "point", "position", point);
+} // point_location
+
+
+static PyObject*
+range_location(size_t const start, size_t const end)
+{
+    PyObject* start_object = point_location(start);
+    PyObject* end_object = point_location(end);
+
+    if (start_object == NULL || end_object == NULL)
+    {
+        Py_DECREF(start_object);
+        Py_DECREF(end_object);
+        PyErr_SetString(PyExc_MemoryError, "Could not allocate memory for Py_BuildValue");
+        return NULL;
+    } // if
+    return Py_BuildValue("{s:s,s:O,s:O}", "type", "range", "start", start_object, "end", end_object);
+} // range_location
+
+
+static PyObject*
+variant_dict(mutalyzer::Variant const &variant)
+{
+    PyObject* reference_range = range_location(variant.reference_start, variant.reference_end);
+    PyObject* sample_range = range_location(variant.sample_start, variant.sample_end);
+
+    if (reference_range == NULL || sample_range == NULL)
+    {
+        Py_DECREF(reference_range);
+        Py_DECREF(sample_range);
+        PyErr_SetString(PyExc_MemoryError, "Could not allocate memory for Py_BuildValue");
+        return NULL;
+    } // if
+    switch (variant.type)
+    {
+        case mutalyzer::IDENTITY:
+            return Py_BuildValue("{s:s,s:O}", "type", "equal", "location", sample_range);
+    } // switch
+
+    PyObject* inserted = Py_BuildValue("{s:s,s:O}", "source", "observed", "location", reference_range);
+    if (inserted == NULL)
+    {
+        Py_DECREF(reference_range);
+        Py_DECREF(sample_range);
+        PyErr_SetString(PyExc_MemoryError, "Could not allocate memory for Py_BuildValue");
+        return NULL;
+    } // if
+
+    return Py_BuildValue("{s:s,s:O,s:[O]}", "type", "delins", "location", sample_range, "insertions", inserted);
+} // variant_dict
+
+
+static PyObject*
 extractor_describe_dna(PyObject*, PyObject* args)
 {
     char* reference;
@@ -34,14 +90,7 @@ extractor_describe_dna(PyObject*, PyObject* args)
 
     for (std::vector<mutalyzer::Variant>::const_iterator it = variants.begin(); it != variants.end(); ++it)
     {
-        PyObject* item = Py_BuildValue("{s:i, s:i, s:i, s:i, s:i, s:i, s:i}",
-                                       "reference_start", it->reference_start,
-                                       "reference_end", it->reference_end,
-                                       "sample_start", it->sample_start,
-                                       "sample_end", it->sample_end,
-                                       "type", it->type,
-                                       "transposition_start", it->transposition_start,
-                                       "transposition_end", it->transposition_end);
+        PyObject* item = variant_dict(*it);
         if (item == NULL)
         {
             PyErr_SetString(PyExc_MemoryError, "Could not allocate memory for Py_BuildValue");
