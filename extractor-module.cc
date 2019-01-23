@@ -66,7 +66,7 @@ variant_dict(std::vector<mutalyzer::Variant>::const_iterator &it)
         if (inserted == NULL)
         {
             Py_DECREF(sample_range);
-            PyErr_SetString(PyExc_MemoryError, "Could not allocate memory for Py_BuildValue");
+            PyErr_SetString(PyExc_MemoryError, "Could not allocate memory for PyList_New");
             return NULL;
         } // if
         while ((it->type & mutalyzer::TRANSPOSITION_CLOSE) != mutalyzer::TRANSPOSITION_CLOSE)
@@ -84,7 +84,7 @@ variant_dict(std::vector<mutalyzer::Variant>::const_iterator &it)
                 Py_DECREF(sample_range);
                 Py_DECREF(inserted);
                 Py_DECREF(item);
-                PyErr_SetString(PyExc_MemoryError, "Could not allocate memory for Py_BuildValue");
+                PyErr_SetString(PyExc_MemoryError, "Could not allocate memory for PyList_Append");
                 return NULL;
             } // if
             ++it;
