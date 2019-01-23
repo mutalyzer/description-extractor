@@ -46,11 +46,15 @@ variant_dict(mutalyzer::Variant const &variant)
         PyErr_SetString(PyExc_MemoryError, "Could not allocate memory for Py_BuildValue");
         return NULL;
     } // if
-    switch (variant.type)
+
+    if (variant.type == mutalyzer::IDENTITY)
     {
-        case mutalyzer::IDENTITY:
-            return Py_BuildValue("{s:s,s:O}", "type", "equal", "location", sample_range);
-    } // switch
+        return Py_BuildValue("{s:s,s:O}", "type", "equal", "location", sample_range);
+    } // if
+    else if (variant.type == mutalyzer::REVERSE_COMPLEMENT)
+    {
+        return Py_BuildValue("{s:s,s:O}", "type", "inv", "location", sample_range);
+    } // if
 
     PyObject* inserted = Py_BuildValue("{s:s,s:O}", "source", "observed", "location", reference_range);
     if (inserted == NULL)
@@ -90,6 +94,7 @@ extractor_describe_dna(PyObject*, PyObject* args)
 
     for (std::vector<mutalyzer::Variant>::const_iterator it = variants.begin(); it != variants.end(); ++it)
     {
+        // TODO: transpositions
         PyObject* item = variant_dict(*it);
         if (item == NULL)
         {
