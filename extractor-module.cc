@@ -59,10 +59,34 @@ variant_dict(std::vector<mutalyzer::Variant>::const_iterator &it)
         return NULL;
     } // if
 
+    PyObject* inserted = NULL;
     if ((it->type & mutalyzer::TRANSPOSITION_OPEN) == mutalyzer::TRANSPOSITION_OPEN)
     {
+        inserted = PyList_New(0);
+        if (inserted == NULL)
+        {
+            Py_DECREF(sample_range);
+            PyErr_SetString(PyExc_MemoryError, "Could not allocate memory for Py_BuildValue");
+            return NULL;
+        } // if
         while ((it->type & mutalyzer::TRANSPOSITION_CLOSE) != mutalyzer::TRANSPOSITION_CLOSE)
         {
+            PyObject* item = insertion_dict(*it);
+            if (item == NULL)
+            {
+                Py_DECREF(sample_range);
+                Py_DECREF(inserted);
+                PyErr_SetString(PyExc_MemoryError, "Could not allocate memory for Py_BuildValue");
+                return NULL;
+            } // if
+            if (PyList_Append(inserted, item) != 0)
+            {
+                Py_DECREF(sample_range);
+                Py_DECREF(inserted);
+                Py_DECREF(item);
+                PyErr_SetString(PyExc_MemoryError, "Could not allocate memory for Py_BuildValue");
+                return NULL;
+            } // if
             ++it;
         } // while
     } // if
@@ -75,14 +99,17 @@ variant_dict(std::vector<mutalyzer::Variant>::const_iterator &it)
         return Py_BuildValue("{s:s,s:O}", "type", "inv", "location", sample_range);
     } // if
 
-    PyObject* inserted = insertion_dict(*it);
     if (inserted == NULL)
     {
-        Py_DECREF(sample_range);
-        PyErr_SetString(PyExc_MemoryError, "Could not allocate memory for Py_BuildValue");
-        return NULL;
+        inserted = insertion_dict(*it);
+        if (inserted == NULL)
+        {
+            Py_DECREF(sample_range);
+            Py_DECREF(inserted);
+            PyErr_SetString(PyExc_MemoryError, "Could not allocate memory for Py_BuildValue");
+            return NULL;
+        } // if
     } // if
-
     return Py_BuildValue("{s:s,s:O,s:[O]}", "type", "delins", "location", sample_range, "insertions", inserted);
 } // variant_dict
 
@@ -115,12 +142,14 @@ extractor_describe_dna(PyObject*, PyObject* args)
         PyObject* item = variant_dict(it);
         if (item == NULL)
         {
+            Py_DECREF(result);
             PyErr_SetString(PyExc_MemoryError, "Could not allocate memory for Py_BuildValue");
             return NULL;
         } // if
         if (PyList_Append(result, item) != 0)
         {
             Py_DECREF(item);
+            Py_DECREF(result);
             PyErr_SetString(PyExc_MemoryError, "Could not allocate memory for PyList_Append");
             return NULL;
         } // if
