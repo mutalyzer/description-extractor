@@ -9,23 +9,23 @@
 #include <vector>
 
 
-static PyObject*
+static PyObject const*
 point_location(size_t const point)
 {
     return Py_BuildValue("{s:s,s:i}", "type", "point", "position", point);
 } // point_location
 
 
-static PyObject*
+static PyObject const*
 range_location(size_t const start, size_t const end)
 {
-    PyObject* start_object = point_location(start);
+    PyObject const* const start_object = point_location(start);
     if (start_object == NULL)
     {
         PyErr_SetString(PyExc_MemoryError, "Could not allocate memory for Py_BuildValue");
         return NULL;
     } // if
-    PyObject* end_object = point_location(end);
+    PyObject const* const end_object = point_location(end);
     if (end_object == NULL)
     {
         Py_DECREF(start_object);
@@ -36,10 +36,31 @@ range_location(size_t const start, size_t const end)
 } // range_location
 
 
-static PyObject*
+static PyObject const*
 insertion_dict(mutalyzer::Variant const &variant)
 {
-    PyObject* range = range_location(variant.sample_start, variant.sample_end);
+    if ((variant.type & mutalyzer::IDENTITY) == mutalyzer::IDENTITY)
+    {
+        PyObject const* const range = range_location(variant.transposition_start, variant.transposition_end);
+        if (range == NULL)
+        {
+            PyErr_SetString(PyExc_MemoryError, "Could not allocate memory for Py_BuildValue");
+            return NULL;
+        } // if
+        return Py_BuildValue("{s:s,s:O}", "source", "reference", "location", range);
+    } // if
+    else if ((variant.type & mutalyzer::REVERSE_COMPLEMENT) == mutalyzer::REVERSE_COMPLEMENT)
+    {
+        PyObject const* const range = range_location(variant.transposition_start, variant.transposition_end);
+        if (range == NULL)
+        {
+            PyErr_SetString(PyExc_MemoryError, "Could not allocate memory for Py_BuildValue");
+            return NULL;
+        } // if
+        return Py_BuildValue("{s:s,s:s,s:O}", "inverted", "true", "source", "reference", "location", range);
+    } // if
+
+    PyObject const* const range = range_location(variant.sample_start, variant.sample_end);
     if (range == NULL)
     {
         PyErr_SetString(PyExc_MemoryError, "Could not allocate memory for Py_BuildValue");
@@ -49,10 +70,10 @@ insertion_dict(mutalyzer::Variant const &variant)
 } // insertion_dict
 
 
-static PyObject*
+static PyObject const*
 variant_dict(std::vector<mutalyzer::Variant>::const_iterator &it)
 {
-    PyObject* range = range_location(it->reference_start, it->reference_end);
+    PyObject const* const range = range_location(it->reference_start, it->reference_end);
     if (range == NULL)
     {
         PyErr_SetString(PyExc_MemoryError, "Could not allocate memory for Py_BuildValue");
@@ -69,9 +90,25 @@ variant_dict(std::vector<mutalyzer::Variant>::const_iterator &it)
             PyErr_SetString(PyExc_MemoryError, "Could not allocate memory for PyList_New");
             return NULL;
         } // if
+        PyObject const* const item = insertion_dict(*it);
+        if (item == NULL)
+        {
+            Py_DECREF(range);
+            Py_DECREF(inserted);
+            PyErr_SetString(PyExc_MemoryError, "Could not allocate memory for Py_BuildValue");
+            return NULL;
+        } // if
+        if (PyList_Append(inserted, const_cast<PyObject*>(item)) != 0)
+        {
+            Py_DECREF(range);
+            Py_DECREF(inserted);
+            Py_DECREF(item);
+            PyErr_SetString(PyExc_MemoryError, "Could not allocate memory for PyList_Append");
+            return NULL;
+        } // if
         while ((it->type & mutalyzer::TRANSPOSITION_CLOSE) != mutalyzer::TRANSPOSITION_CLOSE)
         {
-            PyObject* item = insertion_dict(*it);
+            PyObject const* const item = insertion_dict(*it);
             if (item == NULL)
             {
                 Py_DECREF(range);
@@ -79,7 +116,7 @@ variant_dict(std::vector<mutalyzer::Variant>::const_iterator &it)
                 PyErr_SetString(PyExc_MemoryError, "Could not allocate memory for Py_BuildValue");
                 return NULL;
             } // if
-            if (PyList_Append(inserted, item) != 0)
+            if (PyList_Append(inserted, const_cast<PyObject*>(item)) != 0)
             {
                 Py_DECREF(range);
                 Py_DECREF(inserted);
@@ -101,7 +138,7 @@ variant_dict(std::vector<mutalyzer::Variant>::const_iterator &it)
 
     if (inserted == NULL)
     {
-        inserted = insertion_dict(*it);
+        inserted = const_cast<PyObject*>(insertion_dict(*it));
         if (inserted == NULL)
         {
             Py_DECREF(range);
@@ -139,14 +176,14 @@ extractor_describe_dna(PyObject*, PyObject* args)
 
     for (std::vector<mutalyzer::Variant>::const_iterator it = variants.begin(); it != variants.end(); ++it)
     {
-        PyObject* item = variant_dict(it);
+        PyObject const* const item = variant_dict(it);
         if (item == NULL)
         {
             Py_DECREF(result);
             PyErr_SetString(PyExc_MemoryError, "Could not allocate memory for Py_BuildValue");
             return NULL;
         } // if
-        if (PyList_Append(result, item) != 0)
+        if (PyList_Append(result, const_cast<PyObject*>(item)) != 0)
         {
             Py_DECREF(item);
             Py_DECREF(result);
