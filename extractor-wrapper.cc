@@ -39,21 +39,21 @@ range_location(size_t const start, size_t const end)
 static PyObject*
 insertion_dict(mutalyzer::Variant const &variant)
 {
-    PyObject* reference_range = range_location(variant.reference_start, variant.reference_end);
-    if (reference_range == NULL)
+    PyObject* range = range_location(variant.sample_start, variant.sample_end);
+    if (range == NULL)
     {
         PyErr_SetString(PyExc_MemoryError, "Could not allocate memory for Py_BuildValue");
         return NULL;
     } // if
-    return Py_BuildValue("{s:s,s:O}", "source", "observed", "location", reference_range);
+    return Py_BuildValue("{s:s,s:O}", "source", "observed", "location", range);
 } // insertion_dict
 
 
 static PyObject*
 variant_dict(std::vector<mutalyzer::Variant>::const_iterator &it)
 {
-    PyObject* sample_range = range_location(it->sample_start, it->sample_end);
-    if (sample_range == NULL)
+    PyObject* range = range_location(it->reference_start, it->reference_end);
+    if (range == NULL)
     {
         PyErr_SetString(PyExc_MemoryError, "Could not allocate memory for Py_BuildValue");
         return NULL;
@@ -65,7 +65,7 @@ variant_dict(std::vector<mutalyzer::Variant>::const_iterator &it)
         inserted = PyList_New(0);
         if (inserted == NULL)
         {
-            Py_DECREF(sample_range);
+            Py_DECREF(range);
             PyErr_SetString(PyExc_MemoryError, "Could not allocate memory for PyList_New");
             return NULL;
         } // if
@@ -74,14 +74,14 @@ variant_dict(std::vector<mutalyzer::Variant>::const_iterator &it)
             PyObject* item = insertion_dict(*it);
             if (item == NULL)
             {
-                Py_DECREF(sample_range);
+                Py_DECREF(range);
                 Py_DECREF(inserted);
                 PyErr_SetString(PyExc_MemoryError, "Could not allocate memory for Py_BuildValue");
                 return NULL;
             } // if
             if (PyList_Append(inserted, item) != 0)
             {
-                Py_DECREF(sample_range);
+                Py_DECREF(range);
                 Py_DECREF(inserted);
                 Py_DECREF(item);
                 PyErr_SetString(PyExc_MemoryError, "Could not allocate memory for PyList_Append");
@@ -92,11 +92,11 @@ variant_dict(std::vector<mutalyzer::Variant>::const_iterator &it)
     } // if
     else if (it->type == mutalyzer::IDENTITY)
     {
-        return Py_BuildValue("{s:s,s:O}", "type", "equal", "location", sample_range);
+        return Py_BuildValue("{s:s,s:O}", "type", "equal", "location", range);
     } // if
     else if (it->type == mutalyzer::REVERSE_COMPLEMENT)
     {
-        return Py_BuildValue("{s:s,s:O}", "type", "inv", "location", sample_range);
+        return Py_BuildValue("{s:s,s:O}", "type", "inv", "location", range);
     } // if
 
     if (inserted == NULL)
@@ -104,13 +104,13 @@ variant_dict(std::vector<mutalyzer::Variant>::const_iterator &it)
         inserted = insertion_dict(*it);
         if (inserted == NULL)
         {
-            Py_DECREF(sample_range);
+            Py_DECREF(range);
             Py_DECREF(inserted);
             PyErr_SetString(PyExc_MemoryError, "Could not allocate memory for Py_BuildValue");
             return NULL;
         } // if
     } // if
-    return Py_BuildValue("{s:s,s:O,s:[O]}", "type", "delins", "location", sample_range, "insertions", inserted);
+    return Py_BuildValue("{s:s,s:O,s:[O]}", "type", "delins", "location", range, "insertions", inserted);
 } // variant_dict
 
 

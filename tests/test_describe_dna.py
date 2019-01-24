@@ -33,6 +33,27 @@ TESTS = [
                     'end':   {'position': 44, 'type': 'point'},
                     'type': 'range'},
         'type': 'equal'}]),
+
+    # Single deletion: 7del
+    (REFERENCE,
+     'ACGTCGTTCGCTAGCTTCGGGGGATAGATAGAGATATAGAGAT',
+     [{'location': {'start': {'position': 0, 'type': 'point'},
+                    'end':   {'position': 6, 'type': 'point'},
+                    'type': 'range'},
+        'type': 'equal'},
+      {'location': {'start': {'position': 6, 'type': 'point'},
+                    'end':   {'position': 7, 'type': 'point'},
+                    'type': 'range'},
+        'insertions': [{'source': 'observed',
+                        'location': {'start': {'position': 6, 'type': 'point'},
+                                     'end'  : {'position': 6, 'type': 'point'},
+                        'type': 'range'}}],
+        'type': 'delins'},
+      {'location': {'start': {'position':  7, 'type': 'point'},
+                    'end':   {'position': 44, 'type': 'point'},
+                    'type': 'range'},
+        'type': 'equal'}]),
+
 ]
 
 
