@@ -138,16 +138,31 @@ variant_dict(std::vector<mutalyzer::Variant>::const_iterator &it)
 
     if (inserted == NULL)
     {
-        inserted = const_cast<PyObject*>(insertion_dict(*it));
+        inserted = PyList_New(0);
         if (inserted == NULL)
+        {
+            Py_DECREF(range);
+            PyErr_SetString(PyExc_MemoryError, "Could not allocate memory for PyList_New");
+            return NULL;
+        } // if
+        PyObject const* const item = insertion_dict(*it);
+        if (item == NULL)
         {
             Py_DECREF(range);
             Py_DECREF(inserted);
             PyErr_SetString(PyExc_MemoryError, "Could not allocate memory for Py_BuildValue");
             return NULL;
         } // if
+        if (PyList_Append(inserted, const_cast<PyObject*>(item)) != 0)
+        {
+            Py_DECREF(range);
+            Py_DECREF(inserted);
+            Py_DECREF(item);
+            PyErr_SetString(PyExc_MemoryError, "Could not allocate memory for PyList_Append");
+            return NULL;
+        } // if
     } // if
-    return Py_BuildValue("{s:s,s:O,s:[O]}", "type", "delins", "location", range, "insertions", inserted);
+    return Py_BuildValue("{s:s,s:O,s:O}", "type", "delins", "location", range, "insertions", inserted);
 } // variant_dict
 
 
