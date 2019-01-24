@@ -11,6 +11,12 @@ Extract a list of differences between two sequences.
 
 `python setup.py install` or `pip install .`
 
+## Testing
+
+`pip install -r requirements` or `pip install pytest`
+
+`py.test`
+
 ## Use
 
 `import extractor`
