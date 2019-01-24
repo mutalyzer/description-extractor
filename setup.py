@@ -20,6 +20,7 @@ class git_clone_external(build_ext):
 
 extractor = Extension('extractor', sources = ['extractor-wrapper.cc',
                                               'extractor-core/src/extractor.cc'])
+
 setup(name = 'description-extractor',
       version = VERSION,
       cmdclass = {'build_ext': git_clone_external},

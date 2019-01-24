@@ -1,6 +1,5 @@
-import pytest
-
 import extractor
+import pytest
 
 
 REFERENCE = 'ACGTCGATTCGCTAGCTTCGGGGGATAGATAGAGATATAGAGAT'
@@ -10,16 +9,34 @@ TESTS = [
     # No variants
     (REFERENCE,
      REFERENCE,
-     [{'location': {'end':   {'position': 44, 'type': 'point'},
-                    'start': {'position': 0, 'type': 'point'},
+     [{'location': {'start': {'position':  0, 'type': 'point'},
+                    'end':   {'position': 44, 'type': 'point'},
                     'type': 'range'},
-                    'type': 'equal'}]),
+       'type': 'equal'}]),
 
     # Single substitution: 7A>G
     (REFERENCE,
      'ACGTCGGTTCGCTAGCTTCGGGGGATAGATAGAGATATAGAGAT',
-     [{}]),
+     [{'location': {'start': {'position': 0, 'type': 'point'},
+                    'end':   {'position': 6, 'type': 'point'},
+                    'type': 'range'},
+        'type': 'equal'},
+      {'location': {'start': {'position': 6, 'type': 'point'},
+                    'end':   {'position': 7, 'type': 'point'},
+                    'type': 'range'},
+        'insertions': [{'source': 'observed',
+                        'location': {'start': {'position': 6, 'type': 'point'},
+                                     'end'  : {'position': 7, 'type': 'point'},
+                        'type': 'range'}}],
+        'type': 'delins'},
+      {'location': {'start': {'position':  7, 'type': 'point'},
+                    'end':   {'position': 44, 'type': 'point'},
+                    'type': 'range'},
+        'type': 'equal'}]),
+]
 
+
+UNUSED = [
     # Single deletion: 7del
     (REFERENCE,
      'ACGTCGTTCGCTAGCTTCGGGGGATAGATAGAGATATAGAGAT',
