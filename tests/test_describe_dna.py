@@ -431,6 +431,28 @@ TESTS = [
                     'type': 'range'},
        'type': 'equal'}]),
 
+    # Transpositions
+
+    ## Duplication 17_43dup?
+    ('ATGGCGGCGGTGGTCGCCCTCTCCTTGAGGCGCCGGTTGCCGGCCACAACCCTTGGCGGA',
+     'ATGGCGGCGGTGGTCGCCCTCTCCTTGAGGCGCCGGTTGCCGCCTCTCCTTGAGGCGCCGGTTGCCGGCCACAACCCTTGGCGGA',
+     [{'location': {'start': {'position': 0, 'type': 'point'},
+                    'end':   {'position': 42, 'type': 'point'},
+                    'type': 'range'},
+       'type': 'equal'},
+      {'location': {'start': {'position': 42, 'type': 'point'},
+                    'end':   {'position': 42, 'type': 'point'},
+                    'type': 'range'},
+       'insertions': [{'source': 'reference',
+                       'location': {'start': {'position': 17, 'type': 'point'},
+                                    'end'  : {'position': 42, 'type': 'point'},
+                       'type': 'range'}}],
+       'type': 'delins'},
+      {'location': {'start': {'position': 42, 'type': 'point'},
+                    'end':   {'position': 60, 'type': 'point'},
+                    'type': 'range'},
+       'type': 'equal'}]),
+
 ]
 
 
