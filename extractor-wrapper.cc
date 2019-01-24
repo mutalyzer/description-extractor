@@ -162,9 +162,9 @@ static PyMethodDef ExtractorMethods[] =
 {
     {"describe_dna", extractor_describe_dna, METH_VARARGS,
     "Give an allele description of the change from {reference} to {observed}.\n"
-    "   :arg ascii reference: Reference sequence.\n"
-    "   :arg ascii observed: Observed sequence.\n"
-    "   :returns list({}): A list of dictionaries representing the obsereved allele in terms of the reference sequence."
+    "    :arg ascii reference: Reference sequence over the alphabet {A, C, G, T, U}.\n"
+    "    :arg ascii observed: Observed sequence over the alphabet {A, C, G, T, U}.\n"
+    "    :returns list({}): A list of dictionaries representing the obsereved allele in terms of the reference sequence."
     },
 
     {NULL, NULL, 0, NULL}  // sentinel
