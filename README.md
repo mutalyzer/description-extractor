@@ -21,4 +21,4 @@ Extract a list of differences between two sequences.
 
 `import extractor`
 
-`variants = extractor.describe_dna('AAATAA', 'AAAGAAA')`
+`variants = extractor.describe_dna('TAACAATGGAAC', 'TAAACAATTGAA')`
