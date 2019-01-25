@@ -6,6 +6,11 @@ REFERENCE = 'ACGTCGATTCGCTAGCTTCGGGGGATAGATAGAGATATAGAGAT'
 
 
 TESTS = [
+    # Empty input
+    ('',
+     '',
+     []),
+
     # No variants
     (REFERENCE,
      REFERENCE,
