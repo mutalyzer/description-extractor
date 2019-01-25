@@ -469,7 +469,7 @@ TESTS = [
                     'end':   {'position': 37, 'type': 'point'},
                     'type': 'range'},
        'insertions': [{'source': 'reference',
-                       'inverted': 'true',
+                       'inverted': True,
                        'location': {'start': {'position':  2, 'type': 'point'},
                                     'end'  : {'position': 26, 'type': 'point'},
                        'type': 'range'}}],
