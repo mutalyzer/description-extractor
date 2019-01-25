@@ -106,26 +106,30 @@ variant_dict(std::vector<mutalyzer::Variant>::const_iterator &it)
             PyErr_SetString(PyExc_MemoryError, "Could not allocate memory for PyList_Append");
             return NULL;
         } // if
-        while ((it->type & mutalyzer::TRANSPOSITION_CLOSE) != mutalyzer::TRANSPOSITION_CLOSE)
+
+        if ((it->type & mutalyzer::TRANSPOSITION_CLOSE) != mutalyzer::TRANSPOSITION_CLOSE)
         {
-            PyObject const* const item = insertion_dict(*it);
-            if (item == NULL)
+            do
             {
-                Py_DECREF(range);
-                Py_DECREF(inserted);
-                PyErr_SetString(PyExc_MemoryError, "Could not allocate memory for Py_BuildValue");
-                return NULL;
-            } // if
-            if (PyList_Append(inserted, const_cast<PyObject*>(item)) != 0)
-            {
-                Py_DECREF(range);
-                Py_DECREF(inserted);
-                Py_DECREF(item);
-                PyErr_SetString(PyExc_MemoryError, "Could not allocate memory for PyList_Append");
-                return NULL;
-            } // if
-            ++it;
-        } // while
+                ++it;
+                PyObject const* const item = insertion_dict(*it);
+                if (item == NULL)
+                {
+                    Py_DECREF(range);
+                    Py_DECREF(inserted);
+                    PyErr_SetString(PyExc_MemoryError, "Could not allocate memory for Py_BuildValue");
+                    return NULL;
+                } // if
+                if (PyList_Append(inserted, const_cast<PyObject*>(item)) != 0)
+                {
+                    Py_DECREF(range);
+                    Py_DECREF(inserted);
+                    Py_DECREF(item);
+                    PyErr_SetString(PyExc_MemoryError, "Could not allocate memory for PyList_Append");
+                    return NULL;
+                } // if
+            } while ((it->type & mutalyzer::TRANSPOSITION_CLOSE) != mutalyzer::TRANSPOSITION_CLOSE);
+        } // if
     } // if
     else if (it->type == mutalyzer::IDENTITY)
     {
