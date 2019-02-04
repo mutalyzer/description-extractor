@@ -9,6 +9,7 @@
 #include <vector>
 
 
+// Helper function to build a point position object
 static PyObject const*
 point_location(size_t const point)
 {
@@ -16,6 +17,7 @@ point_location(size_t const point)
 } // point_location
 
 
+// Build a range location object. All variants are described using ranges.
 static PyObject const*
 range_location(size_t const start, size_t const end)
 {
@@ -36,9 +38,12 @@ range_location(size_t const start, size_t const end)
 } // range_location
 
 
+// Build a inserted object. This object holds the inserted part of a variant.
 static PyObject const*
 insertion_dict(mutalyzer::Variant const &variant)
 {
+
+    // Transposition (taken from the reference somewhere)
     if ((variant.type & mutalyzer::IDENTITY) == mutalyzer::IDENTITY)
     {
         PyObject const* const range = range_location(variant.transposition_start, variant.transposition_end);
@@ -49,6 +54,8 @@ insertion_dict(mutalyzer::Variant const &variant)
         } // if
         return Py_BuildValue("{s:s,s:O}", "source", "reference", "location", range);
     } // if
+
+    // Inverse transposition (the reverse complement taken from the reference somewhere)
     else if ((variant.type & mutalyzer::REVERSE_COMPLEMENT) == mutalyzer::REVERSE_COMPLEMENT)
     {
         PyObject const* const range = range_location(variant.transposition_start, variant.transposition_end);
@@ -60,6 +67,7 @@ insertion_dict(mutalyzer::Variant const &variant)
         return Py_BuildValue("{s:b,s:s,s:O}", "inverted", true, "source", "reference", "location", range);
     } // if
 
+    // Actual insertions
     PyObject const* const range = range_location(variant.sample_start, variant.sample_end);
     if (range == NULL)
     {
@@ -70,6 +78,7 @@ insertion_dict(mutalyzer::Variant const &variant)
 } // insertion_dict
 
 
+// Build a complete variant object.
 static PyObject const*
 variant_dict(std::vector<mutalyzer::Variant>::const_iterator &it)
 {
@@ -81,8 +90,12 @@ variant_dict(std::vector<mutalyzer::Variant>::const_iterator &it)
     } // if
 
     PyObject* inserted = NULL;
+
+    // This variant starts a transposition
     if ((it->type & mutalyzer::TRANSPOSITION_OPEN) == mutalyzer::TRANSPOSITION_OPEN)
     {
+
+        // There is always at least one inserted part of a transposition
         inserted = PyList_New(0);
         if (inserted == NULL)
         {
@@ -107,8 +120,11 @@ variant_dict(std::vector<mutalyzer::Variant>::const_iterator &it)
             return NULL;
         } // if
 
+        // Check for a compound transposition
         if ((it->type & mutalyzer::TRANSPOSITION_CLOSE) != mutalyzer::TRANSPOSITION_CLOSE)
         {
+            // As long as we do not see the end of the transposition; add these parts
+            // This runs forever (until all memory is consumed) when a transposition is not closed properly.
             do
             {
                 ++it;
@@ -131,15 +147,20 @@ variant_dict(std::vector<mutalyzer::Variant>::const_iterator &it)
             } while ((it->type & mutalyzer::TRANSPOSITION_CLOSE) != mutalyzer::TRANSPOSITION_CLOSE);
         } // if
     } // if
+
+    // This is not an actual variant; both reference and observed are equal.
     else if (it->type == mutalyzer::IDENTITY)
     {
         return Py_BuildValue("{s:s,s:O}", "type", "equal", "location", range);
     } // if
+
+    // This is a reverse complement variant.
     else if (it->type == mutalyzer::REVERSE_COMPLEMENT)
     {
         return Py_BuildValue("{s:s,s:O}", "type", "inv", "location", range);
     } // if
 
+    // All other variants are deletion/insertions; guaranteed one inserted part.
     if (inserted == NULL)
     {
         inserted = PyList_New(0);
@@ -170,6 +191,7 @@ variant_dict(std::vector<mutalyzer::Variant>::const_iterator &it)
 } // variant_dict
 
 
+// Converts the the raw C++ variants into python objects.
 static PyObject*
 extractor_describe_dna(PyObject*, PyObject* args)
 {
@@ -217,11 +239,10 @@ extractor_describe_dna(PyObject*, PyObject* args)
 static PyMethodDef ExtractorMethods[] =
 {
     {"describe_dna", extractor_describe_dna, METH_VARARGS,
-    "Give an allele description of the change from {reference} to {observed}.\n"
-    "    :arg ascii reference: Reference sequence over the alphabet {A, C, G, T, U}.\n"
-    "    :arg ascii observed: Observed sequence over the alphabet {A, C, G, T, U}.\n"
-    "    :returns list({}): A list of dictionaries representing the obsereved allele in terms of the reference sequence."
-    },
+     "Give an allele description of the change from {reference} to {observed}.\n"
+     "    :arg ASCII reference: Reference sequence over the alphabet {A, C, G, T, U}.\n"
+     "    :arg ASCII observed: Observed sequence over the alphabet {A, C, G, T, U}.\n"
+     "    :returns list({}): A list of dictionaries representing the observed allele in terms of the reference sequence."},
 
     {NULL, NULL, 0, NULL}  // sentinel
 }; // ExtractorMethods

@@ -13,9 +13,9 @@ Extract a list of differences between two sequences.
 
 ## Testing
 
-`pip install -r requirements` or `pip install pytest`
+`pip install -r requirements-dev` or `pip install pytest`
 
-`py.test`
+`py.test` or `py.test tests/`
 
 ## Use
 
