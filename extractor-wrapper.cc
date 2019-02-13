@@ -64,7 +64,7 @@ insertion_dict(mutalyzer::Variant const &variant)
             PyErr_SetString(PyExc_MemoryError, "Could not allocate memory for Py_BuildValue");
             return NULL;
         } // if
-        return Py_BuildValue("{s:b,s:s,s:O}", "inverted", true, "source", "reference", "location", range);
+        return Py_BuildValue("{s:O,s:s,s:O}", "inverted", Py_True, "source", "reference", "location", range);
     } // if
 
     // Actual insertions
