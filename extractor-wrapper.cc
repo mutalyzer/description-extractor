@@ -151,13 +151,13 @@ variant_dict(std::vector<mutalyzer::Variant>::const_iterator &it)
     // This is not an actual variant; both reference and observed are equal.
     else if (it->type == mutalyzer::IDENTITY)
     {
-        return Py_BuildValue("{s:s,s:O}", "type", "equal", "location", range);
+        return Py_BuildValue("{s:s,s:O,s:s}", "type", "equal", "location", range, "source", "reference");
     } // if
 
     // This is a reverse complement variant.
     else if (it->type == mutalyzer::REVERSE_COMPLEMENT)
     {
-        return Py_BuildValue("{s:s,s:O}", "type", "inv", "location", range);
+        return Py_BuildValue("{s:s,s:O,s:s}", "type", "inversion", "location", range, "source", "reference");
     } // if
 
     // All other variants are deletion/insertions; guaranteed one inserted part.
@@ -187,7 +187,7 @@ variant_dict(std::vector<mutalyzer::Variant>::const_iterator &it)
             return NULL;
         } // if
     } // if
-    return Py_BuildValue("{s:s,s:O,s:O}", "type", "delins", "location", range, "insertions", inserted);
+    return Py_BuildValue("{s:s,s:O,s:O,s:s}", "type", "deletion_insertion", "location", range, "inserted", inserted, "source", "reference");
 } // variant_dict
 
 
@@ -240,8 +240,8 @@ static PyMethodDef ExtractorMethods[] =
 {
     {"describe_dna", extractor_describe_dna, METH_VARARGS,
      "Give an allele description of the change from {reference} to {observed}.\n"
-     "    :arg ASCII reference: Reference sequence over the alphabet {A, C, G, T, U}.\n"
-     "    :arg ASCII observed: Observed sequence over the alphabet {A, C, G, T, U}.\n"
+     "    :arg ASCII reference: Reference sequence over the alphabet {A, C, G, T, U, (N)}.\n"
+     "    :arg ASCII observed: Observed sequence over the alphabet {A, C, G, T, U, (N)}.\n"
      "    :returns list({}): A list of dictionaries representing the observed allele in terms of the reference sequence."},
 
     {NULL, NULL, 0, NULL}  // sentinel
