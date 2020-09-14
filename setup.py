@@ -18,8 +18,12 @@ class git_clone_external(build_ext):
         subprocess.check_call(['git', 'clone', 'https://github.com/mutalyzer/extractor-core.git'])
         build_ext.run(self)
 
-extractor = Extension('extractor', sources = ['extractor-wrapper.cc',
-                                              'extractor-core/src/extractor.cc'])
+extractor = Extension('extractor',
+                      sources = ['extractor-wrapper.cc',
+                                 'extractor-core/src/extractor.cc'],
+                      extra_compile_args = ['-Wextra',
+                                            '-Wpedantic',
+                                            '-std=c++17'])
 
 setup(name = 'description-extractor',
       version = VERSION,
